@@ -259,14 +259,19 @@ function openHome() {
 
 function openGame(id) {
   stopLoop();
-  currentGame = id;
-  const info = gameInfo[id];
+  const gameId = typeof id === "string" ? id.trim().toLowerCase() : "";
+  const info = gameInfo[gameId];
+  if (!info) {
+    console.warn(`Ignored unknown game id: ${id}`);
+    return;
+  }
+  currentGame = gameId;
   ui.gameTitle.textContent = info.title;
   ui.gameLabel.textContent = info.label;
   ui.controlsText.textContent = info.controls;
   ui.globalStatus.textContent = info.title;
   ui.scoreText.textContent = "0";
-  ui.bestText.textContent = bestFor(id);
+  ui.bestText.textContent = bestFor(gameId);
   refreshWallet();
   ui.roundText.textContent = "Ready";
   ui.overlayTitle.textContent = "Ready?";
@@ -274,7 +279,7 @@ function openGame(id) {
   ui.startBtn.textContent = "Start";
   ui.overlay.classList.remove("hidden");
   showScreen("game");
-  drawAttract(id);
+  drawAttract(gameId);
 }
 
 function startCurrentGame() {
@@ -1748,7 +1753,7 @@ function canvasPoint(event) {
 }
 
 document.querySelectorAll("[data-game]").forEach((button) => {
-  button.addEventListener("click", () => openGame(button.dataset.game));
+  button.addEventListener("click", () => openGame(button.dataset.game || button.getAttribute("data-game")));
 });
 
 document.querySelectorAll("[data-home]").forEach((button) => {
