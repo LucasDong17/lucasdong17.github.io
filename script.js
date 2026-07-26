@@ -58,7 +58,7 @@ const homeBest = {
 
 const gameInfo = {
   pac: {
-    title: "Pac Man",
+    title: "Pac-Man",
     label: "Maze Chase",
     controls: "Arrow keys or WASD to move. Power pellets turn ghosts blue for a few seconds.",
     bestKey: "pixel-party-pac-best"
