@@ -22,6 +22,9 @@ const palette = {
   red: "#ff5b6c",
   violet: "#b785ff",
   orange: "#ff9d4d",
+  pink: "#ff76b7",
+  blockBlue: "#5a8dff",
+  blockMint: "#61e6b2",
   ink: "#0b0e14"
 };
 
@@ -53,7 +56,8 @@ const ui = {
 const homeBest = {
   pac: document.getElementById("pacBestHome"),
   road: document.getElementById("roadBestHome"),
-  zombie: document.getElementById("zombieBestHome")
+  zombie: document.getElementById("zombieBestHome"),
+  block: document.getElementById("blockBestHome")
 };
 
 const gameInfo = {
@@ -74,6 +78,12 @@ const gameInfo = {
     label: "Survival",
     controls: "WASD or arrow keys to move. Click/tap and hold to shoot. Press E for a grenade. Runners flank, brutes soak shots.",
     bestKey: "pixel-party-zombie-best"
+  },
+  block: {
+    title: "Block Blast",
+    label: "Shape Stack",
+    controls: "Click/tap a tray shape, then click/tap a board cell to place it. Press V to rotate. Shop powers: R reroll, C clear a block, X prism bomb, Q color shift.",
+    bestKey: "pixel-party-block-best"
   }
 };
 
@@ -94,6 +104,12 @@ const shopCatalog = {
     { id: "pulseRifle", title: "Pulse Rifle", description: "A faster gun with stronger energy shots.", cost: 24, icon: "pulse-rifle", kind: "upgrade" },
     { id: "grenadePack", title: "Grenade Pack", description: "Adds 3 grenades. Aim, then press E for splash damage.", cost: 14, icon: "grenade-pack", kind: "consumable", grant: 3 },
     { id: "damageMod", title: "Damage Mod", description: "Every upgrade adds damage to bullets and grenades.", cost: 20, icon: "damage-mod", kind: "upgrade" }
+  ],
+  block: [
+    { id: "reroller", title: "Block Reroller", description: "Press R to trash your whole tray and deal three fresh shapes.", cost: 12, icon: "block-reroller", kind: "consumable", grant: 1, key: "R" },
+    { id: "clearBlock", title: "Clear a Block", description: "Hover a filled cell and press C to delete it without breaking your combo.", cost: 10, icon: "clear-block", kind: "consumable", grant: 1, key: "C" },
+    { id: "prismBomb", title: "Prism Bomb", description: "Press X to wipe a 3×3 blast around your hovered cell.", cost: 18, icon: "prism-bomb", kind: "consumable", grant: 1, key: "X" },
+    { id: "colorShift", title: "Color Shift", description: "Press Q to remix your selected shape into a lucky wild color.", cost: 14, icon: "color-shift", kind: "consumable", grant: 1, key: "Q" }
   ]
 };
 
@@ -172,7 +188,7 @@ function renderShop() {
       <span class="shop-art ${item.icon}" aria-hidden="true"></span>
       <div class="shop-item-copy">
         <h3>${item.title}</h3>
-        <p>${item.description}</p>
+        <p>${item.description}${item.key ? ` <span class="key-hint">${item.key}</span>` : ""}</p>
         <div class="shop-item-footer">
           <span class="shop-owned">${ownedLabel}${grantLabel}</span>
           <button class="shop-buy" type="button" data-shop-buy="${item.id}"><span class="coin-icon" aria-hidden="true"></span>${item.cost}</button>
@@ -268,6 +284,7 @@ function startCurrentGame() {
   if (currentGame === "pac") initPac();
   if (currentGame === "road") initRoad();
   if (currentGame === "zombie") initZombie();
+  if (currentGame === "block") initBlock();
   ui.overlay.classList.add("hidden");
   lastTime = performance.now();
   stopLoop();
@@ -285,6 +302,7 @@ function loop(time) {
   if (currentGame === "pac") updatePac(dt);
   if (currentGame === "road") updateRoad(dt);
   if (currentGame === "zombie") updateZombie(dt);
+  if (currentGame === "block") updateBlock(dt);
   if (state.ended) return;
   animationId = requestAnimationFrame(loop);
 }
@@ -317,7 +335,7 @@ function updateScore() {
 }
 
 function drawAttract(id) {
-  const accent = id === "pac" ? palette.yellow : id === "road" ? palette.cyan : palette.green;
+  const accent = id === "pac" ? palette.yellow : id === "road" ? palette.cyan : id === "zombie" ? palette.green : palette.violet;
   drawCanvasBackdrop("#0b0f17", accent, 0.16);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -342,6 +360,9 @@ function drawAttract(id) {
   if (id === "zombie") {
     drawZombieEnemy({ x: WIDTH / 2 - 150, y: HEIGHT / 2 - 2, r: 18, hp: 2, maxHp: 2, color: palette.green, accent: palette.violet, type: "brute" });
     drawSurvivor(WIDTH / 2 + 150, HEIGHT / 2 - 2, Math.PI);
+  }
+  if (id === "block") {
+    drawBlockAttract();
   }
 }
 
@@ -1122,6 +1143,416 @@ function drawZombieEnemy(zombie) {
   ctx.restore();
 }
 
+const BLOCK_ROWS = 8;
+const BLOCK_COLS = 8;
+const BLOCK_TILE = 48;
+const BLOCK_OFFSET_X = 168;
+const BLOCK_OFFSET_Y = 36;
+const BLOCK_TRAY_SLOTS = [245, 395, 545];
+const blockShapes = [
+  { name: "dot", cells: [[0, 0]] },
+  { name: "domino", cells: [[0, 0], [1, 0]] },
+  { name: "tri-line", cells: [[0, 0], [1, 0], [2, 0]] },
+  { name: "corner", cells: [[0, 0], [0, 1], [1, 1]] },
+  { name: "square", cells: [[0, 0], [1, 0], [0, 1], [1, 1]] },
+  { name: "zig", cells: [[1, 0], [2, 0], [0, 1], [1, 1]] },
+  { name: "L", cells: [[0, 0], [0, 1], [0, 2], [1, 2]] },
+  { name: "T", cells: [[0, 0], [1, 0], [2, 0], [1, 1]] },
+  { name: "plus", cells: [[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]] },
+  { name: "long-four", cells: [[0, 0], [1, 0], [2, 0], [3, 0]] },
+  { name: "hook", cells: [[0, 0], [1, 0], [2, 0], [2, 1], [2, 2]] }
+];
+const blockColors = [palette.violet, palette.cyan, palette.orange, palette.pink, palette.green, palette.yellow, palette.blockBlue, palette.blockMint];
+
+function initBlock() {
+  state = {
+    score: 0,
+    ended: false,
+    time: 0,
+    lines: 0,
+    combo: 0,
+    board: Array.from({ length: BLOCK_ROWS }, () => Array(BLOCK_COLS).fill(null)),
+    tray: createBlockHand(),
+    selectedIndex: -1,
+    hovered: null,
+    message: "Pick a shape, then pick its landing cell.",
+    messageTone: "muted",
+    flashCells: [],
+    flashTime: 0,
+    powerPulse: 0,
+    powerCounts: {
+      reroller: inventoryCount("block", "reroller"),
+      clearBlock: inventoryCount("block", "clearBlock"),
+      prismBomb: inventoryCount("block", "prismBomb"),
+      colorShift: inventoryCount("block", "colorShift")
+    }
+  };
+  ui.roundText.textContent = "Lines 0 | Combo ready";
+  updateScore();
+  drawBlock();
+}
+
+function createBlockHand() {
+  return [createBlockPiece(), createBlockPiece(), createBlockPiece()];
+}
+
+function createBlockPiece() {
+  const shape = blockShapes[Math.floor(Math.random() * blockShapes.length)];
+  return {
+    name: shape.name,
+    cells: shape.cells.map(([x, y]) => [x, y]),
+    color: blockColors[Math.floor(Math.random() * blockColors.length)]
+  };
+}
+
+function rotateBlockPiece(piece) {
+  if (!piece) return;
+  const rotated = piece.cells.map(([x, y]) => [-y, x]);
+  const minX = Math.min(...rotated.map(([x]) => x));
+  const minY = Math.min(...rotated.map(([, y]) => y));
+  piece.cells = rotated.map(([x, y]) => [x - minX, y - minY]);
+}
+
+function blockShapeCells(piece, col, row) {
+  return piece.cells.map(([x, y]) => ({ col: col + x, row: row + y }));
+}
+
+function isBlockPlacementValid(piece, col, row) {
+  if (!piece || !Number.isInteger(col) || !Number.isInteger(row)) return false;
+  return blockShapeCells(piece, col, row).every(({ col: cellCol, row: cellRow }) => (
+    cellCol >= 0 && cellCol < BLOCK_COLS && cellRow >= 0 && cellRow < BLOCK_ROWS && !state.board[cellRow][cellCol]
+  ));
+}
+
+function blockCellFromPointer() {
+  const col = Math.floor((pointer.x - BLOCK_OFFSET_X) / BLOCK_TILE);
+  const row = Math.floor((pointer.y - BLOCK_OFFSET_Y) / BLOCK_TILE);
+  return col >= 0 && col < BLOCK_COLS && row >= 0 && row < BLOCK_ROWS ? { col, row } : null;
+}
+
+function blockTrayIndexFromPointer() {
+  if (pointer.y < 424) return -1;
+  return BLOCK_TRAY_SLOTS.findIndex((center) => Math.abs(pointer.x - center) < 68);
+}
+
+function setBlockMessage(message, tone = "muted") {
+  if (!state || currentGame !== "block") return;
+  state.message = message;
+  state.messageTone = tone;
+}
+
+function handleBlockClick() {
+  if (currentGame !== "block" || ui.overlay.classList.contains("hidden") === false || state.ended) return;
+  const trayIndex = blockTrayIndexFromPointer();
+  if (trayIndex >= 0 && state.tray[trayIndex]) {
+    state.selectedIndex = trayIndex;
+    setBlockMessage(`${state.tray[trayIndex].name} selected — choose a landing cell.`, "good");
+    return;
+  }
+  const cell = blockCellFromPointer();
+  if (cell && state.selectedIndex >= 0) placeBlock(state.selectedIndex, cell.col, cell.row);
+  else if (cell) setBlockMessage("Choose one of the shapes below first.", "warn");
+}
+
+function placeBlock(trayIndex, col, row) {
+  const piece = state.tray[trayIndex];
+  if (!piece) return;
+  if (!isBlockPlacementValid(piece, col, row)) {
+    setBlockMessage("That shape bumps into the grid. Try a different cell or press V to rotate.", "warn");
+    return;
+  }
+  const cells = blockShapeCells(piece, col, row);
+  cells.forEach(({ col: cellCol, row: cellRow }) => {
+    state.board[cellRow][cellCol] = { color: piece.color, placedAt: state.time };
+  });
+  state.score += cells.length * 10;
+  awardPoints(Math.max(1, Math.floor(cells.length / 2)));
+  state.tray[trayIndex] = null;
+  state.selectedIndex = -1;
+
+  const cleared = clearCompletedBlockLines();
+  if (cleared.lines > 0) {
+    state.combo += 1;
+    const comboBonus = Math.max(0, state.combo - 1) * 50;
+    state.score += cleared.lines * 100 + cleared.cells * 12 + comboBonus;
+    awardPoints(cleared.lines * 2 + (state.combo > 1 ? 1 : 0));
+    setBlockMessage(`${cleared.lines} line${cleared.lines === 1 ? "" : "s"} blasted${state.combo > 1 ? ` — ${state.combo}x combo!` : "!"}`, "good");
+  } else {
+    state.combo = 0;
+    setBlockMessage("Nice fit. Keep the center open for the weird shapes.", "muted");
+  }
+
+  if (state.tray.every((entry) => !entry)) state.tray = createBlockHand();
+  if (!hasAnyBlockMove()) {
+    drawBlock();
+    endGame("Gridlocked!", "No shape fits the board. Your best combo was " + Math.max(1, state.combo) + "x.");
+    return;
+  }
+  updateBlockHud();
+}
+
+function clearCompletedBlockLines() {
+  const rows = [];
+  const cols = [];
+  for (let row = 0; row < BLOCK_ROWS; row += 1) {
+    if (state.board[row].every(Boolean)) rows.push(row);
+  }
+  for (let col = 0; col < BLOCK_COLS; col += 1) {
+    if (state.board.every((row) => row[col])) cols.push(col);
+  }
+  const cells = new Set();
+  rows.forEach((row) => { for (let col = 0; col < BLOCK_COLS; col += 1) cells.add(`${col},${row}`); });
+  cols.forEach((col) => { for (let row = 0; row < BLOCK_ROWS; row += 1) cells.add(`${col},${row}`); });
+  cells.forEach((key) => {
+    const [col, row] = key.split(",").map(Number);
+    state.board[row][col] = null;
+  });
+  state.lines += rows.length + cols.length;
+  state.flashCells = [...cells].map((key) => key.split(",").map(Number));
+  state.flashTime = cells.size ? 0.34 : 0;
+  return { lines: rows.length + cols.length, cells: cells.size };
+}
+
+function hasAnyBlockMove() {
+  return state.tray.some((piece) => {
+    if (!piece) return false;
+    for (let row = 0; row < BLOCK_ROWS; row += 1) {
+      for (let col = 0; col < BLOCK_COLS; col += 1) {
+        if (isBlockPlacementValid(piece, col, row)) return true;
+      }
+    }
+    return false;
+  });
+}
+
+function activateBlockPower(powerId) {
+  if (currentGame !== "block" || ui.overlay.classList.contains("hidden") === false || state.ended) return;
+  if (inventoryCount("block", powerId) < 1) {
+    setBlockMessage(`No ${powerId === "clearBlock" ? "clear blocks" : powerId} left — visit the Block Blast shop.`, "warn");
+    return;
+  }
+  if (powerId === "reroller") {
+    consumeShopItem("block", powerId);
+    state.tray = createBlockHand();
+    state.selectedIndex = -1;
+    setBlockMessage("Fresh shapes dropped in. The grid is yours again.", "good");
+  }
+  if (powerId === "clearBlock") {
+    const cell = state.hovered;
+    if (!cell || !state.board[cell.row][cell.col]) {
+      setBlockMessage("Hover a filled block first, then press C.", "warn");
+      return;
+    }
+    consumeShopItem("block", powerId);
+    state.board[cell.row][cell.col] = null;
+    state.score += 18;
+    state.powerPulse = 0.38;
+    setBlockMessage(`Block cleared at ${String.fromCharCode(65 + cell.col)}${cell.row + 1}.`, "good");
+  }
+  if (powerId === "prismBomb") {
+    const cell = state.hovered;
+    if (!cell) {
+      setBlockMessage("Hover the center of your prism blast first, then press X.", "warn");
+      return;
+    }
+    const cells = [];
+    for (let row = cell.row - 1; row <= cell.row + 1; row += 1) {
+      for (let col = cell.col - 1; col <= cell.col + 1; col += 1) {
+        if (row >= 0 && row < BLOCK_ROWS && col >= 0 && col < BLOCK_COLS && state.board[row][col]) {
+          cells.push({ col, row });
+        }
+      }
+    }
+    if (!cells.length) {
+      setBlockMessage("Aim the prism at a filled cluster so it has something to blast.", "warn");
+      return;
+    }
+    consumeShopItem("block", powerId);
+    cells.forEach(({ col, row }) => { state.board[row][col] = null; });
+    state.score += cells.length * 12;
+    state.powerPulse = 0.54;
+    state.flashCells = cells.map(({ col, row }) => [col, row]);
+    state.flashTime = 0.42;
+    setBlockMessage(`Prism burst cleared ${cells.length} block${cells.length === 1 ? "" : "s"}.`, "good");
+  }
+  if (powerId === "colorShift") {
+    const piece = state.tray[state.selectedIndex];
+    if (!piece) {
+      setBlockMessage("Select a tray shape first, then press Q.", "warn");
+      return;
+    }
+    consumeShopItem("block", powerId);
+    const currentColor = piece.color;
+    const nextColor = blockColors[(blockColors.indexOf(currentColor) + 3) % blockColors.length];
+    piece.color = nextColor === currentColor ? palette.cyan : nextColor;
+    setBlockMessage("Lucky color shifted. Make it fit.", "good");
+  }
+  state.powerCounts = {
+    reroller: inventoryCount("block", "reroller"),
+    clearBlock: inventoryCount("block", "clearBlock"),
+    prismBomb: inventoryCount("block", "prismBomb"),
+    colorShift: inventoryCount("block", "colorShift")
+  };
+  updateBlockHud();
+}
+
+function rotateSelectedBlock() {
+  if (currentGame !== "block" || ui.overlay.classList.contains("hidden") === false || state.ended) return;
+  const piece = state.tray[state.selectedIndex];
+  if (!piece) {
+    setBlockMessage("Select a shape first, then press V to rotate it.", "warn");
+    return;
+  }
+  rotateBlockPiece(piece);
+  setBlockMessage("Shape rotated. Find it a landing cell.", "good");
+}
+
+function updateBlock(dt) {
+  if (state.ended) return;
+  state.time += dt;
+  state.flashTime = Math.max(0, state.flashTime - dt);
+  state.powerPulse = Math.max(0, state.powerPulse - dt);
+  state.hovered = blockCellFromPointer();
+  drawBlock();
+  updateBlockHud();
+}
+
+function updateBlockHud() {
+  if (currentGame !== "block" || !state) return;
+  const handCount = state.tray.filter(Boolean).length;
+  ui.roundText.textContent = `Lines ${state.lines} | ${state.combo > 1 ? `${state.combo}x combo` : "Combo ready"} | Hand ${handCount}/3`;
+  updateScore();
+}
+
+function drawBlock() {
+  ctx.fillStyle = "#100d1b";
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  const bg = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
+  bg.addColorStop(0, "rgba(183, 133, 255, 0.18)");
+  bg.addColorStop(0.55, "rgba(84, 207, 255, 0.04)");
+  bg.addColorStop(1, "rgba(255, 118, 183, 0.12)");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  fillRoundedRect(BLOCK_OFFSET_X - 16, BLOCK_OFFSET_Y - 16, BLOCK_COLS * BLOCK_TILE + 32, BLOCK_ROWS * BLOCK_TILE + 32, 16, "rgba(18, 17, 34, 0.94)", "rgba(183, 133, 255, 0.3)");
+  for (let row = 0; row < BLOCK_ROWS; row += 1) {
+    for (let col = 0; col < BLOCK_COLS; col += 1) {
+      const x = BLOCK_OFFSET_X + col * BLOCK_TILE;
+      const y = BLOCK_OFFSET_Y + row * BLOCK_TILE;
+      fillRoundedRect(x + 4, y + 4, BLOCK_TILE - 8, BLOCK_TILE - 8, 8, "rgba(255, 255, 255, 0.045)", "rgba(255, 255, 255, 0.06)");
+      if (state.board[row][col]) drawBlockTile(x + 7, y + 7, BLOCK_TILE - 14, state.board[row][col].color);
+    }
+  }
+
+  const hover = state.hovered;
+  const selectedPiece = state.tray[state.selectedIndex];
+  if (hover && selectedPiece) {
+    const valid = isBlockPlacementValid(selectedPiece, hover.col, hover.row);
+    blockShapeCells(selectedPiece, hover.col, hover.row).forEach(({ col, row }) => {
+      if (col < 0 || col >= BLOCK_COLS || row < 0 || row >= BLOCK_ROWS) return;
+      const x = BLOCK_OFFSET_X + col * BLOCK_TILE + 7;
+      const y = BLOCK_OFFSET_Y + row * BLOCK_TILE + 7;
+      drawBlockTile(x, y, BLOCK_TILE - 14, valid ? selectedPiece.color : palette.red, true);
+    });
+    ctx.strokeStyle = valid ? palette.blockMint : palette.red;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(BLOCK_OFFSET_X + hover.col * BLOCK_TILE + 5, BLOCK_OFFSET_Y + hover.row * BLOCK_TILE + 5, BLOCK_TILE - 10, BLOCK_TILE - 10);
+    ctx.lineWidth = 1;
+  } else if (hover) {
+    ctx.strokeStyle = "rgba(246, 249, 255, 0.72)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(BLOCK_OFFSET_X + hover.col * BLOCK_TILE + 5, BLOCK_OFFSET_Y + hover.row * BLOCK_TILE + 5, BLOCK_TILE - 10, BLOCK_TILE - 10);
+    ctx.lineWidth = 1;
+  }
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.font = "800 14px Arial";
+  ctx.fillStyle = "rgba(246, 249, 255, 0.72)";
+  ctx.fillText("BUILD ZONE", BLOCK_OFFSET_X, 8);
+  ctx.textAlign = "right";
+  ctx.fillStyle = state.messageTone === "good" ? palette.blockMint : state.messageTone === "warn" ? palette.orange : "rgba(246, 249, 255, 0.72)";
+  ctx.fillText(state.message, WIDTH - 20, 8);
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = "rgba(246, 249, 255, 0.58)";
+  ctx.font = "700 13px Arial";
+  ctx.fillText("POWER KEYS", 20, 444);
+  ctx.font = "800 13px Arial";
+  ctx.fillStyle = palette.violet;
+  ctx.fillText(`R  Reroll ×${state.powerCounts?.reroller || 0}`, 20, 466);
+  ctx.fillStyle = palette.orange;
+  ctx.fillText(`C  Clear ×${state.powerCounts?.clearBlock || 0}`, 20, 486);
+  ctx.fillStyle = palette.cyan;
+  ctx.fillText(`X  Prism ×${state.powerCounts?.prismBomb || 0}`, 20, 506);
+  ctx.fillStyle = palette.pink;
+  ctx.fillText(`Q  Shift ×${state.powerCounts?.colorShift || 0}`, 625, 506);
+  ctx.fillStyle = palette.muted;
+  ctx.fillText("V  rotate selected", 625, 486);
+
+  ctx.textAlign = "center";
+  ctx.font = "900 16px Arial";
+  ctx.fillStyle = palette.text;
+  ctx.fillText("SHAPE TRAY", WIDTH / 2, 426);
+  state.tray.forEach((piece, index) => {
+    const center = BLOCK_TRAY_SLOTS[index];
+    fillRoundedRect(center - 62, 442, 124, 67, 10, index === state.selectedIndex ? "rgba(183, 133, 255, 0.19)" : "rgba(255, 255, 255, 0.045)", index === state.selectedIndex ? palette.violet : "rgba(255, 255, 255, 0.1)");
+    ctx.fillStyle = "rgba(246, 249, 255, 0.46)";
+    ctx.font = "800 11px Arial";
+    ctx.fillText(String(index + 1), center - 50, 452);
+    if (piece) drawBlockPiecePreview(piece, center, 477, 15);
+  });
+
+  if (state.flashTime > 0) {
+    const alpha = state.flashTime / 0.42;
+    state.flashCells.forEach(([col, row]) => {
+      ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.7})`;
+      ctx.fillRect(BLOCK_OFFSET_X + col * BLOCK_TILE + 5, BLOCK_OFFSET_Y + row * BLOCK_TILE + 5, BLOCK_TILE - 10, BLOCK_TILE - 10);
+    });
+  }
+  if (state.powerPulse > 0) {
+    ctx.strokeStyle = `rgba(84, 207, 255, ${state.powerPulse * 1.4})`;
+    ctx.lineWidth = 6;
+    ctx.strokeRect(BLOCK_OFFSET_X - 5, BLOCK_OFFSET_Y - 5, BLOCK_COLS * BLOCK_TILE + 10, BLOCK_ROWS * BLOCK_TILE + 10);
+    ctx.lineWidth = 1;
+  }
+}
+
+function drawBlockPiecePreview(piece, centerX, centerY, size) {
+  const maxX = Math.max(...piece.cells.map(([x]) => x));
+  const maxY = Math.max(...piece.cells.map(([, y]) => y));
+  const width = (maxX + 1) * size;
+  const height = (maxY + 1) * size;
+  piece.cells.forEach(([x, y]) => drawBlockTile(centerX - width / 2 + x * size, centerY - height / 2 + y * size, size - 2, piece.color));
+}
+
+function drawBlockTile(x, y, size, color, ghost = false) {
+  ctx.save();
+  ctx.globalAlpha = ghost ? 0.42 : 1;
+  ctx.shadowColor = hexToRgba(color, ghost ? 0.24 : 0.45);
+  ctx.shadowBlur = ghost ? 5 : 12;
+  fillRoundedRect(x, y, size, size, Math.max(4, size * 0.16), color, ghost ? "rgba(246, 249, 255, 0.7)" : "rgba(255, 255, 255, 0.28)");
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "rgba(255, 255, 255, 0.38)";
+  ctx.fillRect(x + size * 0.18, y + size * 0.16, size * 0.46, Math.max(2, size * 0.07));
+  ctx.restore();
+}
+
+function drawBlockAttract() {
+  const demo = [
+    [palette.violet, 2, 5], [palette.violet, 3, 5], [palette.cyan, 4, 5], [palette.cyan, 4, 6],
+    [palette.orange, 5, 6], [palette.orange, 6, 6], [palette.green, 6, 7], [palette.pink, 3, 7]
+  ];
+  demo.forEach(([color, col, row]) => drawBlockTile(WIDTH / 2 - 92 + col * 24, 282 + row * 14, 22, color));
+  drawBlockTile(WIDTH / 2 - 100, 346, 22, palette.yellow);
+  drawBlockTile(WIDTH / 2 - 76, 346, 22, palette.yellow);
+  drawBlockTile(WIDTH / 2 - 52, 346, 22, palette.yellow);
+  ctx.fillStyle = "rgba(246, 249, 255, 0.72)";
+  ctx.font = "700 14px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("click shapes • clear lines • chase combos", WIDTH / 2, 390);
+}
+
 function drawCanvasBackdrop(base, accent, alpha) {
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
@@ -1346,6 +1777,14 @@ window.addEventListener("keydown", (event) => {
   keys[event.key] = true;
   keys[event.key.toLowerCase()] = true;
   if (event.key.toLowerCase() === "e") throwGrenade();
+  if (currentGame === "block" && ui.overlay.classList.contains("hidden")) {
+    const blockKey = event.key.toLowerCase();
+    if (blockKey === "r") activateBlockPower("reroller");
+    if (blockKey === "c") activateBlockPower("clearBlock");
+    if (blockKey === "x") activateBlockPower("prismBomb");
+    if (blockKey === "q") activateBlockPower("colorShift");
+    if (blockKey === "v") rotateSelectedBlock();
+  }
   if (event.key === "Enter" && !ui.overlay.classList.contains("hidden")) startCurrentGame();
 });
 
@@ -1365,6 +1804,10 @@ canvas.addEventListener("mousedown", (event) => {
 });
 
 canvas.addEventListener("mousemove", canvasPoint);
+canvas.addEventListener("click", (event) => {
+  canvasPoint(event);
+  handleBlockClick();
+});
 window.addEventListener("mouseup", () => {
   pointer.down = false;
 });

@@ -31,7 +31,7 @@
           <div class="intro">
             <p class="eyebrow">Arcade Menu</p>
             <h1 id="homeTitle">Pick a sharper game.</h1>
-            <p>Three quick arcade games with cleaner graphics, smarter enemies, and saved high scores.</p>
+            <p>Four quick arcade games with cleaner graphics, smarter enemies, and saved high scores.</p>
           </div>
 
           <div class="game-grid" aria-label="Game list">
@@ -54,6 +54,13 @@
               <span class="game-title">Zombie Zone</span>
               <span class="game-copy">Kite, aim, and survive enemies that flank and swarm.</span>
               <span class="score-chip">Best: <b id="zombieBestHome">0</b></span>
+            </button>
+
+            <button class="game-card block-card" data-game="block">
+              <span class="game-icon block-icon" aria-hidden="true"></span>
+              <span class="game-title">Block Blast</span>
+              <span class="game-copy">Snap wild shapes into a neon grid, clear lines, chase combos.</span>
+              <span class="score-chip">Best: <b id="blockBestHome">0</b></span>
             </button>
           </div>
 
@@ -79,6 +86,9 @@
               </button>
               <button class="shop-tab" type="button" role="tab" aria-selected="false" data-shop-tab="zombie">
                 <span class="tab-icon zombie-tab-icon" aria-hidden="true"></span><span>Zombie Zone</span>
+              </button>
+              <button class="shop-tab" type="button" role="tab" aria-selected="false" data-shop-tab="block">
+                <span class="tab-icon block-tab-icon" aria-hidden="true"></span><span>Block Blast</span>
               </button>
             </div>
 
