@@ -1,7 +1,8 @@
-import { BALANCE, OBSTACLES, SPAWNS } from '../data/balance.js';
+import { BALANCE, MAPS } from '../data/balance.js';
 
 export class World {
-  constructor() { this.half = BALANCE.arenaHalf; this.obstacles = OBSTACLES; }
+  constructor() { this.half = BALANCE.arenaHalf; this.setMap('hub'); }
+  setMap(key) { this.map = MAPS[key] || MAPS.meadow; this.obstacles = this.map.obstacles; }
   valid(x, z, radius) {
     return Math.abs(x) <= this.half - radius && Math.abs(z) <= this.half - radius &&
       this.obstacles.every(o => Math.hypot(x - o.x, z - o.z) >= radius + o.radius - 1e-7);
@@ -30,11 +31,12 @@ export class World {
       if (this.valid(x, z, actor.radius)) { actor.x = x; actor.z = z; }
     }
   }
-  spawn(player, index) {
-    for (let i = 0; i < SPAWNS.length; i++) {
-      const point = SPAWNS[(index + i) % SPAWNS.length];
-      if (this.valid(point.x, point.z, BALANCE.enemy.radius) && Math.hypot(point.x - player.x, point.z - player.z) > 3) return point;
+  spawn(player, index, occupied = []) {
+    const spawns = this.map.spawns.length ? this.map.spawns : MAPS.meadow.spawns;
+    for (let i = 0; i < spawns.length; i++) {
+      const point = spawns[(index + i) % spawns.length];
+      if (this.valid(point.x, point.z, BALANCE.enemy.radius) && Math.hypot(point.x - player.x, point.z - player.z) > 3 && occupied.every(other => Math.hypot(point.x - other.x, point.z - other.z) > 1.5)) return point;
     }
-    return SPAWNS.reduce((best, p) => Math.hypot(p.x - player.x, p.z - player.z) > Math.hypot(best.x - player.x, best.z - player.z) ? p : best);
+    return spawns.reduce((best, p) => Math.hypot(p.x - player.x, p.z - player.z) > Math.hypot(best.x - player.x, best.z - player.z) ? p : best);
   }
 }

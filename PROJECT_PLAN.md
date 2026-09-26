@@ -116,11 +116,34 @@ Improve feel, accessibility, clarity, and performance without changing the estab
 
 The requested scope now advances beyond the original Phase 1 limit into a focused wave-survival loop. This replaces the former timed single-enemy respawn with numbered waves, a ten-second loot intermission, increasing enemy difficulty, a boss every tenth wave, hold-to-collect world drops, equippable armor/tools, and pause-safe Inventory and Index menus. The first content pass includes five regular enemy families; Stone, Iron, Jade, Diamond, and custom Warborn equipment sets; and the five requested weapon types plus four armor slots.
 
-This remains intentionally narrower than the former Phase 2/3 roadmap: there are no coins, XP levels, consumables, quests, crafting, shops, persistence, or multiple simultaneous enemies. Each wave currently contains one increasingly difficult enemy so combat and loot clarity can be tested before encounter counts expand.
+This remains intentionally narrower than the former Phase 2/3 roadmap: there are no coins, XP levels, consumables, quests, shops, or narrative systems. Persistent equipment, duplicate combining, biome progression, and multiple simultaneous enemies were subsequently added in the 2026-09-22 expansion below.
 
 ## Immediate Next Step
 
-Play-balance the ten-wave arc, especially boss survivability and rare-drop pacing, before adding more enemies per wave or persistent progression.
+Long-form play-balance both 50-wave campaigns, especially multi-enemy pressure, final-boss survivability, upgrade pacing, and checkpoint recovery.
+
+## Persistent Biome Progression — 2026-09-22
+
+The requested scope now replaces run resets with a persistent safe-haven loop. Inventory, equipped armor/weapons, upgrade levels, creature discoveries, biome completion, and highest reached wave are stored in a versioned `localStorage` save. Death immediately returns the player to the safe haven at full health without removing gear.
+
+The haven has a forward Play portal and a left Upgrade circle. The Play portal presents Mossvale Meadow and the locked Frostfang Tundra, with selectable checkpoints at waves 1, 10, 20, 30, 40, and 50 once each has been reached. Defeating the Meadow wave-50 Crowned Colossus unlocks Frostfang. Each biome ends at wave 50 and has its own final boss.
+
+Enemy counts now rise from one to eight across a biome. Frostfang adds eight enemy families and six higher-power equipment sets. Loot chance was raised substantially, collected item types have a duplicate bias, and two identical items of the same upgrade level can be combined at the haven forge. Upgraded weapons gain damage; upgraded armor gains health and defense.
+
+### Recorded checks
+
+- **Logic: 9/9 passing.** Hub portal entry, encounter scaling, multi-target melee, collision/range behavior, wave unlocks and spawning, high-odds loot, equipment and combining, save reload, death return, final-boss biome unlock, and corrupt-save fallback.
+- **Browser:** WebGL loaded with no console errors or warnings. The safe-haven HUD, persistent upgraded gear after reload, 15-entry creature index, and 11-set equipment index were visually inspected in the in-app Chromium browser.
+
+### Known limitations
+
+Fine-grained wave balance through all 100 waves still needs a long-form playtest. Enemies use a shared low-poly body rig with color, scale, and stat variation; future art passes can add species-specific silhouettes without changing combat state.
+
+## Medieval Hub and Distinct Arena Pass — 2026-09-23
+
+The safe haven is now a medieval stone-brick courtyard with castle walls, towers, banners, a well, and the existing Play and Upgrade circles. Mossvale keeps a bright grassland layout, while Frostfang has a separate collision/spawn layout with crystal clusters, ice boulders, and a frozen river edge. Lighting, color management, shadows, player equipment details, and environment dressing received a coordinated graphics pass.
+
+Players can use the **Spawn** HUD button during combat or an intermission to return safely to the haven and upgrade. The play portal now presents a prominent **Start Here** button for each available biome; it resumes at the highest wave the player has actually entered. That value is saved additively in the existing version-2 schema, with old saves safely inferring it from their unlocked wave.
 
 ## Phase 1 Verification — 2026-09-18
 

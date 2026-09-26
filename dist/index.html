@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#132d2b">
-  <title>Mossvale — Meadow Waves</title>
+  <title>Mossvale — Wildfront</title>
   <meta name="description" content="A colorful low-poly wave survival adventure.">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect rx='8' width='32' height='32' fill='%231b4b43'/%3E%3Cpath d='M9 10h14v15H9z' fill='%23d89a55'/%3E%3Cpath d='M12 10V8a4 4 0 018 0v2M12 15h8' fill='none' stroke='%23fff0b0' stroke-width='3'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="./css/main.css">
@@ -12,12 +12,12 @@
 <body>
   <canvas id="game" tabindex="0" aria-label="Mossvale wave arena. WASD or arrows move, Space or left click attacks, and hold E near loot to collect it."></canvas>
 
-  <header class="brand"><span>MOSSVALE</span><strong>MEADOW WAVES</strong></header>
+  <header class="brand"><span>MOSSVALE</span><strong>WILDFRONT</strong></header>
   <main id="hud" aria-label="Game status">
     <section class="vital-card player-card">
       <div class="portrait">🧙</div><div class="vital-copy"><div><b>MEADOW KEEPER</b><span id="player-health"></span></div><div class="meter"><i id="player-fill"></i></div><small id="player-stats">25 damage · 0 defense</small></div>
     </section>
-    <section class="wave-card"><small id="wave-label">WAVE 1</small><strong id="wave-name">Meadow Cow</strong><span id="wave-mode">1 enemy remaining</span></section>
+    <section class="wave-card"><small id="wave-label">SAFE HAVEN</small><strong id="wave-name">Home Camp</strong><span id="wave-mode">Choose your next journey</span></section>
     <section class="vital-card enemy-card" id="enemy-panel">
       <div class="enemy-copy"><div><b id="enemy-name">MEADOW COW</b><span id="enemy-health"></span></div><div class="meter enemy-meter"><i id="enemy-fill"></i></div><small id="enemy-state">Waiting in the meadow</small></div><div class="portrait" id="enemy-icon">🐄</div>
     </section>
@@ -25,11 +25,13 @@
     <nav class="side-actions" aria-label="Game menus">
       <button class="side-button bag-button" id="open-inventory" aria-label="Open inventory"><span>🎒</span><b>Inventory</b><i id="loot-badge" hidden>0</i></button>
       <button class="side-button index-button" id="open-index" aria-label="Open index"><span>📖</span><b>Index</b></button>
+      <button class="side-button home-button" id="return-hub" aria-label="Return to the safe haven" hidden><span>🏰</span><b>Spawn</b></button>
     </nav>
 
     <section class="attack-card"><kbd>SPACE</kbd><div><strong id="attack-label">Sword ready</strong><div class="meter"><i id="attack-fill"></i></div></div></section>
     <section class="pickup-prompt" id="pickup-prompt" hidden><kbd>E</kbd><div><b>Hold to collect</b><div class="meter"><i id="pickup-fill"></i></div></div></section>
     <section class="countdown" id="countdown" hidden><small>MEADOW CLEARED</small><strong><span id="countdown-value">10</span>s</strong><p>Collect your loot before the next wave</p></section>
+    <section class="hub-prompt" id="hub-prompt" hidden><strong id="hub-prompt-title">Play Portal</strong><span id="hub-prompt-copy">Choose a biome and checkpoint</span></section>
     <aside class="controls"><span><kbd>WASD</kbd> Move</span><span><kbd>SPACE</kbd> Attack</span><span><kbd>E</kbd> Hold to loot</span></aside>
   </main>
 
@@ -39,7 +41,7 @@
     <article id="inventory-menu" class="game-menu" hidden aria-label="Inventory">
       <header><div class="menu-title"><span class="menu-icon">🎒</span><div><small>YOUR COLLECTION</small><h2>Inventory</h2></div></div><button class="close-menu" aria-label="Close menu">×</button></header>
       <div class="menu-tabs" role="tablist"><button data-inventory-tab="armor" class="tab armor-tab active" role="tab">🛡️ Armor</button><button data-inventory-tab="tools" class="tab tools-tab" role="tab">⚔️ Tools</button></div>
-      <div class="inventory-summary"><span id="inventory-count">0 / 40 items</span><span>Click an item to equip it</span></div>
+      <div class="inventory-summary"><span id="inventory-count">0 items</span><div><span>Click an item to equip it</span><button id="equip-best" class="equip-best" type="button">🛡️ Equip Best Armor</button></div></div>
       <div id="inventory-grid" class="item-grid"></div>
     </article>
 
@@ -48,9 +50,20 @@
       <div class="menu-tabs" role="tablist"><button data-index-tab="enemies" class="tab enemies-tab active" role="tab">🐾 Enemies</button><button data-index-tab="sets" class="tab sets-tab" role="tab">✦ Sets</button></div>
       <div class="index-layout"><div id="index-grid" class="index-grid"></div><aside id="index-detail" class="index-detail"></aside></div>
     </article>
+
+    <article id="play-menu" class="game-menu portal-menu" hidden aria-label="Choose a biome and checkpoint">
+      <header><div class="menu-title"><span class="menu-icon">🌀</span><div><small>PLAY PORTAL</small><h2>Choose a Journey</h2></div></div><button class="close-menu" aria-label="Close menu">×</button></header>
+      <div id="biome-grid" class="biome-grid"></div>
+    </article>
+
+    <article id="upgrade-menu" class="game-menu portal-menu" hidden aria-label="Upgrade equipment">
+      <header><div class="menu-title"><span class="menu-icon">⬆️</span><div><small>FORGE CIRCLE</small><h2>Combine Gear</h2></div></div><button class="close-menu" aria-label="Close menu">×</button></header>
+      <p class="upgrade-help">Combine two identical items of the same level. Weapons gain damage; armor gains health and shield.</p>
+      <div id="upgrade-grid" class="item-grid upgrade-grid"></div>
+    </article>
   </section>
 
-  <section id="overlay" class="overlay"><div class="welcome-mark">⚔</div><div class="dialog"><span class="eyebrow" id="overlay-kicker">A NEW RUN BEGINS</span><h1 id="overlay-title">Welcome to<br><em>Mossvale</em></h1><p id="overlay-copy">Survive the meadow waves, collect rare gear, and prepare for a boss every tenth wave.</p><button id="play" disabled>Loading the meadow…</button><small>Move with WASD · Attack with Space · Hold E to collect</small></div></section>
+  <section id="overlay" class="overlay"><div class="welcome-mark">⚔</div><div class="dialog"><span class="eyebrow" id="overlay-kicker">YOUR GEAR AWAITS</span><h1 id="overlay-title">Welcome to<br><em>Mossvale</em></h1><p id="overlay-copy">Return to the safe haven after defeat, upgrade duplicate gear, and conquer two 50-wave biomes.</p><button id="play" disabled>Loading Mossvale…</button><small>Move with WASD · Attack with Space · Hold E to collect</small></div></section>
   <p id="error" hidden role="alert"></p>
   <script type="module" src="./src/main.js"></script>
 </body>
