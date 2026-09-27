@@ -1,8 +1,16 @@
 export const BALANCE = Object.freeze({
   step: 1 / 60, maxFrame: 0.1, arenaHalf: 13,
   player: { health: 100, speed: 4.6, radius: 0.42, damage: 25, range: 2.05, arc: Math.PI * 0.78, windup: 0.16, active: 0.14, recovery: 0.42 },
-  enemy: { radius: 0.58, detection: 9, reach: 1.22, windup: 0.5, cooldown: 1.25 },
-  pickup: { radius: 1.35, hold: 0.45 }, portal: { radius: 1.35, playX: 0, playZ: 1.2, upgradeX: -4.2, upgradeZ: 5.2, petsX: 4.2, petsZ: 2.8 },
+  enemy: { radius: 0.58, detection: 10, reach: 1.22, windup: 0.5, cooldown: 1.25 },
+  pickup: { radius: 1.35, hold: 0.45 }, portal: {
+    radius: 1.22,
+    playX: 0, playZ: 1.2,
+    upgradeX: -7, upgradeZ: 5.6,
+    petsX: 7, petsZ: 5.6,
+    sellPetsX: 7, sellPetsZ: -3.4,
+    sellArmorX: 0, sellArmorZ: -6.7,
+    sellWeaponsX: -7, sellWeaponsZ: -3.4,
+  },
   intermission: 5, hitFlash: 0.18, maxWave: 50,
 });
 
@@ -37,21 +45,21 @@ export const MAPS = Object.freeze({
 });
 
 const meadowEnemies = [
-  { key: 'cow', name: 'Meadow Cow', icon: '🐄', health: 62, damage: 10, speed: 1.8, color: '#f4efe0', accent: '#493d36', trait: 'Slow and sturdy' },
-  { key: 'boar', name: 'Bramble Boar', icon: '🐗', health: 78, damage: 11, speed: 2.2, color: '#b86f58', accent: '#f1c38f', trait: 'Tough hide' },
-  { key: 'wolf', name: 'Moss Wolf', icon: '🐺', health: 68, damage: 13, speed: 2.85, color: '#6f8193', accent: '#dbe5e2', trait: 'Quick pursuit' },
-  { key: 'golem', name: 'Stone Golem', icon: '🪨', health: 105, damage: 15, speed: 1.6, color: '#788b87', accent: '#c6d3bf', trait: 'Heavy armor' },
-  { key: 'guardian', name: 'Jade Guardian', icon: '🐲', health: 120, damage: 17, speed: 2.25, color: '#25a779', accent: '#b8f2cf', trait: 'Balanced hunter' },
+  { key: 'cow', name: 'Meadow Cow', icon: '🐄', model: 'cow', health: 62, damage: 10, speed: 1.8, attackType: 'melee', range: 1.22, cooldown: 1.45, color: '#f4efe0', accent: '#493d36', trait: 'Slow, sturdy headbutter' },
+  { key: 'boar', name: 'Bramble Boar', icon: '🐗', model: 'boar', health: 78, damage: 12, speed: 2.35, attackType: 'melee', range: 1.35, cooldown: 1.2, color: '#b86f58', accent: '#f1c38f', trait: 'Short-range charging bruiser' },
+  { key: 'wolf', name: 'Moss Wolf', icon: '🐺', model: 'wolf', health: 68, damage: 13, speed: 3.1, attackType: 'melee', range: 1.15, cooldown: 0.9, color: '#6f8193', accent: '#dbe5e2', trait: 'Fast hunter with rapid bites' },
+  { key: 'golem', name: 'Stone Golem', icon: '🪨', model: 'golem', health: 112, damage: 17, speed: 1.45, attackType: 'melee', range: 1.5, cooldown: 1.7, color: '#788b87', accent: '#c6d3bf', trait: 'Armored, slow heavy hitter' },
+  { key: 'guardian', name: 'Jade Guardian', icon: '🐲', model: 'guardian', health: 105, damage: 15, speed: 2.05, attackType: 'ranged', range: 6.2, cooldown: 1.8, projectileSpeed: 7, color: '#25a779', accent: '#b8f2cf', trait: 'Keeps its distance and launches jade bolts' },
 ];
 const frostEnemies = [
-  { key: 'hare', name: 'Frost Hare', icon: '🐇', health: 155, damage: 20, speed: 3.2, color: '#e9fbff', accent: '#8bcce0', trait: 'Small and lightning fast' },
-  { key: 'yak', name: 'Tundra Yak', icon: '🐂', health: 230, damage: 23, speed: 1.75, color: '#806c68', accent: '#e9d8c2', trait: 'Massive winter hide' },
-  { key: 'lynx', name: 'Ice Lynx', icon: '🐈', health: 178, damage: 26, speed: 3.05, color: '#bad8df', accent: '#314e62', trait: 'Relentless pursuit' },
-  { key: 'walrus', name: 'Glacier Walrus', icon: '🦭', health: 275, damage: 28, speed: 1.55, color: '#7995a1', accent: '#f7e7c1', trait: 'Armored bruiser' },
-  { key: 'owl', name: 'Aurora Owl', icon: '🦉', health: 190, damage: 30, speed: 2.75, color: '#d7e9f4', accent: '#9d68df', trait: 'Unpredictable hunter' },
-  { key: 'mammoth', name: 'Snow Mammoth', icon: '🦣', health: 315, damage: 33, speed: 1.7, color: '#7c8792', accent: '#e8ddc7', trait: 'Towering endurance' },
-  { key: 'wraith', name: 'Rime Wraith', icon: '👻', health: 225, damage: 36, speed: 2.6, color: '#80e5ec', accent: '#315b9c', trait: 'Cold and dangerous' },
-  { key: 'drake', name: 'Crystal Drake', icon: '🐉', health: 350, damage: 39, speed: 2.3, color: '#6fc7ee', accent: '#d6adff', trait: 'The peak predator' },
+  { key: 'hare', name: 'Frost Hare', icon: '🐇', model: 'hare', health: 155, damage: 20, speed: 3.45, attackType: 'melee', range: 1.05, cooldown: 0.78, color: '#e9fbff', accent: '#8bcce0', trait: 'Tiny, lightning-fast attacker' },
+  { key: 'yak', name: 'Tundra Yak', icon: '🐂', model: 'yak', health: 240, damage: 25, speed: 1.65, attackType: 'melee', range: 1.45, cooldown: 1.55, color: '#806c68', accent: '#e9d8c2', trait: 'Massive winter hide and wide horns' },
+  { key: 'lynx', name: 'Ice Lynx', icon: '🐈', model: 'lynx', health: 178, damage: 26, speed: 3.2, attackType: 'melee', range: 1.18, cooldown: 0.88, color: '#bad8df', accent: '#314e62', trait: 'Relentless close-range pursuit' },
+  { key: 'walrus', name: 'Glacier Walrus', icon: '🦭', model: 'walrus', health: 285, damage: 29, speed: 1.4, attackType: 'melee', range: 1.55, cooldown: 1.65, color: '#7995a1', accent: '#f7e7c1', trait: 'Slow armored bruiser with long tusks' },
+  { key: 'owl', name: 'Aurora Owl', icon: '🦉', model: 'owl', health: 190, damage: 28, speed: 2.4, attackType: 'ranged', range: 7.2, cooldown: 1.45, projectileSpeed: 8.5, color: '#d7e9f4', accent: '#9d68df', trait: 'Launches quick aurora feathers from afar' },
+  { key: 'mammoth', name: 'Snow Mammoth', icon: '🦣', model: 'mammoth', health: 330, damage: 36, speed: 1.55, attackType: 'melee', range: 1.65, cooldown: 1.85, color: '#7c8792', accent: '#e8ddc7', trait: 'Towering endurance and crushing strikes' },
+  { key: 'wraith', name: 'Rime Wraith', icon: '👻', model: 'wraith', health: 220, damage: 34, speed: 2.7, attackType: 'ranged', range: 7.8, cooldown: 1.25, projectileSpeed: 6.5, color: '#80e5ec', accent: '#315b9c', trait: 'Fires frequent slow frost orbs' },
+  { key: 'drake', name: 'Crystal Drake', icon: '🐉', model: 'drake', health: 350, damage: 40, speed: 2.25, attackType: 'ranged', range: 6.8, cooldown: 1.7, projectileSpeed: 9, color: '#6fc7ee', accent: '#d6adff', trait: 'Mobile predator that spits crystal shards' },
 ];
 
 export const BIOMES = Object.freeze([
@@ -59,7 +67,7 @@ export const BIOMES = Object.freeze([
   { key: 'frost', name: 'Frostfang Tundra', short: 'Tundra', description: 'A frozen hunting ground with stronger rewards.', ground: '#b8dae0', world: '#8cb6c2', fog: '#c9e7ed', enemies: frostEnemies },
 ]);
 export const ENEMIES = Object.freeze(BIOMES.flatMap(biome => biome.enemies.map((enemy, index) => ({ ...enemy, biome: biome.key, waves: `${index * 6 + 1}+` }))));
-export const BOSSES = Object.freeze({ meadow: { key: 'king', name: 'Crowned Colossus', icon: '👑', health: 2600, damage: 48, speed: 2.05, color: '#7c4bc4', accent: '#ffd76a', trait: 'Final guardian of Mossvale' }, frost: { key: 'wyrm', name: 'Aurora Wyrm', icon: '🌌', health: 5200, damage: 72, speed: 2.3, color: '#427de8', accent: '#e1a7ff', trait: 'Final guardian of Frostfang' } });
+export const BOSSES = Object.freeze({ meadow: { key: 'king', name: 'Crowned Colossus', icon: '👑', model: 'king', health: 2600, damage: 48, speed: 2.05, attackType: 'melee', range: 1.75, cooldown: 1.35, color: '#7c4bc4', accent: '#ffd76a', trait: 'Huge crowned guardian with sweeping melee hits' }, frost: { key: 'wyrm', name: 'Aurora Wyrm', icon: '🌌', model: 'wyrm', health: 5200, damage: 72, speed: 2.15, attackType: 'ranged', range: 8.5, cooldown: 1.15, projectileSpeed: 8, color: '#427de8', accent: '#e1a7ff', trait: 'Final guardian that rains rapid aurora bolts' } });
 export const BOSS = BOSSES.meadow;
 export const RARITIES = Object.freeze({
   common: { name: 'Common', color: '#a9c4af' }, rare: { name: 'Rare', color: '#58b9ef' },
@@ -82,6 +90,8 @@ export const EGGS = Object.freeze([
 export function petDefinition(key) { return PETS.find(pet => pet.key === key) || null; }
 export function eggDefinition(key) { return EGGS.find(egg => egg.key === key) || null; }
 export function coinRewardForWave(wave, biome = 'meadow') { return biome === 'frost' ? 120 + wave * 35 : 40 + wave * 12; }
+export function itemSellValue(item) { const definition = itemDefinition(item.key, item.level || 1); if (!definition) return 0; const base = definition.category === 'tools' ? 18 + definition.damage * 2 : 14 + definition.defense * 5 + definition.health * 2; return Math.max(10, Math.round(base * (1 + ((item.level || 1) - 1) * 0.35))); }
+export function petSellValue(pet) { const definition = petDefinition(pet.key); if (!definition) return 0; const rarityValue = { common: 100, rare: 260, epic: 650, legendary: 1500 }; return rarityValue[definition.rarity] + definition.damage * 5; }
 export const SETS = Object.freeze([
   { key: 'stone', name: 'Stone', color: '#93a29d', biome: 'meadow', unlock: 1, power: 1 }, { key: 'iron', name: 'Iron', color: '#9ebad1', biome: 'meadow', unlock: 10, power: 1.35 }, { key: 'jade', name: 'Jade', color: '#38d193', biome: 'meadow', unlock: 20, power: 1.75 }, { key: 'diamond', name: 'Diamond', color: '#55ddff', biome: 'meadow', unlock: 35, power: 2.25 }, { key: 'warborn', name: 'Warborn', color: '#d26aff', biome: 'meadow', unlock: 45, power: 3 },
   { key: 'frostbite', name: 'Frostbite', color: '#8ee8ff', biome: 'frost', unlock: 1, power: 3.4 }, { key: 'glacier', name: 'Glacier', color: '#66a9e8', biome: 'frost', unlock: 10, power: 3.9 }, { key: 'aurora', name: 'Aurora', color: '#b686f4', biome: 'frost', unlock: 20, power: 4.5 }, { key: 'mammoth', name: 'Mammoth', color: '#d9c7aa', biome: 'frost', unlock: 30, power: 5.2 }, { key: 'rime', name: 'Rimeforged', color: '#79f1df', biome: 'frost', unlock: 40, power: 6 }, { key: 'starfall', name: 'Starfall', color: '#f1b2ff', biome: 'frost', unlock: 48, power: 7 },

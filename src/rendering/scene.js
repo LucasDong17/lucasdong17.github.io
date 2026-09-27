@@ -33,6 +33,7 @@ export class SceneView {
     this.player = this.buildPlayer();
     this.enemyViews = new Map();
     this.petViews = new Map();
+    this.projectileViews = new Map();
     this.scene.add(this.player.root);
     this.dropViews = new Map();
     const arc = new THREE.RingGeometry(0.8, B.player.range, 28, 1, -B.player.arc / 2, B.player.arc);
@@ -63,6 +64,12 @@ export class SceneView {
     mesh.receiveShadow = true;
     parent.add(mesh);
     return mesh;
+  }
+  label(text, color = '#ffffff') {
+    const canvas = document.createElement('canvas'); canvas.width = 384; canvas.height = 96;
+    const context = canvas.getContext('2d'); context.fillStyle = '#102c29dd'; context.roundRect(4, 4, 376, 88, 20); context.fill(); context.strokeStyle = color; context.lineWidth = 5; context.stroke(); context.fillStyle = '#ffffff'; context.font = '900 31px sans-serif'; context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText(text.toUpperCase(), 192, 50);
+    const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: true })); sprite.scale.set(3.2, 0.8, 1); sprite.position.y = 1.25; return sprite;
   }
   buildWorld(world) {
     this.groundMaterial = material('#83ad62');
@@ -106,7 +113,7 @@ export class SceneView {
     ]), new THREE.LineBasicMaterial({ color: '#e0dcac' }));
     this.scene.add(line);
     this.portals = new THREE.Group();
-    const makePortal = (x, z, color, labelColor) => {
+    const makePortal = (x, z, color, labelColor, label) => {
       const group = new THREE.Group();
       // Keep portal tops above the uneven courtyard tiles. The old 0.04 height
       // overlapped the tile tops and flickered or vanished on some GPUs.
@@ -116,12 +123,15 @@ export class SceneView {
       const ring = this.mesh(group, new THREE.TorusGeometry(1.27, 0.13, 8, 36), material(labelColor), 0, 0.2, 0);
       ring.rotation.x = Math.PI / 2;
       ring.renderOrder = 3;
-      group.position.set(x, 0, z); this.portals.add(group); return group;
+      group.add(this.label(label, labelColor)); group.position.set(x, 0, z); this.portals.add(group); return group;
     };
-    this.playPortal = makePortal(B.portal.playX, B.portal.playZ, '#63dbeb', '#e7ffff');
-    this.upgradePortal = makePortal(B.portal.upgradeX, B.portal.upgradeZ, '#df80f2', '#ffeaff');
-    this.petPortal = makePortal(B.portal.petsX, B.portal.petsZ, '#f2b84b', '#fff0a6');
+    this.playPortal = makePortal(B.portal.playX, B.portal.playZ, '#63dbeb', '#e7ffff', 'Play');
+    this.upgradePortal = makePortal(B.portal.upgradeX, B.portal.upgradeZ, '#df80f2', '#ffeaff', 'Upgrade');
+    this.petPortal = makePortal(B.portal.petsX, B.portal.petsZ, '#f2b84b', '#fff0a6', 'Pet Hatchery');
     this.mesh(this.petPortal, new THREE.OctahedronGeometry(0.42, 1), material('#fff0a6'), 0, 0.62, 0).scale.set(0.8, 1.12, 0.8);
+    this.sellPetPortal = makePortal(B.portal.sellPetsX, B.portal.sellPetsZ, '#e2a755', '#fff0b0', 'Sell Pets');
+    this.sellArmorPortal = makePortal(B.portal.sellArmorX, B.portal.sellArmorZ, '#65a9dd', '#dff4ff', 'Sell Armor');
+    this.sellWeaponPortal = makePortal(B.portal.sellWeaponsX, B.portal.sellWeaponsZ, '#df6c6c', '#ffe1cf', 'Sell Weapons');
     this.scene.add(this.portals);
     this.frostDecor = new THREE.Group();
     const ice = [material('#a9efff'), material('#71bce8'), material('#d9c9ff')];
@@ -226,22 +236,51 @@ export class SceneView {
     shield.rotation.z = Math.PI / 2;
     return { root, body, sword, swordBlade, flashMaterials: [coat, skin] };
   }
-  buildEnemy() {
-    const root = new THREE.Group();
-    const body = new THREE.Group();
-    root.add(body);
-    const fur = material('#ba755a');
-    const dark = material('#654d43');
-    this.mesh(body, new THREE.IcosahedronGeometry(0.7, 1), fur, 0, 0.67, 0).scale.set(1, 0.85, 1.15);
-    const muzzle = material('#e2b184');
-    this.mesh(body, new THREE.DodecahedronGeometry(0.37), muzzle, 0, 0.65, 0.62);
-    for (const x of [-0.28, 0.28]) {
-      this.mesh(body, new THREE.ConeGeometry(0.18, 0.48, 4), dark, x, 1.26, 0.25);
-      this.mesh(body, new THREE.SphereGeometry(0.07, 6, 4), material('#292f2b'), x, 0.94, 0.54);
-      for (const z of [-0.36, 0.36]) this.mesh(body, new THREE.BoxGeometry(0.19, 0.29, 0.19), dark, x, 0.2, z);
+  buildEnemy(enemy) {
+    const root = new THREE.Group(); const body = new THREE.Group(); root.add(body);
+    const primary = material(enemy.color); const accent = material(enemy.accent); const dark = material('#263635'); const flashMaterials = [primary, accent]; const type = enemy.model || enemy.type;
+    const eye = x => this.mesh(body, new THREE.SphereGeometry(0.065, 6, 4), dark, x, 0.91, 0.61);
+    const legs = (wide = 0.3, long = 0.34) => { for (const x of [-wide, wide]) for (const z of [-0.34, 0.34]) this.mesh(body, new THREE.BoxGeometry(0.17, long, 0.18), accent, x, long / 2, z); };
+    const horn = (x, y, z, flip = 1) => { const part = this.mesh(body, new THREE.ConeGeometry(0.1, 0.48, 5), accent, x, y, z); part.rotation.z = flip * 0.75; return part; };
+    if (type === 'golem') {
+      this.mesh(body, new THREE.BoxGeometry(0.9, 0.82, 0.58), primary, 0, 0.82, 0); this.mesh(body, new THREE.DodecahedronGeometry(0.35), accent, 0, 1.47, 0.05);
+      for (const x of [-0.62, 0.62]) this.mesh(body, new THREE.DodecahedronGeometry(0.34), primary, x, 0.78, 0); for (const x of [-0.27, 0.27]) this.mesh(body, new THREE.BoxGeometry(0.26, 0.5, 0.3), accent, x, 0.25, 0); eye(-0.12); eye(0.12);
+    } else if (type === 'guardian' || type === 'drake' || type === 'wyrm') {
+      this.mesh(body, new THREE.IcosahedronGeometry(type === 'wyrm' ? 0.78 : 0.62, 1), primary, 0, 0.72, 0).scale.set(1, 0.72, 1.35); this.mesh(body, new THREE.DodecahedronGeometry(0.4), primary, 0, 0.82, 0.72); legs(0.32, 0.3); eye(-0.15); eye(0.15);
+      for (const x of [-0.58, 0.58]) { const wing = this.mesh(body, new THREE.ConeGeometry(type === 'guardian' ? 0.22 : 0.38, type === 'wyrm' ? 1.35 : type === 'guardian' ? 0.72 : 1, type === 'guardian' ? 6 : 4), accent, x, 0.95, -0.05); wing.rotation.z = x > 0 ? -1.08 : 1.08; }
+      for (const z of [-0.48, -0.05, 0.36]) this.mesh(body, new THREE.ConeGeometry(0.13, 0.42, 5), accent, 0, 1.28, z);
+      const tail = this.mesh(body, new THREE.ConeGeometry(0.19, type === 'wyrm' ? 1.5 : 1.05, 6), primary, 0, 0.68, -1); tail.rotation.x = Math.PI / 2;
+      if (type === 'guardian') this.mesh(body, new THREE.OctahedronGeometry(0.26, 0), accent, 0, 1.52, 0.12);
+      if (type === 'drake') for (const x of [-0.22, 0.22]) horn(x, 1.35, 0.58, x > 0 ? 1 : -1);
+      if (type === 'wyrm') for (const x of [-0.25, 0.25]) { const crownHorn = this.mesh(body, new THREE.ConeGeometry(0.14, 0.72, 5), accent, x, 1.48, 0.35); crownHorn.rotation.z = x * 0.8; }
+    } else if (type === 'owl') {
+      this.mesh(body, new THREE.SphereGeometry(0.62, 8, 6), primary, 0, 0.78, 0); this.mesh(body, new THREE.SphereGeometry(0.43, 8, 6), accent, 0, 1.25, 0.15); eye(-0.16); eye(0.16);
+      for (const x of [-0.62, 0.62]) { const wing = this.mesh(body, new THREE.ConeGeometry(0.34, 1, 4), primary, x, 0.78, 0); wing.rotation.z = x > 0 ? -0.42 : 0.42; } this.mesh(body, new THREE.ConeGeometry(0.1, 0.28, 4), dark, 0, 1.12, 0.55).rotation.x = Math.PI / 2;
+    } else if (type === 'wraith') {
+      this.mesh(body, new THREE.SphereGeometry(0.48, 8, 6), primary, 0, 1.14, 0); const robe = this.mesh(body, new THREE.ConeGeometry(0.62, 1.25, 7), primary, 0, 0.55, 0); robe.rotation.x = Math.PI; eye(-0.15); eye(0.15);
+      for (const x of [-0.55, 0.55]) { const arm = this.mesh(body, new THREE.ConeGeometry(0.12, 0.7, 5), accent, x, 0.8, 0); arm.rotation.z = x > 0 ? -0.8 : 0.8; }
+    } else if (type === 'king') {
+      this.mesh(body, new THREE.CylinderGeometry(0.5, 0.72, 1.05, 7), primary, 0, 0.78, 0); this.mesh(body, new THREE.DodecahedronGeometry(0.42), primary, 0, 1.5, 0.08); eye(-0.15); eye(0.15); legs(0.28, 0.42);
+      for (let i = 0; i < 5; i++) this.mesh(body, new THREE.ConeGeometry(0.12, 0.42, 4), accent, (i - 2) * 0.18, 2.03 - Math.abs(i - 2) * 0.05, 0); this.mesh(body, new THREE.TorusGeometry(0.42, 0.1, 6, 12), accent, 0, 1.78, 0).rotation.x = Math.PI / 2;
+    } else {
+      const low = ['boar', 'hare', 'walrus'].includes(type); const large = ['yak', 'mammoth'].includes(type); const bodyMesh = this.mesh(body, new THREE.IcosahedronGeometry(large ? 0.78 : 0.64, 1), primary, 0, low ? 0.55 : 0.68, 0); bodyMesh.scale.set(large ? 1.2 : 1, low ? 0.62 : 0.78, type === 'walrus' ? 1.4 : 1.2);
+      this.mesh(body, new THREE.DodecahedronGeometry(type === 'mammoth' ? 0.48 : 0.36), primary, 0, low ? 0.63 : 0.82, 0.62); legs(large ? 0.38 : 0.29, large ? 0.42 : 0.32); eye(-0.14); eye(0.14);
+      if (type === 'cow' || type === 'yak') { horn(-0.32, 1.2, 0.55, -1); horn(0.32, 1.2, 0.55, 1); }
+      if (type === 'yak') for (const x of [-0.48, 0, 0.48]) this.mesh(body, new THREE.ConeGeometry(0.2, 0.48, 5), accent, x, 0.72, -0.18);
+      if (type === 'boar' || type === 'walrus' || type === 'mammoth') for (const x of [-0.22, 0.22]) { const tusk = this.mesh(body, new THREE.ConeGeometry(0.075, type === 'walrus' ? 0.58 : 0.42, 5), accent, x, 0.48, 0.92); tusk.rotation.x = Math.PI; }
+      if (type === 'mammoth') { const trunk = this.mesh(body, new THREE.CylinderGeometry(0.1, 0.16, 0.75, 7), primary, 0, 0.45, 0.9); trunk.rotation.x = -0.18; }
+      if (type === 'hare') for (const x of [-0.2, 0.2]) this.mesh(body, new THREE.ConeGeometry(0.13, 0.75, 5), accent, x, 1.38, 0.48);
+      if (type === 'wolf' || type === 'lynx') { for (const x of [-0.22, 0.22]) { this.mesh(body, new THREE.ConeGeometry(type === 'lynx' ? 0.12 : 0.17, type === 'lynx' ? 0.52 : 0.4, 4), accent, x, 1.25, 0.48); if (type === 'lynx') this.mesh(body, new THREE.SphereGeometry(0.075, 5, 4), dark, x, 1.52, 0.48); } const tail = this.mesh(body, new THREE.ConeGeometry(0.14, type === 'lynx' ? 0.4 : 0.78, 5), accent, 0, 0.78, type === 'lynx' ? -0.67 : -0.78); tail.rotation.x = -1.05; }
+      if (type === 'cow') this.mesh(body, new THREE.BoxGeometry(0.36, 0.18, 0.3), accent, 0, 0.36, 0.15);
     }
-    for (const z of [-0.4, -0.05, 0.3]) this.mesh(body, new THREE.ConeGeometry(0.18, 0.38, 4), material('#688b54'), 0, 1.18, z);
-    return { root, body, fur, dark, muzzle, type: null, flashMaterials: [fur] };
+    const scale = enemy.boss ? 1.5 : ['golem','mammoth','yak','walrus'].includes(type) ? 1.15 : ['hare','wolf','lynx'].includes(type) ? 0.86 : 1; root.scale.setScalar(scale);
+    return { root, body, type, flashMaterials };
+  }
+
+  syncProjectiles(run) {
+    const active = new Set(run.projectiles.map(projectile => projectile.id));
+    for (const [id, view] of this.projectileViews) { if (active.has(id)) continue; this.scene.remove(view); view.geometry.dispose(); view.material.dispose(); this.projectileViews.delete(id); }
+    for (const projectile of run.projectiles) { let view = this.projectileViews.get(projectile.id); if (!view) { view = new THREE.Mesh(new THREE.OctahedronGeometry(projectile.radius, 0), new THREE.MeshStandardMaterial({ color: projectile.color, emissive: projectile.color, emissiveIntensity: 1.3 })); view.castShadow = true; this.projectileViews.set(projectile.id, view); this.scene.add(view); } view.position.set(projectile.x, 0.65, projectile.z); view.rotation.y = run.time * 8; view.rotation.x = run.time * 5; }
   }
   buildPet(definition) {
     const root = new THREE.Group(); const body = new THREE.Group(); root.add(body);
@@ -311,7 +350,7 @@ export class SceneView {
     }
     for (const enemy of run.enemies) {
       let view = this.enemyViews.get(enemy.id);
-      if (!view) { view = this.buildEnemy(); view.type = enemy.type; view.fur.color.set(enemy.color); view.dark.color.set(enemy.accent); view.muzzle.color.set(enemy.accent); const scale = enemy.boss ? 1.55 : enemy.type === 'golem' || enemy.type === 'mammoth' ? 1.18 : enemy.type === 'hare' || enemy.type === 'wolf' ? 0.86 : 1; view.root.scale.setScalar(scale); this.enemyViews.set(enemy.id, view); this.scene.add(view.root); }
+      if (!view) { view = this.buildEnemy(enemy); this.enemyViews.set(enemy.id, view); this.scene.add(view.root); }
     }
     for (const [actor, view] of [[p, this.player], ...run.enemies.map(enemy => [enemy, this.enemyViews.get(enemy.id)])]) {
       view.root.position.set(actor.x, 0, actor.z);
@@ -331,6 +370,7 @@ export class SceneView {
     if (warningEnemy) this.warning.position.set(warningEnemy.x, 0.06, warningEnemy.z);
     this.syncDrops(run);
     this.syncPets(run);
+    this.syncProjectiles(run);
     const weaponId = run.equipped.weapon;
     const weapon = weaponId && run.inventory.find(item => item.id === weaponId);
     this.player.swordBlade.color.set(weapon ? itemDefinition(weapon.key, weapon.level).color : '#e7f0db');
@@ -341,7 +381,7 @@ export class SceneView {
     this.meadowDecor.visible = run.status === 'playing' && run.biome === 'meadow';
     this.portals.visible = run.status === 'hub';
     this.frostDecor.visible = run.status === 'playing' && run.biome === 'frost';
-    this.playPortal.rotation.y = run.time * 0.35; this.upgradePortal.rotation.y = -run.time * 0.35; this.petPortal.rotation.y = run.time * 0.48;
+    for (const portal of [this.playPortal, this.upgradePortal, this.petPortal, this.sellPetPortal, this.sellArmorPortal, this.sellWeaponPortal]) portal.children.slice(0, 3).forEach((child, index) => { if (index < 2) child.rotation.y += dt * (index ? -0.35 : 0.35); });
     const target = new THREE.Vector3(p.x, 0, p.z - 0.8);
     if (snap) this.focus.copy(target);
     else this.focus.lerp(target, 1 - Math.exp(-6 * dt));

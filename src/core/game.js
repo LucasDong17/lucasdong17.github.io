@@ -1,7 +1,7 @@
 import { BALANCE } from '../data/balance.js';
 import { EventBus } from './event-bus.js';
 import { AudioService } from './audio.js';
-import { combineItems, createRun, enterHub, equipBestItems, equipItem, hatchEgg, loadProgress, saveProgress, startLevel, togglePet } from '../state/run.js';
+import { combineItems, createRun, enterHub, equipBestItems, equipItem, hatchEgg, loadProgress, saveProgress, sellItem, sellPet, startLevel, togglePet } from '../state/run.js';
 import { World } from '../world/world.js';
 import { Input } from '../input/input.js';
 import { stepRun } from '../systems/simulation.js';
@@ -12,7 +12,7 @@ export class Game {
   constructor(canvas) {
     this.canvas = canvas; this.run = createRun(loadProgress()); this.world = new World(); this.bus = new EventBus(); this.audio = new AudioService();
     this.view = new SceneView(canvas, this.world);
-    this.hud = new Hud({ onMenu: open => this.setMenu(open), onEquip: id => { equipItem(this.run, id); this.save(); }, onEquipBest: category => { if (equipBestItems(this.run, category)) this.save(); }, onCombine: (key, level) => { if (combineItems(this.run, key, level)) this.save(); }, onHatch: key => { const pet = hatchEgg(this.run, key); if (pet) this.save(); return pet; }, onTogglePet: id => { const changed = togglePet(this.run, id); if (changed) this.save(); return changed; }, onStart: (biome, wave) => this.startLevel(biome, wave), onReturn: () => this.returnToHub() });
+    this.hud = new Hud({ onMenu: open => this.setMenu(open), onEquip: id => { equipItem(this.run, id); this.save(); }, onEquipBest: category => { if (equipBestItems(this.run, category)) this.save(); }, onCombine: (key, level) => { if (combineItems(this.run, key, level)) this.save(); }, onHatch: key => { const pet = hatchEgg(this.run, key); if (pet) this.save(); return pet; }, onTogglePet: id => { const changed = togglePet(this.run, id); if (changed) this.save(); return changed; }, onSellItem: (id, category) => { const value = sellItem(this.run, id, category); if (value) this.save(); return value; }, onSellPet: id => { const value = sellPet(this.run, id); if (value) this.save(); return value; }, onStart: (biome, wave) => this.startLevel(biome, wave), onReturn: () => this.returnToHub() });
     this.paused = true; this.started = false; this.menuOpen = false; this.accumulator = 0; this.lastTime = null; this.destroyed = false;
     this.input = new Input(canvas, () => this.pause(), () => this.restart(), () => this.audio.unlock());
     this.unsubscribers = ['attackStarted','damageTaken','enemyDefeated','playerDied','pickupCollected'].map(name => this.bus.on(name, event => this.audio.play(name, event)));

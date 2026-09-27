@@ -19,8 +19,9 @@
     </section>
     <section class="wave-card"><small id="wave-label">SAFE HAVEN</small><strong id="wave-name">Home Camp</strong><span id="wave-mode">Choose your next journey</span></section>
     <section class="coin-card" aria-label="Coins"><span class="coin-icon" aria-hidden="true"></span><strong id="coin-count">0</strong><small>COINS</small></section>
-    <section class="vital-card enemy-card" id="enemy-panel">
-      <div class="enemy-copy"><div><b id="enemy-name">MEADOW COW</b><span id="enemy-health"></span></div><div class="meter enemy-meter"><i id="enemy-fill"></i></div><small id="enemy-state">Waiting in the meadow</small></div><div class="portrait" id="enemy-icon">🐄</div>
+    <section class="enemy-card" id="enemy-panel" aria-label="Enemy health">
+      <div class="enemy-panel-title"><b>ENEMIES</b><span id="enemy-state">0 remaining</span></div>
+      <div id="enemy-list" class="enemy-list"></div>
     </section>
 
     <nav class="side-actions" aria-label="Game menus">
@@ -69,6 +70,12 @@
       <p class="pet-shop-summary">Spend coins earned by clearing waves. Later waves and Frostfang victories award more.</p>
       <div id="egg-grid" class="egg-grid"></div>
       <div id="hatch-result" class="hatch-result" hidden aria-live="polite"></div>
+    </article>
+
+    <article id="sell-menu" class="game-menu portal-menu" hidden aria-label="Sell collection items">
+      <header><div class="menu-title"><span class="menu-icon">🪙</span><div><small>HAVEN MARKET</small><h2 id="sell-title">Sell Items</h2></div></div><button class="close-menu" aria-label="Close menu">×</button></header>
+      <p id="sell-help" class="upgrade-help">Select something to sell for coins. Equipped items are safely unequipped.</p>
+      <div id="sell-grid" class="item-grid sell-grid"></div>
     </article>
 
     <article id="pets-menu" class="game-menu pets-menu" hidden aria-label="Pet collection">

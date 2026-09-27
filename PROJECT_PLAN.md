@@ -122,6 +122,23 @@ This remains intentionally narrower than the former Phase 2/3 roadmap: there are
 
 Long-form play-balance both 50-wave campaigns, especially multi-enemy pressure, pet-assisted damage, egg affordability, final-boss survivability, upgrade pacing, and checkpoint recovery.
 
+## Enemy Readability and Haven Market Expansion — 2026-09-26
+
+Multi-enemy waves now show a compact health roster with one bar and exact health count per living enemy. The roster remains bounded to a small corner panel and supports the existing eight-enemy maximum. Every creature family and both bosses now use a species-specific procedural low-poly silhouette instead of the former shared rig.
+
+Enemy definitions now carry distinct movement speed, health, damage, attack range, attack cadence, melee/ranged style, and projectile speed where applicable. Jade Guardians, Aurora Owls, Rime Wraiths, Crystal Drakes, and the Aurora Wyrm use authoritative simulated projectiles. The creature index remains hidden until that creature has actually been defeated, then shows all combat attributes.
+
+The safe haven now contains six spaced, permanently labeled circles: Play, Upgrade, Pet Hatchery, Sell Pets, Sell Armor, and Sell Weapons. Each sell circle opens a category-specific market; selling equipped gear or pets safely unequips it and grants a centralized, level/rarity-aware gold value. Save schema version 4 preserves existing version-2 and version-3 progression while storing defeat-based discoveries going forward.
+
+### Recorded checks
+
+- **Logic: 16/16 passing.** Added coverage for all six hub circles, defeat-only discovery, ranged projectile creation, category-safe selling, gold awards, and automatic unequipping alongside all prior progression checks.
+- **Browser: 13/13 passing.** The actual WebGL build rendered six labeled portals, distinct enemy models, one compact health row per simultaneous enemy, and a working sell interaction. No new console errors or warnings were produced on the fresh local origin.
+
+### Known limitations
+
+Sell values and the new per-species combat attributes are an initial balance pass. Existing version-2/3 saves retain their previously discovered index entries because older saves do not record whether each discovery came from spawning or defeating the creature.
+
 ## Persistent Pet and Coin Expansion — 2026-09-25
 
 The safe haven now has a gold Pet Hatchery circle and a persistent coin economy. Every cleared wave awards coins, with rewards increasing by wave and Frostfang victories paying substantially more. The 500-coin Mossvale Egg is available immediately; the stronger 1,500-coin Frostfang Egg unlocks with the second biome. Each egg has explicit Common, Rare, Epic, and Legendary odds, with higher rarity and later-biome companions dealing more damage.

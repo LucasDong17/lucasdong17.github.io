@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BALANCE as B, coinRewardForWave, enemyCountForWave, itemDefinition, petDefinition } from '../src/data/balance.js';
 import { EventBus } from '../src/core/event-bus.js';
-import { SAVE_KEY, combineItems, createRun, defaultProgress, enterHub, equipBestItems, equipItem, hatchEgg, loadProgress, saveProgress, startLevel, togglePet } from '../src/state/run.js';
+import { SAVE_KEY, combineItems, createRun, defaultProgress, enterHub, equipBestItems, equipItem, hatchEgg, loadProgress, saveProgress, sellItem, sellPet, startLevel, togglePet } from '../src/state/run.js';
 import { World } from '../src/world/world.js';
 import { stepRun, canHit, attackStage } from '../src/systems/simulation.js';
 
@@ -10,11 +10,12 @@ const world = new World();
 const tick = (run, input = {}, count = 1, bus = new EventBus()) => { for (let i = 0; i < count; i++) stepRun(run, input, world, bus); };
 const activeRun = (wave = 1, biome = 'meadow', progress = defaultProgress()) => { progress.unlocked[biome] = Math.max(progress.unlocked[biome] || 0, wave); const run = createRun(progress); assert.ok(startLevel(run, biome, wave, world)); return run; };
 
-test('hub movement opens play, upgrade, and pet hatchery circles', () => {
+test('hub movement opens all labeled service and sell circles', () => {
   const run = createRun(); const bus = new EventBus(); const opened = []; bus.on('portalEntered', event => opened.push(event.portal));
   Object.assign(run.player, { x: B.portal.playX, z: B.portal.playZ + B.portal.radius + 0.05 }); tick(run, { moveZ: -1 }, 2, bus); assert.deepEqual(opened, ['play']);
   Object.assign(run.player, { x: B.portal.upgradeX + B.portal.radius + 0.05, z: B.portal.upgradeZ }); run.portalLatch = false; tick(run, { moveX: -1 }, 2, bus); assert.deepEqual(opened, ['play', 'upgrade']);
   Object.assign(run.player, { x: B.portal.petsX - B.portal.radius - 0.05, z: B.portal.petsZ }); run.portalLatch = false; tick(run, { moveX: 1 }, 2, bus); assert.deepEqual(opened, ['play', 'upgrade', 'pet-shop']);
+  for (const [x, z, portal] of [[B.portal.sellPetsX, B.portal.sellPetsZ, 'sell-pets'], [B.portal.sellArmorX, B.portal.sellArmorZ, 'sell-armor'], [B.portal.sellWeaponsX, B.portal.sellWeaponsZ, 'sell-tools']]) { Object.assign(run.player, { x, z }); run.portalLatch = false; tick(run, {}, 1, bus); assert.equal(opened.at(-1), portal); }
 });
 
 test('wave population scales to eight and wave 50 is a single final boss', () => {
@@ -106,3 +107,19 @@ test('only three pets equip and equipped pets attack once per second', () => {
   const enemy = run.enemies[0]; Object.assign(run.player, { x: 0, z: 0 }); Object.assign(enemy, { x: 0, z: 0.8, health: 500, maxHealth: 500, mode: 'idle' }); run.pets.forEach(pet => Object.assign(pet, { x: 0, z: 0, cooldown: 0 }));
   const totalDamage = pets.slice(0, 3).reduce((sum, pet) => sum + petDefinition(pet.key).damage, 0); tick(run); assert.equal(enemy.health, 500 - totalDamage); tick(run, {}, 30); assert.equal(enemy.health, 500 - totalDamage); tick(run, {}, 31); assert.equal(enemy.health, 500 - totalDamage * 2);
 });
+
+test('enemy index discovery happens on defeat and ranged enemies fire projectiles', () => {
+  const run = activeRun(37); const bus = new EventBus(); const ranged = run.enemies.find(enemy => enemy.attackType === 'ranged'); assert.ok(ranged, 'expected a ranged enemy'); assert.equal(run.discovered.has(ranged.type), false);
+  Object.assign(run.player, { x: 0, z: 0, health: 1000, maxHealth: 1000 }); Object.assign(ranged, { x: 0, z: 5, mode: 'chase', cooldown: 0 }); tick(run, {}, 1, bus); assert.equal(ranged.mode, 'windup'); tick(run, {}, Math.ceil(B.enemy.windup / B.step), bus); assert.ok(run.projectiles.length > 0, 'no ranged projectile');
+  Object.assign(ranged, { x: 0, z: 1.4, health: 1, mode: 'idle' }); Object.assign(run.player, { x: 0, z: 0, facing: 0, attack: null }); tick(run, { attack: true }, 12, bus); assert.equal(run.discovered.has(ranged.type), true);
+});
+
+test('sell circles convert pets, armor, and weapons to coins and unequip sold gear', () => {
+  const run = createRun(); run.inventory = [{ id: 1, key: 'stone:sword', level: 1 }, { id: 2, key: 'stone:helmet', level: 1 }]; run.equipped = { weapon: 1, helmet: 2 }; recalculate(run);
+  run.coins = 500; const pet = hatchEgg(run, 'meadow', () => 0); togglePet(run, pet.id); const before = run.coins;
+  assert.ok(sellItem(run, 1, 'tools') > 0); assert.equal(run.equipped.weapon, undefined); assert.ok(sellItem(run, 2, 'armor') > 0); assert.equal(run.equipped.helmet, undefined); assert.ok(sellPet(run, pet.id) > 0); assert.equal(run.pets.length, 0); assert.equal(run.equippedPetIds.length, 0); assert.ok(run.coins > before);
+});
+
+function recalculate(run) {
+  equipItem(run, 1); equipItem(run, 2);
+}

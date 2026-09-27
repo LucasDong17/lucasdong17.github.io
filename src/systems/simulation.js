@@ -39,7 +39,7 @@ function damageEnemy(run, enemy, amount, bus) {
   enemy.health = Math.max(0, enemy.health - amount); enemy.flash = B.hitFlash;
   bus.emit('damageTaken', { target: 'enemy', amount, x: enemy.x, z: enemy.z, id: enemy.id });
   if (enemy.health > 0) return;
-  enemy.mode = 'defeated'; createDrops(run, enemy); bus.emit('enemyDefeated', { wave: run.wave, enemy: enemy.name, drops: run.drops.length });
+  enemy.mode = 'defeated'; run.discovered.add(enemy.type); createDrops(run, enemy); bus.emit('enemyDefeated', { wave: run.wave, enemy: enemy.name, type: enemy.type, drops: run.drops.length });
   if (run.enemies.some(entry => entry.health > 0)) return;
   const coins = coinRewardForWave(run.wave, run.biome); run.coins += coins; bus.emit('coinsEarned', { amount: coins, total: run.coins, biome: run.biome, wave: run.wave });
   run.phase = 'intermission'; run.intermission = B.intermission;
@@ -64,8 +64,15 @@ function updateHub(run, world, bus, input, dt) {
   const play = Math.hypot(p.x - B.portal.playX, p.z - B.portal.playZ) <= B.portal.radius;
   const upgrade = Math.hypot(p.x - B.portal.upgradeX, p.z - B.portal.upgradeZ) <= B.portal.radius;
   const pets = Math.hypot(p.x - B.portal.petsX, p.z - B.portal.petsZ) <= B.portal.radius;
-  if (!play && !upgrade && !pets) run.portalLatch = false;
-  if (!run.portalLatch && (play || upgrade || pets)) { run.portalLatch = true; bus.emit('portalEntered', { portal: play ? 'play' : upgrade ? 'upgrade' : 'pet-shop' }); }
+  const sellPets = Math.hypot(p.x - B.portal.sellPetsX, p.z - B.portal.sellPetsZ) <= B.portal.radius;
+  const sellArmor = Math.hypot(p.x - B.portal.sellArmorX, p.z - B.portal.sellArmorZ) <= B.portal.radius;
+  const sellWeapons = Math.hypot(p.x - B.portal.sellWeaponsX, p.z - B.portal.sellWeaponsZ) <= B.portal.radius;
+  if (!play && !upgrade && !pets && !sellPets && !sellArmor && !sellWeapons) run.portalLatch = false;
+  if (!run.portalLatch && (play || upgrade || pets || sellPets || sellArmor || sellWeapons)) {
+    run.portalLatch = true;
+    const portal = play ? 'play' : upgrade ? 'upgrade' : pets ? 'pet-shop' : sellPets ? 'sell-pets' : sellArmor ? 'sell-armor' : 'sell-tools';
+    bus.emit('portalEntered', { portal });
+  }
 }
 
 function updatePets(run, world, bus, dt) {
@@ -89,11 +96,35 @@ function updateEnemy(run, enemy, world, bus, dt) {
   const p = run.player; enemy.flash = Math.max(0, enemy.flash - dt); enemy.cooldown = Math.max(0, enemy.cooldown - dt);
   const dx = p.x - enemy.x; const dz = p.z - enemy.z; const distance = Math.hypot(dx, dz);
   if (enemy.mode === 'idle' && distance < B.enemy.detection) enemy.mode = 'chase';
-  if (enemy.mode === 'windup') { enemy.timer -= dt; if (enemy.timer <= 0) { if (distance <= B.enemy.reach) damagePlayer(run, enemy, bus, world); enemy.cooldown = B.enemy.cooldown; enemy.mode = 'chase'; } return; }
+  if (enemy.mode === 'windup') { enemy.timer -= dt; if (enemy.timer <= 0) {
+    if (enemy.attackType === 'ranged' && distance <= enemy.range + 0.5) {
+      const length = Math.max(distance, 0.001);
+      run.projectiles.push({ id: run.nextProjectileId++, x: enemy.x, z: enemy.z, dx: dx / length, dz: dz / length, speed: enemy.projectileSpeed, damage: enemy.damage, color: enemy.accent, radius: 0.22, life: 2.2 });
+      bus.emit('projectileFired', { id: enemy.id, type: enemy.type });
+    } else if (enemy.attackType !== 'ranged' && distance <= enemy.range) damagePlayer(run, enemy, bus, world);
+    enemy.cooldown = enemy.attackCooldown; enemy.mode = 'chase';
+  } return; }
   if (enemy.mode !== 'chase') return;
   enemy.facing = Math.atan2(dx, dz);
-  if (distance <= B.enemy.reach) { if (enemy.cooldown <= 0) { enemy.mode = 'windup'; enemy.timer = B.enemy.windup; bus.emit('attackStarted', { target: 'enemy', id: enemy.id }); } }
-  else { const speed = Math.min(enemy.speed * dt, distance - B.enemy.reach * 0.85); if (distance > 0) world.move(enemy, dx / distance * speed, dz / distance * speed); }
+  const attackRange = enemy.range || B.enemy.reach;
+  if (distance <= attackRange) {
+    if (enemy.attackType === 'ranged' && distance < 2.5) {
+      const speed = Math.min(enemy.speed * 0.7 * dt, 2.5 - distance); if (distance > 0) world.move(enemy, -dx / distance * speed, -dz / distance * speed);
+    }
+    if (enemy.cooldown <= 0) { enemy.mode = 'windup'; enemy.timer = enemy.attackType === 'ranged' ? B.enemy.windup * 0.8 : B.enemy.windup; bus.emit('attackStarted', { target: 'enemy', id: enemy.id }); }
+  } else { const speed = Math.min(enemy.speed * dt, distance - attackRange * 0.85); if (distance > 0) world.move(enemy, dx / distance * speed, dz / distance * speed); }
+}
+
+function updateProjectiles(run, world, bus, dt) {
+  for (const projectile of run.projectiles) {
+    projectile.x += projectile.dx * projectile.speed * dt; projectile.z += projectile.dz * projectile.speed * dt; projectile.life -= dt;
+    if (!world.valid(projectile.x, projectile.z, projectile.radius)) projectile.life = 0;
+    if (projectile.life > 0 && Math.hypot(run.player.x - projectile.x, run.player.z - projectile.z) <= run.player.radius + projectile.radius) {
+      damagePlayer(run, { damage: projectile.damage }, bus, world); projectile.life = 0;
+      if (run.status === 'hub') { run.projectiles = []; return; }
+    }
+  }
+  run.projectiles = run.projectiles.filter(projectile => projectile.life > 0);
 }
 
 export function stepRun(run, input, world, bus, dt = B.step) {
@@ -104,8 +135,10 @@ export function stepRun(run, input, world, bus, dt = B.step) {
   p.moving = length > 0; if (length > 0) { if (!p.attack) p.facing = Math.atan2(mx, mz); world.move(p, mx * B.player.speed * dt, mz * B.player.speed * dt); }
   updatePickup(run, input, bus, dt);
   updatePets(run, world, bus, dt);
+  updateProjectiles(run, world, bus, dt);
+  if (run.status !== 'playing') return;
   if (input.attack && !p.attack && run.phase === 'combat') { p.attack = { elapsed: 0, hitIds: [], facing: p.facing }; bus.emit('attackStarted', { target: 'player' }); }
   if (p.attack) { p.attack.elapsed += dt; if (attackStage(p.attack) === 'active') for (const enemy of run.enemies) if (!p.attack.hitIds.includes(enemy.id) && canHit(p, enemy, p.attack.facing)) { p.attack.hitIds.push(enemy.id); damageEnemy(run, enemy, p.damage, bus); } if (p.attack.elapsed >= attackDuration) p.attack = null; }
-  if (run.phase === 'intermission') { run.intermission -= dt; if (run.intermission <= 0) { if (run.wave >= B.maxWave) { bus.emit('biomeCompleted', { biome: run.biome }); enterHub(run, world); return; } run.drops = []; run.wave++; run.progress.highest[run.biome] = Math.max(run.progress.highest[run.biome] || 0, run.wave); run.spawnIndex += run.enemies.length; run.enemies = createWaveEnemies(run.wave, run.biome, world, p, run.spawnIndex); run.enemies.forEach(enemy => run.discovered.add(enemy.type)); run.phase = 'combat'; run.intermission = 0; bus.emit('waveStarted', { wave: run.wave, enemy: run.enemies[0].name, count: run.enemies.length, boss: run.wave === B.maxWave }); } return; }
+  if (run.phase === 'intermission') { run.intermission -= dt; if (run.intermission <= 0) { if (run.wave >= B.maxWave) { bus.emit('biomeCompleted', { biome: run.biome }); enterHub(run, world); return; } run.drops = []; run.projectiles = []; run.wave++; run.progress.highest[run.biome] = Math.max(run.progress.highest[run.biome] || 0, run.wave); run.spawnIndex += run.enemies.length; run.enemies = createWaveEnemies(run.wave, run.biome, world, p, run.spawnIndex); run.phase = 'combat'; run.intermission = 0; bus.emit('waveStarted', { wave: run.wave, enemy: run.enemies[0].name, count: run.enemies.length, boss: run.wave === B.maxWave }); } return; }
   for (const enemy of run.enemies) updateEnemy(run, enemy, world, bus, dt);
 }

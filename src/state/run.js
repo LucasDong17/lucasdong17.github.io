@@ -1,28 +1,28 @@
-import { BALANCE, PETS, SPAWNS, eggDefinition, enemyCountForWave, enemyForWave, itemDefinition, petDefinition } from '../data/balance.js';
+import { BALANCE, PETS, SPAWNS, eggDefinition, enemyCountForWave, enemyForWave, itemDefinition, itemSellValue, petDefinition, petSellValue } from '../data/balance.js';
 
 export const SAVE_KEY = 'mossvale-save-v2';
 
 export function defaultProgress() {
-  return { version: 3, inventory: [], equipped: {}, nextItemId: 1, coins: 0, pets: [], equippedPetIds: [], nextPetId: 1, discovered: ['cow'], unlocked: { meadow: 1, frost: 0 }, highest: { meadow: 1, frost: 0 }, completed: { meadow: false, frost: false } };
+  return { version: 4, inventory: [], equipped: {}, nextItemId: 1, coins: 0, pets: [], equippedPetIds: [], nextPetId: 1, discovered: [], unlocked: { meadow: 1, frost: 0 }, highest: { meadow: 1, frost: 0 }, completed: { meadow: false, frost: false } };
 }
 
 export function loadProgress(storage = globalThis.localStorage) {
   try {
     const data = JSON.parse(storage?.getItem(SAVE_KEY));
-    if (![2, 3].includes(data?.version) || !Array.isArray(data.inventory)) return defaultProgress();
-    return { ...defaultProgress(), ...data, version: 3, pets: Array.isArray(data.pets) ? data.pets : [], equippedPetIds: Array.isArray(data.equippedPetIds) ? data.equippedPetIds.slice(0, 3) : [], unlocked: { meadow: 1, frost: 0, ...data.unlocked }, highest: { meadow: 1, frost: 0, ...(data.highest || data.unlocked) }, completed: { meadow: false, frost: false, ...data.completed } };
+    if (![2, 3, 4].includes(data?.version) || !Array.isArray(data.inventory)) return defaultProgress();
+    return { ...defaultProgress(), ...data, version: 4, pets: Array.isArray(data.pets) ? data.pets : [], equippedPetIds: Array.isArray(data.equippedPetIds) ? data.equippedPetIds.slice(0, 3) : [], discovered: Array.isArray(data.discovered) ? data.discovered : [], unlocked: { meadow: 1, frost: 0, ...data.unlocked }, highest: { meadow: 1, frost: 0, ...(data.highest || data.unlocked) }, completed: { meadow: false, frost: false, ...data.completed } };
   } catch { return defaultProgress(); }
 }
 
 export function saveProgress(run, storage = globalThis.localStorage) {
-  const progress = { version: 3, inventory: run.inventory, equipped: run.equipped, nextItemId: run.nextItemId, coins: run.coins, pets: run.pets.map(({ id, key }) => ({ id, key })), equippedPetIds: run.equippedPetIds, nextPetId: run.nextPetId, discovered: [...run.discovered], unlocked: run.progress.unlocked, highest: run.progress.highest, completed: run.progress.completed };
+  const progress = { version: 4, inventory: run.inventory, equipped: run.equipped, nextItemId: run.nextItemId, coins: run.coins, pets: run.pets.map(({ id, key }) => ({ id, key })), equippedPetIds: run.equippedPetIds, nextPetId: run.nextPetId, discovered: [...run.discovered], unlocked: run.progress.unlocked, highest: run.progress.highest, completed: run.progress.completed };
   try { storage?.setItem(SAVE_KEY, JSON.stringify(progress)); } catch { /* Storage can be unavailable in private contexts. */ }
   return progress;
 }
 
 export function createEnemy(spawn = SPAWNS[0], wave = 1, biome = 'meadow', index = 0) {
   const definition = enemyForWave(wave, biome, index);
-  return { id: `${wave}-${index}`, ...spawn, radius: BALANCE.enemy.radius + (definition.boss ? 0.22 : 0), health: definition.health, maxHealth: definition.health, damage: definition.damage, speed: definition.speed, type: definition.key, name: definition.name, boss: definition.boss, color: definition.color, accent: definition.accent, facing: 0, mode: 'idle', timer: 0, cooldown: index * 0.18, flash: 0 };
+  return { id: `${wave}-${index}`, ...spawn, radius: BALANCE.enemy.radius + (definition.boss ? 0.22 : 0), health: definition.health, maxHealth: definition.health, damage: definition.damage, speed: definition.speed, type: definition.key, model: definition.model || definition.key, name: definition.name, boss: definition.boss, color: definition.color, accent: definition.accent, attackType: definition.attackType || 'melee', range: definition.range || BALANCE.enemy.reach, attackCooldown: definition.cooldown || BALANCE.enemy.cooldown, projectileSpeed: definition.projectileSpeed || 0, facing: 0, mode: 'idle', timer: 0, cooldown: index * 0.18, flash: 0 };
 }
 
 export function createWaveEnemies(wave, biome, world, player, spawnIndex = 0) {
@@ -37,7 +37,7 @@ export function createRun(saved = defaultProgress()) {
   const run = {
     status: 'hub', time: 0, spawnIndex: 0, biome: 'meadow', wave: 1, phase: 'hub', intermission: 0, portalLatch: false,
     player: { x: 0, z: 8.5, radius: BALANCE.player.radius, health: BALANCE.player.health, maxHealth: BALANCE.player.health, damage: BALANCE.player.damage, defense: 0, facing: Math.PI, attack: null, flash: 0, moving: false },
-    enemies: [], drops: [], inventory, equipped: { ...saved.equipped }, coins: Math.max(0, saved.coins || 0), pets, equippedPetIds: (saved.equippedPetIds || []).filter(id => pets.some(pet => pet.id === id)).slice(0, 3), nextPetId: saved.nextPetId || 1, discovered: new Set(saved.discovered || ['cow']), pickup: { id: null, progress: 0 }, nextItemId: saved.nextItemId || 1,
+    enemies: [], projectiles: [], drops: [], inventory, equipped: { ...saved.equipped }, coins: Math.max(0, saved.coins || 0), pets, equippedPetIds: (saved.equippedPetIds || []).filter(id => pets.some(pet => pet.id === id)).slice(0, 3), nextPetId: saved.nextPetId || 1, discovered: new Set(saved.discovered || []), pickup: { id: null, progress: 0 }, nextItemId: saved.nextItemId || 1, nextProjectileId: 1,
     progress: { unlocked: { meadow: 1, frost: 0, ...saved.unlocked }, highest: { meadow: 1, frost: 0, ...(saved.highest || saved.unlocked) }, completed: { meadow: false, frost: false, ...saved.completed } },
   };
   recalculateStats(run, false);
@@ -110,9 +110,31 @@ export function combineItems(run, key, level = 1) {
   recalculateStats(run); return keep;
 }
 
+export function sellItem(run, itemId, category) {
+  const item = run.inventory.find(entry => entry.id === itemId);
+  const definition = item && itemDefinition(item.key, item.level);
+  if (!definition || definition.category !== category) return 0;
+  const value = itemSellValue(item);
+  run.inventory = run.inventory.filter(entry => entry.id !== itemId);
+  for (const [slot, equippedId] of Object.entries(run.equipped)) if (equippedId === itemId) delete run.equipped[slot];
+  run.coins += value;
+  recalculateStats(run, false);
+  return value;
+}
+
+export function sellPet(run, petId) {
+  const pet = run.pets.find(entry => entry.id === petId);
+  if (!pet) return 0;
+  const value = petSellValue(pet);
+  run.pets = run.pets.filter(entry => entry.id !== petId);
+  run.equippedPetIds = run.equippedPetIds.filter(id => id !== petId);
+  run.coins += value;
+  return value;
+}
+
 export function enterHub(run, world) {
   world?.setMap('hub');
-  run.status = 'hub'; run.phase = 'hub'; run.enemies = []; run.drops = []; run.pickup = { id: null, progress: 0 };
+  run.status = 'hub'; run.phase = 'hub'; run.enemies = []; run.projectiles = []; run.drops = []; run.pickup = { id: null, progress: 0 };
   Object.assign(run.player, { x: 0, z: 8.5, health: run.player.maxHealth, facing: Math.PI, attack: null, moving: false });
   run.pets.forEach((pet, index) => Object.assign(pet, { x: (index % 3 - 1) * 0.65, z: 9.5 + Math.floor(index / 3) * 0.45, cooldown: 0, attack: 0 }));
 }
@@ -120,12 +142,11 @@ export function enterHub(run, world) {
 export function startLevel(run, biome, wave, world) {
   if ((run.progress.unlocked[biome] || 0) < wave) return false;
   world?.setMap(biome);
-  run.biome = biome; run.wave = wave; run.status = 'playing'; run.phase = 'combat'; run.intermission = 0; run.drops = [];
+  run.biome = biome; run.wave = wave; run.status = 'playing'; run.phase = 'combat'; run.intermission = 0; run.drops = []; run.projectiles = [];
   run.progress.highest[biome] = Math.max(run.progress.highest[biome] || 0, wave);
   Object.assign(run.player, { x: 0, z: 6, health: run.player.maxHealth, facing: Math.PI, attack: null });
   run.pets.forEach((pet, index) => Object.assign(pet, { x: (index % 3 - 1) * 0.65, z: 7.1 + Math.floor(index / 3) * 0.45, cooldown: index * 0.15, attack: 0 }));
   run.enemies = createWaveEnemies(wave, biome, world, run.player, run.spawnIndex);
-  run.enemies.forEach(enemy => run.discovered.add(enemy.type));
   return true;
 }
 
