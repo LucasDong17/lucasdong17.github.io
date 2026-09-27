@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BALANCE as B, enemyCountForWave, itemDefinition } from '../src/data/balance.js';
+import { BALANCE as B, coinRewardForWave, enemyCountForWave, itemDefinition, petDefinition } from '../src/data/balance.js';
 import { EventBus } from '../src/core/event-bus.js';
-import { SAVE_KEY, combineItems, createRun, defaultProgress, enterHub, equipBestItems, equipItem, loadProgress, saveProgress, startLevel } from '../src/state/run.js';
+import { SAVE_KEY, combineItems, createRun, defaultProgress, enterHub, equipBestItems, equipItem, hatchEgg, loadProgress, saveProgress, startLevel, togglePet } from '../src/state/run.js';
 import { World } from '../src/world/world.js';
 import { stepRun, canHit, attackStage } from '../src/systems/simulation.js';
 
@@ -10,10 +10,11 @@ const world = new World();
 const tick = (run, input = {}, count = 1, bus = new EventBus()) => { for (let i = 0; i < count; i++) stepRun(run, input, world, bus); };
 const activeRun = (wave = 1, biome = 'meadow', progress = defaultProgress()) => { progress.unlocked[biome] = Math.max(progress.unlocked[biome] || 0, wave); const run = createRun(progress); assert.ok(startLevel(run, biome, wave, world)); return run; };
 
-test('hub movement opens the forward play portal and left upgrade circle', () => {
+test('hub movement opens play, upgrade, and pet hatchery circles', () => {
   const run = createRun(); const bus = new EventBus(); const opened = []; bus.on('portalEntered', event => opened.push(event.portal));
   Object.assign(run.player, { x: B.portal.playX, z: B.portal.playZ + B.portal.radius + 0.05 }); tick(run, { moveZ: -1 }, 2, bus); assert.deepEqual(opened, ['play']);
   Object.assign(run.player, { x: B.portal.upgradeX + B.portal.radius + 0.05, z: B.portal.upgradeZ }); run.portalLatch = false; tick(run, { moveX: -1 }, 2, bus); assert.deepEqual(opened, ['play', 'upgrade']);
+  Object.assign(run.player, { x: B.portal.petsX - B.portal.radius - 0.05, z: B.portal.petsZ }); run.portalLatch = false; tick(run, { moveX: 1 }, 2, bus); assert.deepEqual(opened, ['play', 'upgrade', 'pet-shop']);
 });
 
 test('wave population scales to eight and wave 50 is a single final boss', () => {
@@ -84,4 +85,24 @@ test('meadow final boss completion unlocks Frostfang and its own checkpoints', (
 test('corrupt and old saves safely fall back to defaults', () => {
   const broken = { getItem: () => '{oops' }; const old = { getItem: () => JSON.stringify({ version: 1, inventory: [{ id: 1 }] }) };
   assert.deepEqual(loadProgress(broken), defaultProgress()); assert.deepEqual(loadProgress(old), defaultProgress());
+});
+
+test('wave victories award increasing coins with a Frostfang premium', () => {
+  assert.ok(coinRewardForWave(20, 'meadow') > coinRewardForWave(1, 'meadow'));
+  assert.ok(coinRewardForWave(1, 'frost') > coinRewardForWave(1, 'meadow'));
+  const run = activeRun(1); const reward = coinRewardForWave(1, 'meadow'); const enemy = run.enemies[0]; Object.assign(enemy, { x: 0, z: 4.5, health: 1, mode: 'idle' }); tick(run, { attack: true }, 12); assert.equal(run.coins, reward);
+});
+
+test('eggs enforce price and biome locks while rarity rolls determine damage', () => {
+  const run = createRun(); run.coins = 3000;
+  const common = hatchEgg(run, 'meadow', () => 0); assert.equal(petDefinition(common.key).rarity, 'common'); assert.equal(run.coins, 2500);
+  assert.equal(hatchEgg(run, 'frost', () => 0), null); run.progress.unlocked.frost = 1;
+  const legendary = hatchEgg(run, 'frost', () => 0.999); assert.equal(petDefinition(legendary.key).rarity, 'legendary'); assert.ok(petDefinition(legendary.key).damage > petDefinition(common.key).damage); assert.equal(run.coins, 1000);
+});
+
+test('only three pets equip and equipped pets attack once per second', () => {
+  const run = activeRun(); run.coins = 4000; const pets = [0, 0.7, 0.9, 0.99].map(roll => hatchEgg(run, 'meadow', () => roll));
+  assert.ok(pets.slice(0, 3).every(pet => togglePet(run, pet.id))); assert.equal(togglePet(run, pets[3].id), false); assert.equal(run.equippedPetIds.length, 3);
+  const enemy = run.enemies[0]; Object.assign(run.player, { x: 0, z: 0 }); Object.assign(enemy, { x: 0, z: 0.8, health: 500, maxHealth: 500, mode: 'idle' }); run.pets.forEach(pet => Object.assign(pet, { x: 0, z: 0, cooldown: 0 }));
+  const totalDamage = pets.slice(0, 3).reduce((sum, pet) => sum + petDefinition(pet.key).damage, 0); tick(run); assert.equal(enemy.health, 500 - totalDamage); tick(run, {}, 30); assert.equal(enemy.health, 500 - totalDamage); tick(run, {}, 31); assert.equal(enemy.health, 500 - totalDamage * 2);
 });

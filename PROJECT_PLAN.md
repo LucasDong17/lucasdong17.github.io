@@ -120,7 +120,22 @@ This remains intentionally narrower than the former Phase 2/3 roadmap: there are
 
 ## Immediate Next Step
 
-Long-form play-balance both 50-wave campaigns, especially multi-enemy pressure, final-boss survivability, upgrade pacing, and checkpoint recovery.
+Long-form play-balance both 50-wave campaigns, especially multi-enemy pressure, pet-assisted damage, egg affordability, final-boss survivability, upgrade pacing, and checkpoint recovery.
+
+## Persistent Pet and Coin Expansion — 2026-09-25
+
+The safe haven now has a gold Pet Hatchery circle and a persistent coin economy. Every cleared wave awards coins, with rewards increasing by wave and Frostfang victories paying substantially more. The 500-coin Mossvale Egg is available immediately; the stronger 1,500-coin Frostfang Egg unlocks with the second biome. Each egg has explicit Common, Rare, Epic, and Legendary odds, with higher rarity and later-biome companions dealing more damage.
+
+Hatched pets appear in a dedicated side-menu collection with rarity, origin, damage, and attack-speed details. Up to three can be equipped at once. Equipped pets use authoritative simulation state, follow the player in the hub and both arenas, seek the nearest living enemy, and attack once per second. Eight original blocky companions cover medieval beasts, archers, golems, knights, griffins, and tundra creatures. Coins, owned pets, and the three equipped slots migrate additively into save schema version 3; existing version-2 saves retain their progression and gear.
+
+### Recorded checks
+
+- **Logic: 14/14 passing.** The suite now covers all three hub circles, increasing biome-specific coin rewards, egg price and unlock rules, rarity rolls, the three-pet equipment limit, one-second pet attacks, save migration, and all previous combat/progression behavior.
+- **Browser: 12/12 passing.** The WebGL build rendered an equipped low-poly pet, the hatchery spent the correct 500 coins, the Pets menu equipped and displayed its stats, and all prior browser checks passed. No browser console errors or warnings were reported.
+
+### Known limitations
+
+Pet and egg balance is an initial pass. Duplicate pets are currently allowed and intentionally remain separate collectible instances; there is no pet merging or pet leveling system in this scope.
 
 ## Persistent Biome Progression — 2026-09-22
 
