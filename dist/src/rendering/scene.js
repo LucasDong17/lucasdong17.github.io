@@ -1,5 +1,5 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
-import { BALANCE as B, MAPS, biomeDefinition, itemDefinition } from '../data/balance.js';
+import { BALANCE as B, MAPS, biomeDefinition, itemDefinition, petDefinition } from '../data/balance.js';
 import { attackStage } from '../systems/simulation.js';
 
 const material = color => new THREE.MeshStandardMaterial({ color, roughness: 1, flatShading: true });
@@ -32,6 +32,7 @@ export class SceneView {
     this.buildWorld(world);
     this.player = this.buildPlayer();
     this.enemyViews = new Map();
+    this.petViews = new Map();
     this.scene.add(this.player.root);
     this.dropViews = new Map();
     const arc = new THREE.RingGeometry(0.8, B.player.range, 28, 1, -B.player.arc / 2, B.player.arc);
@@ -44,11 +45,15 @@ export class SceneView {
     this.warning.rotation.x = -Math.PI / 2;
     this.scene.add(this.warning);
     this.resize = () => {
-      this.renderer.setSize(window.innerWidth, window.innerHeight, false);
-      this.camera.aspect = window.innerWidth / window.innerHeight;
+      const width = Math.max(1, this.renderer.domElement.clientWidth || window.innerWidth);
+      const height = Math.max(1, this.renderer.domElement.clientHeight || window.innerHeight);
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      this.renderer.setSize(width, height, false);
+      this.camera.aspect = width / height;
       this.camera.updateProjectionMatrix();
     };
     window.addEventListener('resize', this.resize);
+    window.visualViewport?.addEventListener('resize', this.resize);
     this.resize();
   }
   mesh(parent, geometry, mat, x, y, z) {
@@ -103,14 +108,20 @@ export class SceneView {
     this.portals = new THREE.Group();
     const makePortal = (x, z, color, labelColor) => {
       const group = new THREE.Group();
-      const disc = this.mesh(group, new THREE.CylinderGeometry(1.25, 1.4, 0.09, 32), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.35, transparent: true, opacity: 0.86 }), 0, 0.04, 0);
+      // Keep portal tops above the uneven courtyard tiles. The old 0.04 height
+      // overlapped the tile tops and flickered or vanished on some GPUs.
+      const disc = this.mesh(group, new THREE.CylinderGeometry(1.25, 1.4, 0.12, 36), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.42, transparent: true, opacity: 0.92 }), 0, 0.12, 0);
       disc.castShadow = false;
-      const ring = this.mesh(group, new THREE.TorusGeometry(1.25, 0.11, 8, 32), material(labelColor), 0, 0.11, 0);
+      disc.renderOrder = 2;
+      const ring = this.mesh(group, new THREE.TorusGeometry(1.27, 0.13, 8, 36), material(labelColor), 0, 0.2, 0);
       ring.rotation.x = Math.PI / 2;
+      ring.renderOrder = 3;
       group.position.set(x, 0, z); this.portals.add(group); return group;
     };
     this.playPortal = makePortal(B.portal.playX, B.portal.playZ, '#63dbeb', '#e7ffff');
     this.upgradePortal = makePortal(B.portal.upgradeX, B.portal.upgradeZ, '#df80f2', '#ffeaff');
+    this.petPortal = makePortal(B.portal.petsX, B.portal.petsZ, '#f2b84b', '#fff0a6');
+    this.mesh(this.petPortal, new THREE.OctahedronGeometry(0.42, 1), material('#fff0a6'), 0, 0.62, 0).scale.set(0.8, 1.12, 0.8);
     this.scene.add(this.portals);
     this.frostDecor = new THREE.Group();
     const ice = [material('#a9efff'), material('#71bce8'), material('#d9c9ff')];
@@ -232,6 +243,40 @@ export class SceneView {
     for (const z of [-0.4, -0.05, 0.3]) this.mesh(body, new THREE.ConeGeometry(0.18, 0.38, 4), material('#688b54'), 0, 1.18, z);
     return { root, body, fur, dark, muzzle, type: null, flashMaterials: [fur] };
   }
+  buildPet(definition) {
+    const root = new THREE.Group(); const body = new THREE.Group(); root.add(body);
+    const primary = material(definition.color); const accent = material(definition.accent); const dark = material('#283c3d');
+    if (definition.kind === 'knight') {
+      this.mesh(body, new THREE.BoxGeometry(0.58, 0.72, 0.4), primary, 0, 0.67, 0);
+      this.mesh(body, new THREE.BoxGeometry(0.5, 0.46, 0.46), accent, 0, 1.2, 0.02);
+      this.mesh(body, new THREE.BoxGeometry(0.3, 0.08, 0.12), dark, 0, 1.2, 0.25);
+      for (const x of [-0.18, 0.18]) this.mesh(body, new THREE.BoxGeometry(0.14, 0.38, 0.18), dark, x, 0.2, 0);
+      const blade = this.mesh(body, new THREE.BoxGeometry(0.09, 0.08, 0.72), accent, -0.42, 0.68, 0.24); blade.rotation.x = -0.35;
+    } else {
+      this.mesh(body, new THREE.BoxGeometry(0.72, 0.52, 0.82), primary, 0, 0.55, 0);
+      this.mesh(body, new THREE.BoxGeometry(0.55, 0.5, 0.52), primary, 0, 0.82, 0.55);
+      for (const x of [-0.23, 0.23]) { this.mesh(body, new THREE.BoxGeometry(0.15, 0.36, 0.16), dark, x, 0.2, 0.2); this.mesh(body, new THREE.BoxGeometry(0.15, 0.36, 0.16), dark, x, 0.2, -0.28); }
+      const tallEars = ['hare','owl'].includes(definition.kind);
+      for (const x of [-0.2, 0.2]) { const ear = this.mesh(body, new THREE.ConeGeometry(tallEars ? 0.13 : 0.18, tallEars ? 0.58 : 0.36, 4), accent, x, tallEars ? 1.37 : 1.22, 0.52); ear.rotation.z = x * 0.5; }
+      for (const x of [-0.15, 0.15]) this.mesh(body, new THREE.BoxGeometry(0.07, 0.08, 0.05), dark, x, 0.9, 0.83);
+      if (['owl','griffin','drake'].includes(definition.kind)) for (const x of [-0.48, 0.48]) { const wing = this.mesh(body, new THREE.BoxGeometry(0.35, 0.08, 0.68), accent, x, 0.66, -0.02); wing.rotation.z = x > 0 ? -0.28 : 0.28; }
+      if (definition.kind === 'golem') for (const x of [-0.43, 0.43]) this.mesh(body, new THREE.BoxGeometry(0.28, 0.48, 0.28), accent, x, 0.55, 0);
+      if (definition.kind === 'griffin') this.mesh(body, new THREE.ConeGeometry(0.28, 0.28, 5), accent, 0, 1.25, 0.5);
+      if (definition.kind === 'drake') { const tail = this.mesh(body, new THREE.ConeGeometry(0.16, 0.75, 5), accent, 0, 0.56, -0.72); tail.rotation.x = Math.PI / 2; }
+    }
+    root.scale.setScalar(0.72);
+    return { root, body, primary, accent, flashMaterials: [primary, accent] };
+  }
+  syncPets(run) {
+    const active = new Set(run.equippedPetIds);
+    for (const [id, view] of this.petViews) { if (active.has(id)) continue; this.scene.remove(view.root); view.root.traverse(node => { node.geometry?.dispose(); node.material?.dispose?.(); }); this.petViews.delete(id); }
+    for (const id of run.equippedPetIds) {
+      const pet = run.pets.find(entry => entry.id === id); const definition = pet && petDefinition(pet.key); if (!pet || !definition) continue;
+      let view = this.petViews.get(id); if (!view) { view = this.buildPet(definition); this.petViews.set(id, view); this.scene.add(view.root); }
+      view.root.position.set(pet.x, pet.attack > 0 ? 0.12 : 0, pet.z); view.root.rotation.y = pet.facing; view.body.position.y = Math.sin(run.time * 11 + id) * 0.035; view.body.rotation.x = pet.attack > 0 ? -0.18 : 0;
+      view.flashMaterials.forEach(mat => { mat.emissive.set(pet.flash > 0 ? '#fff2ba' : '#000000'); mat.emissiveIntensity = pet.flash > 0 ? 0.8 : 0; });
+    }
+  }
   syncDrops(run) {
     const active = new Set(run.drops.map(drop => drop.id));
     for (const [id, view] of this.dropViews) {
@@ -285,6 +330,7 @@ export class SceneView {
     this.warning.visible = Boolean(warningEnemy);
     if (warningEnemy) this.warning.position.set(warningEnemy.x, 0.06, warningEnemy.z);
     this.syncDrops(run);
+    this.syncPets(run);
     const weaponId = run.equipped.weapon;
     const weapon = weaponId && run.inventory.find(item => item.id === weaponId);
     this.player.swordBlade.color.set(weapon ? itemDefinition(weapon.key, weapon.level).color : '#e7f0db');
@@ -295,7 +341,7 @@ export class SceneView {
     this.meadowDecor.visible = run.status === 'playing' && run.biome === 'meadow';
     this.portals.visible = run.status === 'hub';
     this.frostDecor.visible = run.status === 'playing' && run.biome === 'frost';
-    this.playPortal.rotation.y = run.time * 0.35; this.upgradePortal.rotation.y = -run.time * 0.35;
+    this.playPortal.rotation.y = run.time * 0.35; this.upgradePortal.rotation.y = -run.time * 0.35; this.petPortal.rotation.y = run.time * 0.48;
     const target = new THREE.Vector3(p.x, 0, p.z - 0.8);
     if (snap) this.focus.copy(target);
     else this.focus.lerp(target, 1 - Math.exp(-6 * dt));
@@ -305,6 +351,7 @@ export class SceneView {
   }
   destroy() {
     window.removeEventListener('resize', this.resize);
+    window.visualViewport?.removeEventListener('resize', this.resize);
     this.scene.traverse(node => {
       node.geometry?.dispose();
       if (node.material) (Array.isArray(node.material) ? node.material : [node.material]).forEach(mat => mat.dispose());

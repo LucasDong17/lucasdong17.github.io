@@ -4,6 +4,21 @@ import { primaryEnemy } from '../state/run.js';
 
 const byId = id => document.getElementById(id);
 const statsText = d => d.category === 'tools' ? `+${d.damage} damage` : `+${d.defense} shield · +${d.health} health`;
+const eggArtwork = key => `<div class="egg-art ${key}" aria-hidden="true"><span></span><i></i></div>`;
+const petPortrait = definition => {
+  const winged = ['owl', 'griffin', 'drake'].includes(definition.kind);
+  const longEars = ['hare', 'owl'].includes(definition.kind);
+  const armored = ['golem', 'knight'].includes(definition.kind);
+  return `<svg class="pet-portrait" viewBox="0 0 100 84" aria-hidden="true" focusable="false">
+    ${winged ? `<path d="M31 47 7 28l5 32 22 8M69 47l24-19-5 32-22 8" fill="${definition.accent}"/>` : ''}
+    <ellipse cx="50" cy="55" rx="27" ry="19" fill="${definition.color}"/>
+    <circle cx="50" cy="32" r="21" fill="${definition.color}"/>
+    ${longEars ? `<path d="M36 18 32 1q15 7 13 23M64 18 68 1Q53 8 55 24" fill="${definition.accent}"/>` : `<path d="m34 20-12-10 2 20m42-10 12-10-2 20" fill="${definition.accent}"/>`}
+    ${armored ? `<path d="M31 31q19-24 38 0v7H31Z" fill="${definition.accent}"/><path d="M43 30h14v5H43z" fill="#263a3b"/>` : ''}
+    <circle cx="42" cy="32" r="3.4" fill="#182b2d"/><circle cx="58" cy="32" r="3.4" fill="#182b2d"/>
+    <path d="m46 42 4 3 4-3" fill="none" stroke="#182b2d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+};
 
 export class Hud {
   constructor(handlers = {}) {
@@ -23,7 +38,7 @@ export class Hud {
     this.nodes['index-grid'].addEventListener('click', event => { const card = event.target.closest('[data-index-key]:not(.locked)'); if (card) { this.selectedIndex = card.dataset.indexKey; this.renderIndex(this.lastRun); } });
     this.nodes['biome-grid'].addEventListener('click', event => { const button = event.target.closest('[data-biome][data-wave]:not(:disabled)'); if (button) { this.closeMenu(false); this.handlers.onStart?.(button.dataset.biome, Number(button.dataset.wave)); } });
     this.nodes['upgrade-grid'].addEventListener('click', event => { const button = event.target.closest('[data-combine-key]'); if (button && !button.disabled) { this.handlers.onCombine?.(button.dataset.combineKey, Number(button.dataset.level)); this.renderUpgrades(this.lastRun); } });
-    this.nodes['egg-grid'].addEventListener('click', event => { const button = event.target.closest('[data-egg-key]'); if (!button || button.disabled) return; const pet = this.handlers.onHatch?.(button.dataset.eggKey); this.renderPetShop(this.lastRun); if (pet) { const d = petDefinition(pet.key); this.nodes['hatch-result'].hidden = false; this.nodes['hatch-result'].innerHTML = `<span>${d.icon}</span><div><small>${RARITIES[d.rarity].name.toUpperCase()} HATCH!</small><strong>${d.name}</strong><p>${d.damage} damage every second</p></div>`; } });
+    this.nodes['egg-grid'].addEventListener('click', event => { const button = event.target.closest('[data-egg-key]'); if (!button || button.disabled) return; const pet = this.handlers.onHatch?.(button.dataset.eggKey); this.renderPetShop(this.lastRun); this.nodes['coin-count'].textContent = this.lastRun.coins.toLocaleString(); if (pet) { const d = petDefinition(pet.key); this.nodes['hatch-result'].hidden = false; this.nodes['hatch-result'].innerHTML = `<div class="hatch-portrait">${petPortrait(d)}</div><div><small>${RARITIES[d.rarity].name.toUpperCase()} HATCH!</small><strong>${d.name}</strong><p>${d.damage} damage every second</p><span class="dismiss-hint">Tap to continue</span></div>`; } });
     this.nodes['pet-grid'].addEventListener('click', event => { const card = event.target.closest('[data-pet-id]'); if (card) { this.selectedPetId = Number(card.dataset.petId); this.renderPets(this.lastRun); } });
     this.nodes['pet-detail'].addEventListener('click', event => { const button = event.target.closest('[data-toggle-pet]'); if (button) { this.handlers.onTogglePet?.(Number(button.dataset.togglePet)); this.renderPets(this.lastRun); } });
     this.nodes['hatch-result'].addEventListener('click', () => { this.nodes['hatch-result'].hidden = true; });
@@ -53,16 +68,16 @@ export class Hud {
 
   renderPetShop(run) {
     if (!run) return;
-    this.nodes['egg-grid'].innerHTML = EGGS.map(egg => { const unlocked = egg.biome === 'meadow' || run.progress.unlocked.frost > 0; const affordable = run.coins >= egg.cost; const odds = Object.entries(egg.odds).map(([rarity, chance]) => `<span style="color:${RARITIES[rarity].color}">${RARITIES[rarity].name} ${chance}%</span>`).join(''); return `<article class="egg-card ${unlocked ? '' : 'locked'}"><div class="egg-icon ${egg.key}">${egg.icon}</div><small>${egg.biome.toUpperCase()} EGG</small><h3>${egg.name}</h3><p>${egg.description}</p><div class="egg-odds">${odds}</div><button data-egg-key="${egg.key}" ${unlocked && affordable ? '' : 'disabled'}>${unlocked ? affordable ? `Hatch · ${egg.cost} coins` : `Need ${egg.cost - run.coins} more coins` : 'Unlock Frostfang first'}</button></article>`; }).join('');
+    this.nodes['egg-grid'].innerHTML = EGGS.map(egg => { const unlocked = egg.biome === 'meadow' || run.progress.unlocked.frost > 0; const affordable = run.coins >= egg.cost; const odds = Object.entries(egg.odds).map(([rarity, chance]) => `<span style="color:${RARITIES[rarity].color}">${RARITIES[rarity].name} ${chance}%</span>`).join(''); return `<article class="egg-card ${unlocked ? '' : 'locked'}">${eggArtwork(egg.key)}<small>${egg.biome.toUpperCase()} EGG</small><h3>${egg.name}</h3><p>${egg.description}</p><div class="egg-odds">${odds}</div><button data-egg-key="${egg.key}" ${unlocked && affordable ? '' : 'disabled'}>${unlocked ? affordable ? `Hatch · ${egg.cost.toLocaleString()} coins` : `Need ${(egg.cost - run.coins).toLocaleString()} more coins` : 'Unlock Frostfang first'}</button></article>`; }).join('');
   }
 
   renderPets(run) {
     if (!run) return; const equipped = new Set(run.equippedPetIds); if (!run.pets.some(pet => pet.id === this.selectedPetId)) this.selectedPetId = run.pets[0]?.id ?? null;
     this.nodes['pet-count'].textContent = `${run.pets.length} ${run.pets.length === 1 ? 'pet' : 'pets'} collected`; this.nodes['equipped-pet-count'].textContent = `${equipped.size} / 3 EQUIPPED`;
-    this.nodes['pet-grid'].innerHTML = run.pets.length ? run.pets.map(pet => { const d = petDefinition(pet.key); const rarity = RARITIES[d.rarity]; return `<button class="pet-card ${equipped.has(pet.id) ? 'equipped' : ''} ${this.selectedPetId === pet.id ? 'selected' : ''}" data-pet-id="${pet.id}" style="--rarity:${rarity.color}"><span>${d.icon}</span><b>${d.name}</b><small>${rarity.name}</small><em>${d.damage} DMG</em></button>`; }).join('') : '<div class="empty-state"><span>🥚</span><strong>No pets yet</strong><p>Visit the hatchery circle in the safe haven.</p></div>';
-    const pet = run.pets.find(entry => entry.id === this.selectedPetId); if (!pet) { this.nodes['pet-detail'].innerHTML = '<div class="detail-icon">🐾</div><h3>Your pet team</h3><p>Hatch companions, then equip up to three.</p>'; return; }
+    this.nodes['pet-grid'].innerHTML = run.pets.length ? run.pets.map(pet => { const d = petDefinition(pet.key); const rarity = RARITIES[d.rarity]; return `<button class="pet-card ${equipped.has(pet.id) ? 'equipped' : ''} ${this.selectedPetId === pet.id ? 'selected' : ''}" data-pet-id="${pet.id}" style="--rarity:${rarity.color}">${petPortrait(d)}<b>${d.name}</b><small>${rarity.name}</small><em>${d.damage} DMG</em></button>`; }).join('') : `<div class="empty-state">${eggArtwork('meadow')}<strong>No pets yet</strong><p>Visit the hatchery circle in the safe haven.</p></div>`;
+    const pet = run.pets.find(entry => entry.id === this.selectedPetId); if (!pet) { this.nodes['pet-detail'].innerHTML = '<div class="detail-icon pet-team-mark">✦</div><h3>Your pet team</h3><p>Hatch companions, then equip up to three.</p>'; return; }
     const d = petDefinition(pet.key); const rarity = RARITIES[d.rarity]; const isEquipped = equipped.has(pet.id); const full = equipped.size >= 3;
-    this.nodes['pet-detail'].innerHTML = `<div class="detail-icon">${d.icon}</div><small style="color:${rarity.color}">${rarity.name.toUpperCase()} · ${d.egg.toUpperCase()}</small><h3>${d.name}</h3><div class="set-stripe" style="background:${rarity.color}"></div><p>A blocky battle companion that follows you and attacks the nearest enemy once every second.</p><div class="stat-list"><div><span>Damage</span><b>${d.damage}</b></div><div><span>Attack speed</span><b>1 / second</b></div></div><button class="pet-equip" data-toggle-pet="${pet.id}" ${!isEquipped && full ? 'disabled' : ''}>${isEquipped ? 'Unequip Pet' : full ? '3 Pet Limit Reached' : 'Equip Pet'}</button>`;
+    this.nodes['pet-detail'].innerHTML = `${petPortrait(d)}<small style="color:${rarity.color}">${rarity.name.toUpperCase()} · ${d.egg.toUpperCase()}</small><h3>${d.name}</h3><div class="set-stripe" style="background:${rarity.color}"></div><p>A blocky battle companion that follows you and attacks the nearest enemy once every second.</p><div class="stat-list"><div><span>Damage</span><b>${d.damage}</b></div><div><span>Attack speed</span><b>1 / second</b></div></div><button class="pet-equip" data-toggle-pet="${pet.id}" ${!isEquipped && full ? 'disabled' : ''}>${isEquipped ? 'Unequip Pet' : full ? '3 Pet Limit Reached' : 'Equip Pet'}</button>`;
   }
 
   renderIndex(run) {

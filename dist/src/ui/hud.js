@@ -1,16 +1,32 @@
-import { BALANCE as B, BIOMES, ENEMIES, BOSSES, SETS, ITEM_TYPES, itemDefinition } from '../data/balance.js';
+import { BALANCE as B, BIOMES, EGGS, ENEMIES, BOSSES, RARITIES, SETS, ITEM_TYPES, itemDefinition, petDefinition } from '../data/balance.js';
 import { attackStage, attackDuration } from '../systems/simulation.js';
 import { primaryEnemy } from '../state/run.js';
 
 const byId = id => document.getElementById(id);
 const statsText = d => d.category === 'tools' ? `+${d.damage} damage` : `+${d.defense} shield · +${d.health} health`;
+const eggArtwork = key => `<div class="egg-art ${key}" aria-hidden="true"><span></span><i></i></div>`;
+const petPortrait = definition => {
+  const winged = ['owl', 'griffin', 'drake'].includes(definition.kind);
+  const longEars = ['hare', 'owl'].includes(definition.kind);
+  const armored = ['golem', 'knight'].includes(definition.kind);
+  return `<svg class="pet-portrait" viewBox="0 0 100 84" aria-hidden="true" focusable="false">
+    ${winged ? `<path d="M31 47 7 28l5 32 22 8M69 47l24-19-5 32-22 8" fill="${definition.accent}"/>` : ''}
+    <ellipse cx="50" cy="55" rx="27" ry="19" fill="${definition.color}"/>
+    <circle cx="50" cy="32" r="21" fill="${definition.color}"/>
+    ${longEars ? `<path d="M36 18 32 1q15 7 13 23M64 18 68 1Q53 8 55 24" fill="${definition.accent}"/>` : `<path d="m34 20-12-10 2 20m42-10 12-10-2 20" fill="${definition.accent}"/>`}
+    ${armored ? `<path d="M31 31q19-24 38 0v7H31Z" fill="${definition.accent}"/><path d="M43 30h14v5H43z" fill="#263a3b"/>` : ''}
+    <circle cx="42" cy="32" r="3.4" fill="#182b2d"/><circle cx="58" cy="32" r="3.4" fill="#182b2d"/>
+    <path d="m46 42 4 3 4-3" fill="none" stroke="#182b2d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+};
 
 export class Hud {
   constructor(handlers = {}) {
-    this.handlers = handlers; this.activeMenu = null; this.inventoryTab = 'armor'; this.indexTab = 'enemies'; this.selectedIndex = 'cow';
-    this.nodes = Object.fromEntries(['player-health','player-fill','player-stats','enemy-panel','enemy-name','enemy-icon','enemy-health','enemy-fill','enemy-state','wave-label','wave-name','wave-mode','attack-label','attack-fill','pickup-prompt','pickup-fill','countdown','countdown-value','overlay','overlay-title','overlay-copy','overlay-kicker','play','return-hub','menu-backdrop','inventory-menu','index-menu','play-menu','upgrade-menu','inventory-grid','inventory-count','equip-best','index-grid','index-detail','biome-grid','upgrade-grid','loot-badge','announcement','announcement-kicker','announcement-title','announcement-copy','hub-prompt','hub-prompt-title','hub-prompt-copy'].map(id => [id, byId(id)]));
+    this.handlers = handlers; this.activeMenu = null; this.inventoryTab = 'armor'; this.indexTab = 'enemies'; this.selectedIndex = 'cow'; this.selectedPetId = null;
+    this.nodes = Object.fromEntries(['player-health','player-fill','player-stats','enemy-panel','enemy-name','enemy-icon','enemy-health','enemy-fill','enemy-state','wave-label','wave-name','wave-mode','coin-count','attack-label','attack-fill','pickup-prompt','pickup-fill','countdown','countdown-value','overlay','overlay-title','overlay-copy','overlay-kicker','play','return-hub','menu-backdrop','inventory-menu','index-menu','play-menu','upgrade-menu','pet-shop-menu','pets-menu','inventory-grid','inventory-count','equip-best','index-grid','index-detail','biome-grid','upgrade-grid','egg-grid','hatch-result','pet-grid','pet-detail','pet-count','equipped-pet-count','loot-badge','pet-badge','announcement','announcement-kicker','announcement-title','announcement-copy','hub-prompt','hub-prompt-title','hub-prompt-copy'].map(id => [id, byId(id)]));
     byId('open-inventory').addEventListener('click', () => this.openMenu('inventory'));
     byId('open-index').addEventListener('click', () => this.openMenu('index'));
+    byId('open-pets').addEventListener('click', () => this.openMenu('pets'));
     this.onReturn = () => this.handlers.onReturn?.();
     this.nodes['return-hub'].addEventListener('click', this.onReturn);
     document.querySelectorAll('.close-menu').forEach(button => button.addEventListener('click', () => this.closeMenu()));
@@ -22,9 +38,13 @@ export class Hud {
     this.nodes['index-grid'].addEventListener('click', event => { const card = event.target.closest('[data-index-key]:not(.locked)'); if (card) { this.selectedIndex = card.dataset.indexKey; this.renderIndex(this.lastRun); } });
     this.nodes['biome-grid'].addEventListener('click', event => { const button = event.target.closest('[data-biome][data-wave]:not(:disabled)'); if (button) { this.closeMenu(false); this.handlers.onStart?.(button.dataset.biome, Number(button.dataset.wave)); } });
     this.nodes['upgrade-grid'].addEventListener('click', event => { const button = event.target.closest('[data-combine-key]'); if (button && !button.disabled) { this.handlers.onCombine?.(button.dataset.combineKey, Number(button.dataset.level)); this.renderUpgrades(this.lastRun); } });
+    this.nodes['egg-grid'].addEventListener('click', event => { const button = event.target.closest('[data-egg-key]'); if (!button || button.disabled) return; const pet = this.handlers.onHatch?.(button.dataset.eggKey); this.renderPetShop(this.lastRun); this.nodes['coin-count'].textContent = this.lastRun.coins.toLocaleString(); if (pet) { const d = petDefinition(pet.key); this.nodes['hatch-result'].hidden = false; this.nodes['hatch-result'].innerHTML = `<div class="hatch-portrait">${petPortrait(d)}</div><div><small>${RARITIES[d.rarity].name.toUpperCase()} HATCH!</small><strong>${d.name}</strong><p>${d.damage} damage every second</p><span class="dismiss-hint">Tap to continue</span></div>`; } });
+    this.nodes['pet-grid'].addEventListener('click', event => { const card = event.target.closest('[data-pet-id]'); if (card) { this.selectedPetId = Number(card.dataset.petId); this.renderPets(this.lastRun); } });
+    this.nodes['pet-detail'].addEventListener('click', event => { const button = event.target.closest('[data-toggle-pet]'); if (button) { this.handlers.onTogglePet?.(Number(button.dataset.togglePet)); this.renderPets(this.lastRun); } });
+    this.nodes['hatch-result'].addEventListener('click', () => { this.nodes['hatch-result'].hidden = true; });
   }
 
-  openMenu(name) { this.activeMenu = name; this.nodes['menu-backdrop'].hidden = false; for (const menu of ['inventory','index','play','upgrade']) this.nodes[`${menu}-menu`].hidden = menu !== name; this.handlers.onMenu?.(true); if (name === 'inventory') this.renderInventory(this.lastRun); if (name === 'index') this.renderIndex(this.lastRun); if (name === 'play') this.renderPlay(this.lastRun); if (name === 'upgrade') this.renderUpgrades(this.lastRun); this.nodes[`${name}-menu`].querySelector('.close-menu').focus(); }
+  openMenu(name) { this.activeMenu = name; this.nodes['menu-backdrop'].hidden = false; for (const menu of ['inventory','index','play','upgrade','pet-shop','pets']) this.nodes[`${menu}-menu`].hidden = menu !== name; this.handlers.onMenu?.(true); if (name === 'inventory') this.renderInventory(this.lastRun); if (name === 'index') this.renderIndex(this.lastRun); if (name === 'play') this.renderPlay(this.lastRun); if (name === 'upgrade') this.renderUpgrades(this.lastRun); if (name === 'pet-shop') { this.nodes['hatch-result'].hidden = true; this.renderPetShop(this.lastRun); } if (name === 'pets') { this.lastRun?.pets.forEach(pet => { pet.new = false; }); this.renderPets(this.lastRun); } this.nodes[`${name}-menu`].querySelector('.close-menu').focus(); }
   closeMenu(notify = true) { if (!this.activeMenu) return; this.activeMenu = null; this.nodes['menu-backdrop'].hidden = true; if (notify) this.handlers.onMenu?.(false); }
   updateTabs() { document.querySelectorAll('[data-inventory-tab]').forEach(button => button.classList.toggle('active', button.dataset.inventoryTab === this.inventoryTab)); document.querySelectorAll('[data-index-tab]').forEach(button => button.classList.toggle('active', button.dataset.indexTab === this.indexTab)); }
 
@@ -46,6 +66,20 @@ export class Hud {
     this.nodes['upgrade-grid'].innerHTML = groups.size ? [...groups.entries()].map(([token, items]) => { const [key, levelText] = token.split('|'); const level = Number(levelText); const d = itemDefinition(key, level); const can = items.length >= 2; return `<article class="item-card upgrade-card" style="--item-color:${d.color}"><span class="item-icon">${d.icon}</span><b>${d.name}</b><span class="item-level">LEVEL ${level} · OWN ${items.length}</span><small>${statsText(d)}</small><button class="combine-button" data-combine-key="${key}" data-level="${level}" ${can ? '' : 'disabled'}>${can ? `Combine into Level ${level + 1}` : 'Need 2 matching'}</button></article>`; }).join('') : '<div class="empty-state"><span>⬆️</span><strong>No gear to upgrade</strong><p>Bring duplicate drops to the forge circle.</p></div>';
   }
 
+  renderPetShop(run) {
+    if (!run) return;
+    this.nodes['egg-grid'].innerHTML = EGGS.map(egg => { const unlocked = egg.biome === 'meadow' || run.progress.unlocked.frost > 0; const affordable = run.coins >= egg.cost; const odds = Object.entries(egg.odds).map(([rarity, chance]) => `<span style="color:${RARITIES[rarity].color}">${RARITIES[rarity].name} ${chance}%</span>`).join(''); return `<article class="egg-card ${unlocked ? '' : 'locked'}">${eggArtwork(egg.key)}<small>${egg.biome.toUpperCase()} EGG</small><h3>${egg.name}</h3><p>${egg.description}</p><div class="egg-odds">${odds}</div><button data-egg-key="${egg.key}" ${unlocked && affordable ? '' : 'disabled'}>${unlocked ? affordable ? `Hatch · ${egg.cost.toLocaleString()} coins` : `Need ${(egg.cost - run.coins).toLocaleString()} more coins` : 'Unlock Frostfang first'}</button></article>`; }).join('');
+  }
+
+  renderPets(run) {
+    if (!run) return; const equipped = new Set(run.equippedPetIds); if (!run.pets.some(pet => pet.id === this.selectedPetId)) this.selectedPetId = run.pets[0]?.id ?? null;
+    this.nodes['pet-count'].textContent = `${run.pets.length} ${run.pets.length === 1 ? 'pet' : 'pets'} collected`; this.nodes['equipped-pet-count'].textContent = `${equipped.size} / 3 EQUIPPED`;
+    this.nodes['pet-grid'].innerHTML = run.pets.length ? run.pets.map(pet => { const d = petDefinition(pet.key); const rarity = RARITIES[d.rarity]; return `<button class="pet-card ${equipped.has(pet.id) ? 'equipped' : ''} ${this.selectedPetId === pet.id ? 'selected' : ''}" data-pet-id="${pet.id}" style="--rarity:${rarity.color}">${petPortrait(d)}<b>${d.name}</b><small>${rarity.name}</small><em>${d.damage} DMG</em></button>`; }).join('') : `<div class="empty-state">${eggArtwork('meadow')}<strong>No pets yet</strong><p>Visit the hatchery circle in the safe haven.</p></div>`;
+    const pet = run.pets.find(entry => entry.id === this.selectedPetId); if (!pet) { this.nodes['pet-detail'].innerHTML = '<div class="detail-icon pet-team-mark">✦</div><h3>Your pet team</h3><p>Hatch companions, then equip up to three.</p>'; return; }
+    const d = petDefinition(pet.key); const rarity = RARITIES[d.rarity]; const isEquipped = equipped.has(pet.id); const full = equipped.size >= 3;
+    this.nodes['pet-detail'].innerHTML = `${petPortrait(d)}<small style="color:${rarity.color}">${rarity.name.toUpperCase()} · ${d.egg.toUpperCase()}</small><h3>${d.name}</h3><div class="set-stripe" style="background:${rarity.color}"></div><p>A blocky battle companion that follows you and attacks the nearest enemy once every second.</p><div class="stat-list"><div><span>Damage</span><b>${d.damage}</b></div><div><span>Attack speed</span><b>1 / second</b></div></div><button class="pet-equip" data-toggle-pet="${pet.id}" ${!isEquipped && full ? 'disabled' : ''}>${isEquipped ? 'Unequip Pet' : full ? '3 Pet Limit Reached' : 'Equip Pet'}</button>`;
+  }
+
   renderIndex(run) {
     if (!run) return;
     if (this.indexTab === 'enemies') {
@@ -60,13 +94,15 @@ export class Hud {
   render(run, paused, started) {
     this.lastRun = run; const n = this.nodes; const p = run.player; const e = primaryEnemy(run); const hub = run.status === 'hub';
     n['player-health'].textContent = `${p.health} / ${p.maxHealth}`; n['player-fill'].style.width = `${p.health / p.maxHealth * 100}%`; n['player-stats'].textContent = `${p.damage} damage · ${p.defense} shield`;
-    n['wave-label'].textContent = hub ? 'SAFE HAVEN' : `${BIOMES.find(b => b.key === run.biome)?.short.toUpperCase()} · WAVE ${run.wave}${run.wave === B.maxWave ? ' · BOSS' : ''}`; n['wave-name'].textContent = hub ? 'Home Camp' : e?.name || 'Wave cleared'; const remaining = run.enemies.filter(enemy => enemy.health > 0).length; n['wave-mode'].textContent = hub ? 'Walk forward to play · left to upgrade' : run.phase === 'intermission' ? 'Next wave incoming' : `${remaining} ${remaining === 1 ? 'animal' : 'animals'} remaining`;
+    n['coin-count'].textContent = run.coins.toLocaleString();
+    n['wave-label'].textContent = hub ? 'SAFE HAVEN' : `${BIOMES.find(b => b.key === run.biome)?.short.toUpperCase()} · WAVE ${run.wave}${run.wave === B.maxWave ? ' · BOSS' : ''}`; n['wave-name'].textContent = hub ? 'Home Camp' : e?.name || 'Wave cleared'; const remaining = run.enemies.filter(enemy => enemy.health > 0).length; n['wave-mode'].textContent = hub ? 'Forward: play · left: forge · right: pets' : run.phase === 'intermission' ? 'Next wave incoming' : `${remaining} ${remaining === 1 ? 'animal' : 'animals'} remaining`;
     n['enemy-panel'].hidden = hub || !e; if (e) { n['enemy-name'].textContent = e.name.toUpperCase(); n['enemy-icon'].textContent = ENEMIES.find(x => x.key === e.type)?.icon || BOSSES[run.biome]?.icon || '🐾'; n['enemy-health'].textContent = `${e.health} / ${e.maxHealth}`; n['enemy-fill'].style.width = `${e.health / e.maxHealth * 100}%`; n['enemy-state'].textContent = remaining > 1 ? `${remaining} enemies in this wave` : e.mode === 'windup' ? 'About to strike — move!' : e.mode === 'chase' ? 'Hunting you' : 'Waiting'; }
     const stage = attackStage(p.attack); n['attack-label'].textContent = hub ? 'Safe haven' : { ready: 'Weapon ready', windup: 'Winding up…', active: 'Swing!', recovery: 'Recovering…' }[stage]; n['attack-fill'].style.width = `${p.attack ? Math.min(100, p.attack.elapsed / attackDuration * 100) : 100}%`;
     n['countdown'].hidden = run.phase !== 'intermission'; n['countdown-value'].textContent = Math.max(0, Math.ceil(run.intermission)); const nearDrop = run.pickup.id !== null; n['pickup-prompt'].hidden = !nearDrop; n['pickup-fill'].style.width = `${run.pickup.progress / B.pickup.hold * 100}%`;
     n['return-hub'].hidden = hub;
-    const playDistance = Math.hypot(p.x - B.portal.playX, p.z - B.portal.playZ); const upgradeDistance = Math.hypot(p.x - B.portal.upgradeX, p.z - B.portal.upgradeZ); n['hub-prompt'].hidden = !hub || Math.min(playDistance, upgradeDistance) > 2.3; const nearPlay = playDistance < upgradeDistance; n['hub-prompt-title'].textContent = nearPlay ? 'Play Portal' : 'Upgrade Circle'; n['hub-prompt-copy'].textContent = nearPlay ? 'Step inside to choose a biome and checkpoint' : 'Step inside to combine matching gear';
+    const portals = [{ distance: Math.hypot(p.x - B.portal.playX, p.z - B.portal.playZ), title: 'Play Portal', copy: 'Step inside to choose a biome and checkpoint' }, { distance: Math.hypot(p.x - B.portal.upgradeX, p.z - B.portal.upgradeZ), title: 'Upgrade Circle', copy: 'Step inside to combine matching gear' }, { distance: Math.hypot(p.x - B.portal.petsX, p.z - B.portal.petsZ), title: 'Pet Hatchery', copy: 'Step inside to hatch Meadow and Frostfang eggs' }].sort((a, b) => a.distance - b.distance); n['hub-prompt'].hidden = !hub || portals[0].distance > 2.3; n['hub-prompt-title'].textContent = portals[0].title; n['hub-prompt-copy'].textContent = portals[0].copy;
     const newLoot = run.inventory.filter(item => item.new).length; n['loot-badge'].hidden = newLoot === 0; n['loot-badge'].textContent = newLoot; if (this.activeMenu === 'inventory') run.inventory.forEach(item => { item.new = false; });
+    const newPets = run.pets.filter(pet => pet.new).length; n['pet-badge'].hidden = newPets === 0; n['pet-badge'].textContent = newPets;
     n.overlay.hidden = this.activeMenu || (started && !paused); if (started && paused && !this.activeMenu) { n['overlay-kicker'].textContent = 'ADVENTURE PAUSED'; n['overlay-title'].innerHTML = 'Mossvale<br><em>is waiting.</em>'; n['overlay-copy'].textContent = 'Your progress and equipment are safe.'; n.play.textContent = 'Continue →'; }
   }
   destroy() { clearTimeout(this.announcementTimer); this.nodes['return-hub'].removeEventListener('click', this.onReturn); }

@@ -45,11 +45,15 @@ export class SceneView {
     this.warning.rotation.x = -Math.PI / 2;
     this.scene.add(this.warning);
     this.resize = () => {
-      this.renderer.setSize(window.innerWidth, window.innerHeight, false);
-      this.camera.aspect = window.innerWidth / window.innerHeight;
+      const width = Math.max(1, this.renderer.domElement.clientWidth || window.innerWidth);
+      const height = Math.max(1, this.renderer.domElement.clientHeight || window.innerHeight);
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      this.renderer.setSize(width, height, false);
+      this.camera.aspect = width / height;
       this.camera.updateProjectionMatrix();
     };
     window.addEventListener('resize', this.resize);
+    window.visualViewport?.addEventListener('resize', this.resize);
     this.resize();
   }
   mesh(parent, geometry, mat, x, y, z) {
@@ -104,10 +108,14 @@ export class SceneView {
     this.portals = new THREE.Group();
     const makePortal = (x, z, color, labelColor) => {
       const group = new THREE.Group();
-      const disc = this.mesh(group, new THREE.CylinderGeometry(1.25, 1.4, 0.09, 32), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.35, transparent: true, opacity: 0.86 }), 0, 0.04, 0);
+      // Keep portal tops above the uneven courtyard tiles. The old 0.04 height
+      // overlapped the tile tops and flickered or vanished on some GPUs.
+      const disc = this.mesh(group, new THREE.CylinderGeometry(1.25, 1.4, 0.12, 36), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.42, transparent: true, opacity: 0.92 }), 0, 0.12, 0);
       disc.castShadow = false;
-      const ring = this.mesh(group, new THREE.TorusGeometry(1.25, 0.11, 8, 32), material(labelColor), 0, 0.11, 0);
+      disc.renderOrder = 2;
+      const ring = this.mesh(group, new THREE.TorusGeometry(1.27, 0.13, 8, 36), material(labelColor), 0, 0.2, 0);
       ring.rotation.x = Math.PI / 2;
+      ring.renderOrder = 3;
       group.position.set(x, 0, z); this.portals.add(group); return group;
     };
     this.playPortal = makePortal(B.portal.playX, B.portal.playZ, '#63dbeb', '#e7ffff');
@@ -343,6 +351,7 @@ export class SceneView {
   }
   destroy() {
     window.removeEventListener('resize', this.resize);
+    window.visualViewport?.removeEventListener('resize', this.resize);
     this.scene.traverse(node => {
       node.geometry?.dispose();
       if (node.material) (Array.isArray(node.material) ? node.material : [node.material]).forEach(mat => mat.dispose());

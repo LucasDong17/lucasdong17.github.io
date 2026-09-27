@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#132d2b">
   <title>Mossvale — Wildfront</title>
   <meta name="description" content="A colorful low-poly wave survival adventure.">
@@ -18,6 +18,7 @@
       <div class="portrait">🧙</div><div class="vital-copy"><div><b>MEADOW KEEPER</b><span id="player-health"></span></div><div class="meter"><i id="player-fill"></i></div><small id="player-stats">25 damage · 0 defense</small></div>
     </section>
     <section class="wave-card"><small id="wave-label">SAFE HAVEN</small><strong id="wave-name">Home Camp</strong><span id="wave-mode">Choose your next journey</span></section>
+    <section class="coin-card" aria-label="Coins"><span class="coin-icon" aria-hidden="true"></span><strong id="coin-count">0</strong><small>COINS</small></section>
     <section class="vital-card enemy-card" id="enemy-panel">
       <div class="enemy-copy"><div><b id="enemy-name">MEADOW COW</b><span id="enemy-health"></span></div><div class="meter enemy-meter"><i id="enemy-fill"></i></div><small id="enemy-state">Waiting in the meadow</small></div><div class="portrait" id="enemy-icon">🐄</div>
     </section>
@@ -25,6 +26,7 @@
     <nav class="side-actions" aria-label="Game menus">
       <button class="side-button bag-button" id="open-inventory" aria-label="Open inventory"><span>🎒</span><b>Inventory</b><i id="loot-badge" hidden>0</i></button>
       <button class="side-button index-button" id="open-index" aria-label="Open index"><span>📖</span><b>Index</b></button>
+      <button class="side-button pets-button" id="open-pets" aria-label="Open pets"><span>🐾</span><b>Pets</b><i id="pet-badge" hidden>0</i></button>
       <button class="side-button home-button" id="return-hub" aria-label="Return to the safe haven" hidden><span>🏰</span><b>Spawn</b></button>
     </nav>
 
@@ -60,6 +62,19 @@
       <header><div class="menu-title"><span class="menu-icon">⬆️</span><div><small>FORGE CIRCLE</small><h2>Combine Gear</h2></div></div><button class="close-menu" aria-label="Close menu">×</button></header>
       <p class="upgrade-help">Combine two identical items of the same level. Weapons gain damage; armor gains health and shield.</p>
       <div id="upgrade-grid" class="item-grid upgrade-grid"></div>
+    </article>
+
+    <article id="pet-shop-menu" class="game-menu portal-menu" hidden aria-label="Hatch pet eggs">
+      <header><div class="menu-title"><span class="menu-icon hatchery-menu-icon" aria-hidden="true"><i></i></span><div><small>THE HATCHERY</small><h2>Pet Eggs</h2></div></div><button class="close-menu" aria-label="Close menu">×</button></header>
+      <p class="pet-shop-summary">Spend coins earned by clearing waves. Later waves and Frostfang victories award more.</p>
+      <div id="egg-grid" class="egg-grid"></div>
+      <div id="hatch-result" class="hatch-result" hidden aria-live="polite"></div>
+    </article>
+
+    <article id="pets-menu" class="game-menu pets-menu" hidden aria-label="Pet collection">
+      <header><div class="menu-title"><span class="menu-icon">🐾</span><div><small>YOUR COMPANIONS</small><h2>Pets</h2></div></div><button class="close-menu" aria-label="Close menu">×</button></header>
+      <div class="pet-summary"><span id="pet-count">0 pets</span><strong id="equipped-pet-count">0 / 3 EQUIPPED</strong></div>
+      <div class="pet-layout"><div id="pet-grid" class="pet-grid"></div><aside id="pet-detail" class="pet-detail"></aside></div>
     </article>
   </section>
 

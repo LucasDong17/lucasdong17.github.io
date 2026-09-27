@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#132d2b">
   <title>Mossvale — Wildfront</title>
   <meta name="description" content="A colorful low-poly wave survival adventure.">
@@ -18,7 +18,7 @@
       <div class="portrait">🧙</div><div class="vital-copy"><div><b>MEADOW KEEPER</b><span id="player-health"></span></div><div class="meter"><i id="player-fill"></i></div><small id="player-stats">25 damage · 0 defense</small></div>
     </section>
     <section class="wave-card"><small id="wave-label">SAFE HAVEN</small><strong id="wave-name">Home Camp</strong><span id="wave-mode">Choose your next journey</span></section>
-    <section class="coin-card" aria-label="Coins"><span>●</span><strong id="coin-count">0</strong><small>COINS</small></section>
+    <section class="coin-card" aria-label="Coins"><span class="coin-icon" aria-hidden="true"></span><strong id="coin-count">0</strong><small>COINS</small></section>
     <section class="vital-card enemy-card" id="enemy-panel">
       <div class="enemy-copy"><div><b id="enemy-name">MEADOW COW</b><span id="enemy-health"></span></div><div class="meter enemy-meter"><i id="enemy-fill"></i></div><small id="enemy-state">Waiting in the meadow</small></div><div class="portrait" id="enemy-icon">🐄</div>
     </section>
@@ -65,7 +65,7 @@
     </article>
 
     <article id="pet-shop-menu" class="game-menu portal-menu" hidden aria-label="Hatch pet eggs">
-      <header><div class="menu-title"><span class="menu-icon">🥚</span><div><small>THE HATCHERY</small><h2>Pet Eggs</h2></div></div><button class="close-menu" aria-label="Close menu">×</button></header>
+      <header><div class="menu-title"><span class="menu-icon hatchery-menu-icon" aria-hidden="true"><i></i></span><div><small>THE HATCHERY</small><h2>Pet Eggs</h2></div></div><button class="close-menu" aria-label="Close menu">×</button></header>
       <p class="pet-shop-summary">Spend coins earned by clearing waves. Later waves and Frostfang victories award more.</p>
       <div id="egg-grid" class="egg-grid"></div>
       <div id="hatch-result" class="hatch-result" hidden aria-live="polite"></div>

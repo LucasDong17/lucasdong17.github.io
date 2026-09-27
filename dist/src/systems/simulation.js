@@ -1,4 +1,4 @@
-import { BALANCE as B, ITEM_TYPES, SETS } from '../data/balance.js';
+import { BALANCE as B, ITEM_TYPES, SETS, coinRewardForWave, petDefinition } from '../data/balance.js';
 import { createWaveEnemies, enterHub } from '../state/run.js';
 
 export function attackStage(attack) { if (!attack) return 'ready'; if (attack.elapsed < B.player.windup) return 'windup'; if (attack.elapsed < B.player.windup + B.player.active) return 'active'; return 'recovery'; }
@@ -41,6 +41,7 @@ function damageEnemy(run, enemy, amount, bus) {
   if (enemy.health > 0) return;
   enemy.mode = 'defeated'; createDrops(run, enemy); bus.emit('enemyDefeated', { wave: run.wave, enemy: enemy.name, drops: run.drops.length });
   if (run.enemies.some(entry => entry.health > 0)) return;
+  const coins = coinRewardForWave(run.wave, run.biome); run.coins += coins; bus.emit('coinsEarned', { amount: coins, total: run.coins, biome: run.biome, wave: run.wave });
   run.phase = 'intermission'; run.intermission = B.intermission;
   if (run.wave < B.maxWave) run.progress.unlocked[run.biome] = Math.max(run.progress.unlocked[run.biome] || 1, run.wave + 1);
   else { run.progress.completed[run.biome] = true; if (run.biome === 'meadow') run.progress.unlocked.frost = Math.max(1, run.progress.unlocked.frost || 0); }
@@ -62,8 +63,25 @@ function updateHub(run, world, bus, input, dt) {
   p.moving = length > 0; if (length > 0) { p.facing = Math.atan2(mx, mz); world.move(p, mx * B.player.speed * dt, mz * B.player.speed * dt); }
   const play = Math.hypot(p.x - B.portal.playX, p.z - B.portal.playZ) <= B.portal.radius;
   const upgrade = Math.hypot(p.x - B.portal.upgradeX, p.z - B.portal.upgradeZ) <= B.portal.radius;
-  if (!play && !upgrade) run.portalLatch = false;
-  if (!run.portalLatch && (play || upgrade)) { run.portalLatch = true; bus.emit('portalEntered', { portal: play ? 'play' : 'upgrade' }); }
+  const pets = Math.hypot(p.x - B.portal.petsX, p.z - B.portal.petsZ) <= B.portal.radius;
+  if (!play && !upgrade && !pets) run.portalLatch = false;
+  if (!run.portalLatch && (play || upgrade || pets)) { run.portalLatch = true; bus.emit('portalEntered', { portal: play ? 'play' : upgrade ? 'upgrade' : 'pet-shop' }); }
+}
+
+function updatePets(run, world, bus, dt) {
+  const equipped = run.equippedPetIds.map(id => run.pets.find(pet => pet.id === id)).filter(Boolean);
+  for (const [index, pet] of equipped.entries()) {
+    const definition = petDefinition(pet.key); if (!definition) continue;
+    pet.cooldown = Math.max(0, pet.cooldown - dt); pet.attack = Math.max(0, pet.attack - dt); pet.flash = Math.max(0, pet.flash - dt);
+    const living = run.status === 'playing' && run.phase === 'combat' ? run.enemies.filter(enemy => enemy.health > 0) : [];
+    const target = living.reduce((best, enemy) => !best || Math.hypot(enemy.x - pet.x, enemy.z - pet.z) < Math.hypot(best.x - pet.x, best.z - pet.z) ? enemy : best, null);
+    let goalX; let goalZ; let stop = 0.18;
+    if (target) { goalX = target.x; goalZ = target.z; stop = 1.05; }
+    else { const side = index - (equipped.length - 1) / 2; goalX = run.player.x + Math.cos(run.player.facing) * side * 0.72 - Math.sin(run.player.facing) * 1.15; goalZ = run.player.z - Math.sin(run.player.facing) * side * 0.72 - Math.cos(run.player.facing) * 1.15; }
+    const dx = goalX - pet.x; const dz = goalZ - pet.z; const distance = Math.hypot(dx, dz);
+    if (distance > stop) { pet.facing = Math.atan2(dx, dz); const speed = Math.min((target ? 5.6 : 5.1) * dt, distance - stop); world.move(pet, dx / distance * speed, dz / distance * speed); }
+    if (target && distance <= stop + 0.12 && pet.cooldown <= 0) { pet.cooldown = 1; pet.attack = 0.22; target.flash = B.hitFlash; damageEnemy(run, target, definition.damage, bus); bus.emit('petAttacked', { petId: pet.id, targetId: target.id, amount: definition.damage }); }
+  }
 }
 
 function updateEnemy(run, enemy, world, bus, dt) {
@@ -80,11 +98,12 @@ function updateEnemy(run, enemy, world, bus, dt) {
 
 export function stepRun(run, input, world, bus, dt = B.step) {
   run.time += dt; run.player.flash = Math.max(0, run.player.flash - dt);
-  if (run.status === 'hub') { updateHub(run, world, bus, input, dt); return; }
+  if (run.status === 'hub') { updateHub(run, world, bus, input, dt); updatePets(run, world, bus, dt); return; }
   if (run.status !== 'playing') return;
   const p = run.player; let mx = input.moveX || 0; let mz = input.moveZ || 0; const length = Math.hypot(mx, mz); if (length > 1) { mx /= length; mz /= length; }
   p.moving = length > 0; if (length > 0) { if (!p.attack) p.facing = Math.atan2(mx, mz); world.move(p, mx * B.player.speed * dt, mz * B.player.speed * dt); }
   updatePickup(run, input, bus, dt);
+  updatePets(run, world, bus, dt);
   if (input.attack && !p.attack && run.phase === 'combat') { p.attack = { elapsed: 0, hitIds: [], facing: p.facing }; bus.emit('attackStarted', { target: 'player' }); }
   if (p.attack) { p.attack.elapsed += dt; if (attackStage(p.attack) === 'active') for (const enemy of run.enemies) if (!p.attack.hitIds.includes(enemy.id) && canHit(p, enemy, p.attack.facing)) { p.attack.hitIds.push(enemy.id); damageEnemy(run, enemy, p.damage, bus); } if (p.attack.elapsed >= attackDuration) p.attack = null; }
   if (run.phase === 'intermission') { run.intermission -= dt; if (run.intermission <= 0) { if (run.wave >= B.maxWave) { bus.emit('biomeCompleted', { biome: run.biome }); enterHub(run, world); return; } run.drops = []; run.wave++; run.progress.highest[run.biome] = Math.max(run.progress.highest[run.biome] || 0, run.wave); run.spawnIndex += run.enemies.length; run.enemies = createWaveEnemies(run.wave, run.biome, world, p, run.spawnIndex); run.enemies.forEach(enemy => run.discovered.add(enemy.type)); run.phase = 'combat'; run.intermission = 0; bus.emit('waveStarted', { wave: run.wave, enemy: run.enemies[0].name, count: run.enemies.length, boss: run.wave === B.maxWave }); } return; }

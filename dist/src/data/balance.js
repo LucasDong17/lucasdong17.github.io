@@ -2,7 +2,7 @@ export const BALANCE = Object.freeze({
   step: 1 / 60, maxFrame: 0.1, arenaHalf: 13,
   player: { health: 100, speed: 4.6, radius: 0.42, damage: 25, range: 2.05, arc: Math.PI * 0.78, windup: 0.16, active: 0.14, recovery: 0.42 },
   enemy: { radius: 0.58, detection: 9, reach: 1.22, windup: 0.5, cooldown: 1.25 },
-  pickup: { radius: 1.35, hold: 0.45 }, portal: { radius: 1.35, playX: 0, playZ: 1.2, upgradeX: -4.2, upgradeZ: 5.2 },
+  pickup: { radius: 1.35, hold: 0.45 }, portal: { radius: 1.35, playX: 0, playZ: 1.2, upgradeX: -4.2, upgradeZ: 5.2, petsX: 4.2, petsZ: 2.8 },
   intermission: 5, hitFlash: 0.18, maxWave: 50,
 });
 
@@ -61,6 +61,27 @@ export const BIOMES = Object.freeze([
 export const ENEMIES = Object.freeze(BIOMES.flatMap(biome => biome.enemies.map((enemy, index) => ({ ...enemy, biome: biome.key, waves: `${index * 6 + 1}+` }))));
 export const BOSSES = Object.freeze({ meadow: { key: 'king', name: 'Crowned Colossus', icon: '👑', health: 2600, damage: 48, speed: 2.05, color: '#7c4bc4', accent: '#ffd76a', trait: 'Final guardian of Mossvale' }, frost: { key: 'wyrm', name: 'Aurora Wyrm', icon: '🌌', health: 5200, damage: 72, speed: 2.3, color: '#427de8', accent: '#e1a7ff', trait: 'Final guardian of Frostfang' } });
 export const BOSS = BOSSES.meadow;
+export const RARITIES = Object.freeze({
+  common: { name: 'Common', color: '#a9c4af' }, rare: { name: 'Rare', color: '#58b9ef' },
+  epic: { name: 'Epic', color: '#c477ef' }, legendary: { name: 'Legendary', color: '#ffc857' },
+});
+export const PETS = Object.freeze([
+  { key: 'squire-pup', egg: 'meadow', name: 'Squire Pup', icon: '🐕', rarity: 'common', damage: 12, color: '#b98758', accent: '#d9dde0', kind: 'beast' },
+  { key: 'owl-archer', egg: 'meadow', name: 'Owl Archer', icon: '🦉', rarity: 'rare', damage: 20, color: '#9b7455', accent: '#6fbd73', kind: 'owl' },
+  { key: 'moss-golem', egg: 'meadow', name: 'Moss Golem', icon: '🪨', rarity: 'epic', damage: 34, color: '#668b70', accent: '#8fd35d', kind: 'golem' },
+  { key: 'crown-griffin', egg: 'meadow', name: 'Crown Griffin', icon: '🦅', rarity: 'legendary', damage: 55, color: '#c98545', accent: '#ffd86b', kind: 'griffin' },
+  { key: 'hare-sentry', egg: 'frost', name: 'Snow Hare Sentry', icon: '🐇', rarity: 'common', damage: 28, color: '#dff6f6', accent: '#70bfe4', kind: 'hare' },
+  { key: 'ice-lynx', egg: 'frost', name: 'Ice Lynx', icon: '🐈', rarity: 'rare', damage: 44, color: '#8fc9d8', accent: '#416b9a', kind: 'beast' },
+  { key: 'rime-knight', egg: 'frost', name: 'Rime Knight', icon: '🧙', rarity: 'epic', damage: 68, color: '#567aa8', accent: '#a5efff', kind: 'knight' },
+  { key: 'starfall-drake', egg: 'frost', name: 'Starfall Drake', icon: '🐉', rarity: 'legendary', damage: 100, color: '#7056b8', accent: '#f3b7ff', kind: 'drake' },
+]);
+export const EGGS = Object.freeze([
+  { key: 'meadow', name: 'Mossvale Egg', biome: 'meadow', cost: 500, icon: '🥚', description: 'A warm speckled egg with a loyal medieval companion inside.', odds: { common: 60, rare: 25, epic: 11, legendary: 4 } },
+  { key: 'frost', name: 'Frostfang Egg', biome: 'frost', cost: 1500, icon: '❄️', description: 'A difficult icy hatch containing stronger tundra companions.', odds: { common: 68, rare: 22, epic: 8, legendary: 2 } },
+]);
+export function petDefinition(key) { return PETS.find(pet => pet.key === key) || null; }
+export function eggDefinition(key) { return EGGS.find(egg => egg.key === key) || null; }
+export function coinRewardForWave(wave, biome = 'meadow') { return biome === 'frost' ? 120 + wave * 35 : 40 + wave * 12; }
 export const SETS = Object.freeze([
   { key: 'stone', name: 'Stone', color: '#93a29d', biome: 'meadow', unlock: 1, power: 1 }, { key: 'iron', name: 'Iron', color: '#9ebad1', biome: 'meadow', unlock: 10, power: 1.35 }, { key: 'jade', name: 'Jade', color: '#38d193', biome: 'meadow', unlock: 20, power: 1.75 }, { key: 'diamond', name: 'Diamond', color: '#55ddff', biome: 'meadow', unlock: 35, power: 2.25 }, { key: 'warborn', name: 'Warborn', color: '#d26aff', biome: 'meadow', unlock: 45, power: 3 },
   { key: 'frostbite', name: 'Frostbite', color: '#8ee8ff', biome: 'frost', unlock: 1, power: 3.4 }, { key: 'glacier', name: 'Glacier', color: '#66a9e8', biome: 'frost', unlock: 10, power: 3.9 }, { key: 'aurora', name: 'Aurora', color: '#b686f4', biome: 'frost', unlock: 20, power: 4.5 }, { key: 'mammoth', name: 'Mammoth', color: '#d9c7aa', biome: 'frost', unlock: 30, power: 5.2 }, { key: 'rime', name: 'Rimeforged', color: '#79f1df', biome: 'frost', unlock: 40, power: 6 }, { key: 'starfall', name: 'Starfall', color: '#f1b2ff', biome: 'frost', unlock: 48, power: 7 },
