@@ -5,7 +5,7 @@ const byId = id => document.getElementById(id);
 const statsText = d => d.category === 'tools' ? `+${d.damage} damage` : `+${d.defense} shield · +${d.health} health`;
 const eggArtwork = key => `<div class="egg-art ${key}" aria-hidden="true"><span></span><i></i></div>`;
 const petPortrait = definition => {
-  const winged = ['owl', 'griffin', 'drake'].includes(definition.kind);
+  const winged = ['owl', 'griffin', 'drake', 'phoenix'].includes(definition.kind);
   const longEars = ['hare', 'owl'].includes(definition.kind);
   const armored = ['golem', 'knight'].includes(definition.kind);
   return `<svg class="pet-portrait" viewBox="0 0 100 84" aria-hidden="true" focusable="false">
@@ -14,6 +14,9 @@ const petPortrait = definition => {
     <circle cx="50" cy="32" r="21" fill="${definition.color}"/>
     ${longEars ? `<path d="M36 18 32 1q15 7 13 23M64 18 68 1Q53 8 55 24" fill="${definition.accent}"/>` : `<path d="m34 20-12-10 2 20m42-10 12-10-2 20" fill="${definition.accent}"/>`}
     ${armored ? `<path d="M31 31q19-24 38 0v7H31Z" fill="${definition.accent}"/><path d="M43 30h14v5H43z" fill="#263a3b"/>` : ''}
+    ${definition.kind === 'unicorn' ? `<path d="m50 14 7-18 5 22" fill="${definition.accent}"/>` : ''}
+    ${definition.kind === 'phoenix' ? `<path d="m32 19 18-18 18 18-18-7Z" fill="${definition.accent}"/>` : ''}
+    ${definition.kind === 'basilisk' ? `<path d="m29 20 9-15 7 14L52 3l8 16 10-13 2 20" fill="${definition.accent}"/>` : ''}
     <circle cx="42" cy="32" r="3.4" fill="#182b2d"/><circle cx="58" cy="32" r="3.4" fill="#182b2d"/>
     <path d="m46 42 4 3 4-3" fill="none" stroke="#182b2d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`;

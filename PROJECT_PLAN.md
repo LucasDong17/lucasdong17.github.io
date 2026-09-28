@@ -137,6 +137,15 @@ The Sunspire Egg costs 4,000 coins and adds four jungle companions across the ex
 
 Sunspire combat numbers and the 4,000-coin egg price are an initial progression pass. A full waves 1–50 manual balance run is still needed, especially against late ranged formations and the Hydra.
 
+## Mythical Egg Animals — 2026-09-28
+
+All three eggs now include one biome-exclusive Mythical animal at a displayed 1% hatch chance: Moonhorn Unicorn in Mossvale, Frost Phoenix in Frostfang, and Verdant Basilisk in Sunspire. Each has a distinct procedural portrait and world model, exceeds its egg's Legendary companion damage, and uses a new Mythical rarity color and sell-value tier. Each egg's odds still total exactly 100%.
+
+### Recorded checks
+
+- **Logic: 18/18 passing.** Mythical coverage checks all three eggs, exact 100% probability totals, the 1% result, damage ordering, and sell-value ordering alongside the existing campaign tests.
+- **Browser: 14/14 passing.** The live WebGL fixture confirmed all three hatchery cards display Mythical 1%, pet artwork still renders, and every existing browser integration check remains green with no console errors.
+
 ## Enemy Readability and Haven Market Expansion — 2026-09-26
 
 Multi-enemy waves now show a compact health roster with one bar and exact health count per living enemy. The roster remains bounded to a small corner panel and supports the existing eight-enemy maximum. Every creature family and both bosses now use a species-specific procedural low-poly silhouette instead of the former shared rig.

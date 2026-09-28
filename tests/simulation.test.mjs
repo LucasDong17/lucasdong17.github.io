@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BALANCE as B, coinRewardForWave, enemyCountForWave, itemDefinition, petDefinition } from '../src/data/balance.js';
+import { BALANCE as B, EGGS, coinRewardForWave, enemyCountForWave, itemDefinition, petDefinition, petSellValue } from '../src/data/balance.js';
 import { EventBus } from '../src/core/event-bus.js';
 import { SAVE_KEY, combineItems, createRun, defaultProgress, enterHub, equipBestItems, equipItem, hatchEgg, loadProgress, saveProgress, sellItem, sellPet, startLevel, togglePet } from '../src/state/run.js';
 import { World } from '../src/world/world.js';
@@ -106,8 +106,23 @@ test('eggs enforce price and biome locks while rarity rolls determine damage', (
   const run = createRun(); run.coins = 3000;
   const common = hatchEgg(run, 'meadow', () => 0); assert.equal(petDefinition(common.key).rarity, 'common'); assert.equal(run.coins, 2500);
   assert.equal(hatchEgg(run, 'frost', () => 0), null); run.progress.unlocked.frost = 1;
-  const legendary = hatchEgg(run, 'frost', () => 0.999); assert.equal(petDefinition(legendary.key).rarity, 'legendary'); assert.ok(petDefinition(legendary.key).damage > petDefinition(common.key).damage); assert.equal(run.coins, 1000);
+  const legendary = hatchEgg(run, 'frost', () => 0.985); assert.equal(petDefinition(legendary.key).rarity, 'legendary'); assert.ok(petDefinition(legendary.key).damage > petDefinition(common.key).damage); assert.equal(run.coins, 1000);
   run.coins = 5000; assert.equal(hatchEgg(run, 'jungle', () => 0), null); run.progress.unlocked.jungle = 1; assert.ok(hatchEgg(run, 'jungle', () => 0));
+});
+
+test('every egg has a one-percent Mythical animal with top-tier power and value', () => {
+  const run = createRun(); run.progress.unlocked = { meadow: 1, frost: 1, jungle: 1 }; run.coins = 10000;
+  const mythicalPets = EGGS.map(egg => {
+    assert.equal(Object.values(egg.odds).reduce((sum, chance) => sum + chance, 0), 100);
+    assert.equal(egg.odds.mythical, 1);
+    const pet = hatchEgg(run, egg.key, () => 0.999999); const definition = petDefinition(pet.key);
+    assert.equal(definition.rarity, 'mythical');
+    const legendary = petDefinition({ meadow: 'crown-griffin', frost: 'starfall-drake', jungle: 'temple-hydra' }[egg.key]);
+    assert.ok(definition.damage > legendary.damage);
+    return pet;
+  });
+  assert.deepEqual(mythicalPets.map(pet => petDefinition(pet.key).name), ['Moonhorn Unicorn', 'Frost Phoenix', 'Verdant Basilisk']);
+  assert.ok(petSellValue(mythicalPets[0]) > petSellValue({ key: 'crown-griffin' }));
 });
 
 test('only three pets equip and equipped pets attack once per second', () => {

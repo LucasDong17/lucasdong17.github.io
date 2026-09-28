@@ -337,7 +337,19 @@ export class SceneView {
   buildPet(definition) {
     const root = new THREE.Group(); const body = new THREE.Group(); root.add(body);
     const primary = material(definition.color); const accent = material(definition.accent); const dark = material('#283c3d');
-    if (definition.kind === 'knight') {
+    if (definition.kind === 'phoenix') {
+      this.mesh(body, new THREE.IcosahedronGeometry(0.42, 0), primary, 0, 0.8, 0);
+      this.mesh(body, new THREE.SphereGeometry(0.28, 7, 5), primary, 0, 1.25, 0.2);
+      for (const x of [-0.6, 0.6]) { const wing = this.mesh(body, new THREE.ConeGeometry(0.34, 1.25, 5), accent, x, 0.88, -0.05); wing.rotation.z = x > 0 ? -1.05 : 1.05; }
+      for (const x of [-0.24, 0, 0.24]) { const plume = this.mesh(body, new THREE.ConeGeometry(0.11, 0.7, 5), accent, x, 0.48, -0.48); plume.rotation.x = -0.75; }
+      this.mesh(body, new THREE.ConeGeometry(0.1, 0.28, 4), accent, 0, 1.18, 0.5).rotation.x = Math.PI / 2;
+    } else if (definition.kind === 'basilisk') {
+      const coil = this.mesh(body, new THREE.TorusGeometry(0.48, 0.16, 6, 12), primary, 0, 0.36, 0); coil.rotation.x = Math.PI / 2;
+      this.mesh(body, new THREE.CylinderGeometry(0.13, 0.2, 0.85, 7), primary, 0, 0.92, 0);
+      this.mesh(body, new THREE.DodecahedronGeometry(0.3), primary, 0, 1.4, 0.2);
+      for (const x of [-0.22, 0, 0.22]) this.mesh(body, new THREE.ConeGeometry(0.09, 0.38, 5), accent, x, 1.78 - Math.abs(x), 0.1);
+      for (const x of [-0.11, 0.11]) this.mesh(body, new THREE.SphereGeometry(0.045, 5, 4), dark, x, 1.46, 0.45);
+    } else if (definition.kind === 'knight') {
       this.mesh(body, new THREE.BoxGeometry(0.58, 0.72, 0.4), primary, 0, 0.67, 0);
       this.mesh(body, new THREE.BoxGeometry(0.5, 0.46, 0.46), accent, 0, 1.2, 0.02);
       this.mesh(body, new THREE.BoxGeometry(0.3, 0.08, 0.12), dark, 0, 1.2, 0.25);
@@ -354,6 +366,7 @@ export class SceneView {
       if (definition.kind === 'golem') for (const x of [-0.43, 0.43]) this.mesh(body, new THREE.BoxGeometry(0.28, 0.48, 0.28), accent, x, 0.55, 0);
       if (definition.kind === 'griffin') this.mesh(body, new THREE.ConeGeometry(0.28, 0.28, 5), accent, 0, 1.25, 0.5);
       if (definition.kind === 'drake') { const tail = this.mesh(body, new THREE.ConeGeometry(0.16, 0.75, 5), accent, 0, 0.56, -0.72); tail.rotation.x = Math.PI / 2; }
+      if (definition.kind === 'unicorn') { const horn = this.mesh(body, new THREE.ConeGeometry(0.09, 0.6, 6), accent, 0, 1.45, 0.58); horn.rotation.x = Math.PI / 2; const mane = this.mesh(body, new THREE.BoxGeometry(0.16, 0.58, 0.18), accent, 0, 1.13, 0.12); mane.rotation.x = -0.3; }
     }
     root.scale.setScalar(0.72);
     return { root, body, primary, accent, flashMaterials: [primary, accent] };
