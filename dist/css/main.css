@@ -11,7 +11,8 @@ canvas { display: block; width: 100vw; height: 100vh; width: 100dvw; height: 100
 .brand strong { font-size: .65rem; letter-spacing: .28em; margin-top: 2px; }
 .vital-card, .wave-card, .attack-card, .pickup-prompt, .countdown { position: fixed; background: linear-gradient(145deg, #1c3b37f2, #112825f2); border: 2px solid var(--line); box-shadow: 0 10px 30px #071f1a44, inset 0 1px #ffffff22; }
 .vital-card { top: 78px; display: flex; align-items: center; gap: 12px; width: 300px; padding: 10px 12px; border-radius: 18px; }
-.player-card { left: 28px; }.enemy-card { right: 28px; justify-content: flex-end; }.enemy-copy,.vital-copy { flex: 1; min-width: 0; }
+.player-card { left: 28px; }.enemy-copy,.vital-copy { flex: 1; min-width: 0; }
+.enemy-card{position:fixed;top:78px;right:28px;width:min(285px,calc(100vw - 28px));max-height:min(292px,46vh);padding:9px;border:2px solid var(--line);border-radius:16px;background:linear-gradient(145deg,#1c3b37f2,#112825f2);box-shadow:0 10px 30px #071f1a55;overflow:hidden}.enemy-panel-title{display:flex;justify-content:space-between;padding:0 3px 6px;color:#bcd0c5;font-size:.58rem;letter-spacing:.12em}.enemy-panel-title b{color:#ffd08b}.enemy-list{display:grid;gap:3px;max-height:245px;overflow:auto;scrollbar-width:thin}.enemy-row{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:6px;padding:3px 6px;border-radius:8px;background:#091e1ccc}.enemy-row>span{font-size:1rem}.enemy-row b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.58rem}.enemy-row small{font-size:.52rem;color:#d8e6dd;font-variant-numeric:tabular-nums}.enemy-row-meter{height:4px;margin-top:2px;border-radius:6px;background:#061513;overflow:hidden}.enemy-row-meter i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#ff625d,#ffb35e);transition:width .15s}.enemy-row.warning{outline:2px solid #ff9b6a;animation:enemy-warning .35s alternate infinite}@keyframes enemy-warning{to{background:#6b2927dd}}
 .portrait { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 14px; background: #294e43; border: 2px solid #dfffa957; font-size: 1.8rem; }
 .vital-copy > div:first-child,.enemy-copy > div:first-child { display: flex; justify-content: space-between; gap: 8px; align-items: center; font-size: .72rem; }.vital-copy span,.enemy-copy span { font-weight: 900; white-space: nowrap; }
 .vital-card small { color: #c7dacd; font-size: .67rem; }
@@ -59,6 +60,11 @@ kbd { display: inline-grid; place-items: center; min-width: 36px; padding: 7px; 
 .egg-art.frost:after{transform:rotate(-45deg)}
 .egg-art.frost span{left:40px;top:20px;width:4px;height:58px;border-radius:4px;background:#f1ffffcc;box-shadow:none}
 .egg-art.frost i{display:none}
+.egg-art.jungle{border-color:#f5e58a;background:linear-gradient(145deg,#8fcf62,#2f7951);box-shadow:0 8px 0 #081e1b,inset -10px -12px #174c3655}
+.egg-art.jungle:before,.egg-art.jungle:after{content:'';position:absolute;width:14px;height:62px;border:5px solid #c7df62;border-top:0;border-bottom:0;border-radius:50%;transform:rotate(38deg);left:34px;top:13px}
+.egg-art.jungle:after{transform:rotate(-38deg)}
+.egg-art.jungle span{width:9px;height:9px;left:19px;top:28px;background:#f3ce55;box-shadow:38px 8px #f3ce55,13px 39px #f3ce55}
+.egg-art.jungle i{display:none}
 .pet-portrait{display:block;width:78px;height:66px;margin:0 auto 7px;overflow:visible;filter:drop-shadow(0 5px 0 #071d1a66)}
 .pet-detail>.pet-portrait{width:116px;height:98px;margin:0 auto 8px}
 .empty-state>.egg-art{transform:scale(.72);margin-bottom:-4px}
@@ -98,4 +104,7 @@ kbd { display: inline-grid; place-items: center; min-width: 36px; padding: 7px; 
   .hatch-result{top:50%;padding:14px}
 }
 @media(max-width:420px) and (max-height:560px){.egg-grid{grid-template-columns:1fr}.egg-card p{display:block}}
-@media(prefers-reduced-motion:reduce){.hatch-result{animation:none}.side-button{transition:none}}
+.sell-grid{height:calc(100% - 145px);grid-template-columns:repeat(4,minmax(0,1fr))}.sell-card{min-height:170px}.sell-card .pet-portrait{width:88px;height:74px}.sell-price{display:block;margin-top:10px;padding:7px;border-radius:8px;background:#f0c65a;color:#332817;font:900 .72rem 'Baloo 2'}
+@media(max-width:850px){.sell-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:620px){.enemy-card{top:132px;width:190px;max-height:255px;padding:7px}.enemy-list{max-height:218px}.enemy-row{grid-template-columns:21px minmax(0,1fr);gap:4px}.enemy-row small{display:none}.sell-grid{grid-template-columns:repeat(2,minmax(0,1fr));padding:16px}}
+@media(prefers-reduced-motion:reduce){.hatch-result{animation:none}.side-button{transition:none}.enemy-row.warning{animation:none}}

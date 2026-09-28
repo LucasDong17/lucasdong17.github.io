@@ -120,7 +120,22 @@ This remains intentionally narrower than the former Phase 2/3 roadmap: there are
 
 ## Immediate Next Step
 
-Long-form play-balance both 50-wave campaigns, especially multi-enemy pressure, pet-assisted damage, egg affordability, final-boss survivability, upgrade pacing, and checkpoint recovery.
+Long-form play-balance all three 50-wave campaigns, especially multi-enemy pressure, pet-assisted damage, egg affordability, final-boss survivability, upgrade pacing, and checkpoint recovery.
+
+## Sunspire Jungle Expansion — 2026-09-28
+
+A third 50-wave biome, Sunspire Jungle, now unlocks after defeating the Frostfang wave-50 Aurora Wyrm. It has a separate overgrown temple collision map and procedural environment, eight jungle enemy families with melee and ranged behaviors, and the Sunken Temple Hydra final boss. Jungle victories award a new higher coin tier.
+
+The Sunspire Egg costs 4,000 coins and adds four jungle companions across the existing Common, Rare, Epic, and Legendary rarities. Six new equipment families—Vineguard, Sunstone, Venom, Relic, Temple, and Sunspire—extend the existing weapon and four-slot armor drop system. The play menu, hatchery, creature index, equipment index, saved progression, and old-save defaults all include the new biome without changing the save schema.
+
+### Recorded checks
+
+- **Logic: 17/17 passing.** Added coverage for the Frostfang-to-Sunspire unlock, jungle map entry, stronger coin rewards and gear, egg gating/cost, pet rarity, and prior save/combat behavior.
+- **Syntax:** All changed JavaScript modules pass Node syntax checks.
+
+### Known limitations
+
+Sunspire combat numbers and the 4,000-coin egg price are an initial progression pass. A full waves 1–50 manual balance run is still needed, especially against late ranged formations and the Hydra.
 
 ## Enemy Readability and Haven Market Expansion — 2026-09-26
 

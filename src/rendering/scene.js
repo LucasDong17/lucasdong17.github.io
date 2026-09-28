@@ -160,6 +160,35 @@ export class SceneView {
     frozenWater.rotation.z = -0.08;
     this.frostDecor.visible = false;
     this.scene.add(this.frostDecor);
+    this.jungleDecor = new THREE.Group();
+    const jungleStone = material('#798565');
+    const jungleDark = material('#4a6646');
+    const jungleLeaf = [material('#2f7a47'), material('#4c9850'), material('#78b957')];
+    for (const [index, o] of MAPS.jungle.obstacles.entries()) {
+      if (o.kind === 'jungle-tree') {
+        this.mesh(this.jungleDecor, new THREE.CylinderGeometry(0.34, 0.52, 3.2, 7), material('#715339'), o.x, 1.55, o.z);
+        for (let layer = 0; layer < 3; layer++) this.mesh(this.jungleDecor, new THREE.IcosahedronGeometry(1.15 - layer * 0.12, 0), jungleLeaf[(index + layer) % jungleLeaf.length], o.x + (layer - 1) * 0.32, 2.7 + layer * 0.35, o.z);
+      } else if (o.kind === 'idol') {
+        this.mesh(this.jungleDecor, new THREE.BoxGeometry(1.25, 1.8, 1), jungleStone, o.x, 0.9, o.z);
+        this.mesh(this.jungleDecor, new THREE.BoxGeometry(0.65, 0.18, 0.12), jungleDark, o.x, 1.12, o.z + 0.52);
+        for (const x of [-0.3, 0.3]) this.mesh(this.jungleDecor, new THREE.OctahedronGeometry(0.12, 0), material('#ffd85e'), o.x + x, 1.48, o.z + 0.56);
+      } else {
+        this.mesh(this.jungleDecor, new THREE.BoxGeometry(o.radius * 1.6, 1.5, o.radius * 1.35), jungleStone, o.x, 0.72, o.z).rotation.y = index * 0.45;
+        const vine = this.mesh(this.jungleDecor, new THREE.TorusGeometry(o.radius * 0.48, 0.08, 5, 12), jungleLeaf[1], o.x, 1.05, o.z + o.radius * 0.7);
+        vine.rotation.x = Math.PI / 2;
+      }
+    }
+    for (const [index, point] of [[-10,-9],[-10,5],[-8,10],[-2,10],[5,10],[10,6],[10,-3],[7,-10]].entries()) {
+      const [x, z] = point;
+      this.mesh(this.jungleDecor, new THREE.CylinderGeometry(0.18, 0.3, 2.1, 6), material('#684d35'), x, 1.02, z);
+      for (let leafIndex = 0; leafIndex < 4; leafIndex++) {
+        const leafMesh = this.mesh(this.jungleDecor, new THREE.ConeGeometry(0.42, 1.7, 5), jungleLeaf[(index + leafIndex) % jungleLeaf.length], x, 2.25, z);
+        leafMesh.rotation.z = leafIndex * Math.PI / 2;
+        leafMesh.rotation.y = leafIndex * Math.PI / 2;
+      }
+    }
+    this.jungleDecor.visible = false;
+    this.scene.add(this.jungleDecor);
     // Deterministic scenery uses no gameplay randomness or external textures.
     let seed = 24;
     const random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
@@ -242,7 +271,30 @@ export class SceneView {
     const eye = x => this.mesh(body, new THREE.SphereGeometry(0.065, 6, 4), dark, x, 0.91, 0.61);
     const legs = (wide = 0.3, long = 0.34) => { for (const x of [-wide, wide]) for (const z of [-0.34, 0.34]) this.mesh(body, new THREE.BoxGeometry(0.17, long, 0.18), accent, x, long / 2, z); };
     const horn = (x, y, z, flip = 1) => { const part = this.mesh(body, new THREE.ConeGeometry(0.1, 0.48, 5), accent, x, y, z); part.rotation.z = flip * 0.75; return part; };
-    if (type === 'golem') {
+    if (type === 'beetle' || type === 'scarab') {
+      const shell = this.mesh(body, new THREE.SphereGeometry(type === 'scarab' ? 0.72 : 0.62, 7, 5), primary, 0, 0.58, 0); shell.scale.set(1, 0.58, 1.28);
+      this.mesh(body, new THREE.SphereGeometry(0.34, 7, 5), accent, 0, 0.5, 0.66); eye(-0.13); eye(0.13);
+      for (const side of [-1, 1]) for (let leg = -1; leg <= 1; leg++) { const limb = this.mesh(body, new THREE.BoxGeometry(0.48, 0.1, 0.12), accent, side * 0.55, 0.33, leg * 0.34); limb.rotation.y = side * (0.25 + leg * 0.12); }
+      if (type === 'scarab') this.mesh(body, new THREE.BoxGeometry(0.08, 0.5, 1.35), accent, 0, 0.82, -0.03).rotation.x = Math.PI / 2;
+    } else if (type === 'serpent' || type === 'cobra' || type === 'hydra') {
+      const heads = type === 'hydra' ? [-0.46, 0, 0.46] : [0];
+      for (const [index, x] of heads.entries()) {
+        const neck = this.mesh(body, new THREE.CylinderGeometry(0.14, 0.23, type === 'hydra' ? 1.15 : 0.95, 7), primary, x, 0.95, index === 1 ? 0.18 : 0); neck.rotation.z = x * -0.35;
+        this.mesh(body, new THREE.DodecahedronGeometry(type === 'hydra' ? 0.3 : 0.36), primary, x * 1.15, type === 'hydra' ? 1.62 : 1.45, 0.25);
+      }
+      const coil = this.mesh(body, new THREE.TorusGeometry(type === 'hydra' ? 0.72 : 0.58, 0.2, 6, 12), primary, 0, 0.3, 0); coil.rotation.x = Math.PI / 2;
+      if (type === 'cobra' || type === 'hydra') for (const x of [-0.38, 0.38]) this.mesh(body, new THREE.ConeGeometry(0.32, 0.75, 5), accent, x, 1.25, -0.05).rotation.z = x > 0 ? -0.65 : 0.65;
+    } else if (type === 'monkey') {
+      this.mesh(body, new THREE.SphereGeometry(0.55, 7, 5), primary, 0, 0.73, 0); this.mesh(body, new THREE.SphereGeometry(0.38, 7, 5), primary, 0, 1.28, 0.18); eye(-0.14); eye(0.14);
+      for (const x of [-0.58, 0.58]) this.mesh(body, new THREE.CylinderGeometry(0.1, 0.13, 0.82, 6), accent, x, 0.62, 0).rotation.z = x > 0 ? -0.42 : 0.42;
+      const tail = this.mesh(body, new THREE.TorusGeometry(0.52, 0.09, 6, 14, Math.PI * 1.55), primary, 0, 0.75, -0.52); tail.rotation.y = Math.PI / 2;
+    } else if (type === 'shaman') {
+      const robe = this.mesh(body, new THREE.ConeGeometry(0.58, 1.15, 7), primary, 0, 0.58, 0); robe.rotation.x = Math.PI; this.mesh(body, new THREE.DodecahedronGeometry(0.34), accent, 0, 1.35, 0); eye(-0.13); eye(0.13);
+      const staff = this.mesh(body, new THREE.CylinderGeometry(0.045, 0.06, 1.75, 6), dark, 0.62, 0.85, 0); staff.rotation.z = -0.08; this.mesh(body, new THREE.OctahedronGeometry(0.2, 0), accent, 0.7, 1.7, 0);
+    } else if (type === 'treant') {
+      this.mesh(body, new THREE.CylinderGeometry(0.42, 0.62, 1.55, 7), primary, 0, 0.85, 0); this.mesh(body, new THREE.DodecahedronGeometry(0.48), primary, 0, 1.62, 0.06); eye(-0.16); eye(0.16);
+      for (const x of [-0.65, 0.65]) { const branch = this.mesh(body, new THREE.CylinderGeometry(0.1, 0.18, 1.25, 6), primary, x, 1.05, 0); branch.rotation.z = x > 0 ? -0.62 : 0.62; this.mesh(body, new THREE.IcosahedronGeometry(0.36, 0), accent, x * 1.35, 1.48, 0); }
+    } else if (type === 'golem') {
       this.mesh(body, new THREE.BoxGeometry(0.9, 0.82, 0.58), primary, 0, 0.82, 0); this.mesh(body, new THREE.DodecahedronGeometry(0.35), accent, 0, 1.47, 0.05);
       for (const x of [-0.62, 0.62]) this.mesh(body, new THREE.DodecahedronGeometry(0.34), primary, x, 0.78, 0); for (const x of [-0.27, 0.27]) this.mesh(body, new THREE.BoxGeometry(0.26, 0.5, 0.3), accent, x, 0.25, 0); eye(-0.12); eye(0.12);
     } else if (type === 'guardian' || type === 'drake' || type === 'wyrm') {
@@ -263,17 +315,17 @@ export class SceneView {
       this.mesh(body, new THREE.CylinderGeometry(0.5, 0.72, 1.05, 7), primary, 0, 0.78, 0); this.mesh(body, new THREE.DodecahedronGeometry(0.42), primary, 0, 1.5, 0.08); eye(-0.15); eye(0.15); legs(0.28, 0.42);
       for (let i = 0; i < 5; i++) this.mesh(body, new THREE.ConeGeometry(0.12, 0.42, 4), accent, (i - 2) * 0.18, 2.03 - Math.abs(i - 2) * 0.05, 0); this.mesh(body, new THREE.TorusGeometry(0.42, 0.1, 6, 12), accent, 0, 1.78, 0).rotation.x = Math.PI / 2;
     } else {
-      const low = ['boar', 'hare', 'walrus'].includes(type); const large = ['yak', 'mammoth'].includes(type); const bodyMesh = this.mesh(body, new THREE.IcosahedronGeometry(large ? 0.78 : 0.64, 1), primary, 0, low ? 0.55 : 0.68, 0); bodyMesh.scale.set(large ? 1.2 : 1, low ? 0.62 : 0.78, type === 'walrus' ? 1.4 : 1.2);
+      const low = ['boar', 'hare', 'walrus', 'panther'].includes(type); const large = ['yak', 'mammoth'].includes(type); const bodyMesh = this.mesh(body, new THREE.IcosahedronGeometry(large ? 0.78 : 0.64, 1), primary, 0, low ? 0.55 : 0.68, 0); bodyMesh.scale.set(large ? 1.2 : type === 'panther' ? 1.15 : 1, low ? 0.62 : 0.78, type === 'walrus' ? 1.4 : type === 'panther' ? 1.55 : 1.2);
       this.mesh(body, new THREE.DodecahedronGeometry(type === 'mammoth' ? 0.48 : 0.36), primary, 0, low ? 0.63 : 0.82, 0.62); legs(large ? 0.38 : 0.29, large ? 0.42 : 0.32); eye(-0.14); eye(0.14);
       if (type === 'cow' || type === 'yak') { horn(-0.32, 1.2, 0.55, -1); horn(0.32, 1.2, 0.55, 1); }
       if (type === 'yak') for (const x of [-0.48, 0, 0.48]) this.mesh(body, new THREE.ConeGeometry(0.2, 0.48, 5), accent, x, 0.72, -0.18);
       if (type === 'boar' || type === 'walrus' || type === 'mammoth') for (const x of [-0.22, 0.22]) { const tusk = this.mesh(body, new THREE.ConeGeometry(0.075, type === 'walrus' ? 0.58 : 0.42, 5), accent, x, 0.48, 0.92); tusk.rotation.x = Math.PI; }
       if (type === 'mammoth') { const trunk = this.mesh(body, new THREE.CylinderGeometry(0.1, 0.16, 0.75, 7), primary, 0, 0.45, 0.9); trunk.rotation.x = -0.18; }
       if (type === 'hare') for (const x of [-0.2, 0.2]) this.mesh(body, new THREE.ConeGeometry(0.13, 0.75, 5), accent, x, 1.38, 0.48);
-      if (type === 'wolf' || type === 'lynx') { for (const x of [-0.22, 0.22]) { this.mesh(body, new THREE.ConeGeometry(type === 'lynx' ? 0.12 : 0.17, type === 'lynx' ? 0.52 : 0.4, 4), accent, x, 1.25, 0.48); if (type === 'lynx') this.mesh(body, new THREE.SphereGeometry(0.075, 5, 4), dark, x, 1.52, 0.48); } const tail = this.mesh(body, new THREE.ConeGeometry(0.14, type === 'lynx' ? 0.4 : 0.78, 5), accent, 0, 0.78, type === 'lynx' ? -0.67 : -0.78); tail.rotation.x = -1.05; }
+      if (type === 'wolf' || type === 'lynx' || type === 'panther') { for (const x of [-0.22, 0.22]) { this.mesh(body, new THREE.ConeGeometry(type === 'lynx' ? 0.12 : 0.17, type === 'lynx' ? 0.52 : 0.4, 4), accent, x, 1.25, 0.48); if (type === 'lynx') this.mesh(body, new THREE.SphereGeometry(0.075, 5, 4), dark, x, 1.52, 0.48); } const tail = this.mesh(body, new THREE.ConeGeometry(0.14, type === 'lynx' ? 0.4 : type === 'panther' ? 1.05 : 0.78, 5), accent, 0, 0.78, type === 'lynx' ? -0.67 : -0.78); tail.rotation.x = -1.05; }
       if (type === 'cow') this.mesh(body, new THREE.BoxGeometry(0.36, 0.18, 0.3), accent, 0, 0.36, 0.15);
     }
-    const scale = enemy.boss ? 1.5 : ['golem','mammoth','yak','walrus'].includes(type) ? 1.15 : ['hare','wolf','lynx'].includes(type) ? 0.86 : 1; root.scale.setScalar(scale);
+    const scale = enemy.boss ? 1.5 : ['golem','mammoth','yak','walrus','treant','scarab'].includes(type) ? 1.15 : ['hare','wolf','lynx','panther'].includes(type) ? 0.86 : 1; root.scale.setScalar(scale);
     return { root, body, type, flashMaterials };
   }
 
@@ -381,6 +433,7 @@ export class SceneView {
     this.meadowDecor.visible = run.status === 'playing' && run.biome === 'meadow';
     this.portals.visible = run.status === 'hub';
     this.frostDecor.visible = run.status === 'playing' && run.biome === 'frost';
+    this.jungleDecor.visible = run.status === 'playing' && run.biome === 'jungle';
     for (const portal of [this.playPortal, this.upgradePortal, this.petPortal, this.sellPetPortal, this.sellArmorPortal, this.sellWeaponPortal]) portal.children.slice(0, 3).forEach((child, index) => { if (index < 2) child.rotation.y += dt * (index ? -0.35 : 0.35); });
     const target = new THREE.Vector3(p.x, 0, p.z - 0.8);
     if (snap) this.focus.copy(target);

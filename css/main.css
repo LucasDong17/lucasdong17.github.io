@@ -60,6 +60,11 @@ kbd { display: inline-grid; place-items: center; min-width: 36px; padding: 7px; 
 .egg-art.frost:after{transform:rotate(-45deg)}
 .egg-art.frost span{left:40px;top:20px;width:4px;height:58px;border-radius:4px;background:#f1ffffcc;box-shadow:none}
 .egg-art.frost i{display:none}
+.egg-art.jungle{border-color:#f5e58a;background:linear-gradient(145deg,#8fcf62,#2f7951);box-shadow:0 8px 0 #081e1b,inset -10px -12px #174c3655}
+.egg-art.jungle:before,.egg-art.jungle:after{content:'';position:absolute;width:14px;height:62px;border:5px solid #c7df62;border-top:0;border-bottom:0;border-radius:50%;transform:rotate(38deg);left:34px;top:13px}
+.egg-art.jungle:after{transform:rotate(-38deg)}
+.egg-art.jungle span{width:9px;height:9px;left:19px;top:28px;background:#f3ce55;box-shadow:38px 8px #f3ce55,13px 39px #f3ce55}
+.egg-art.jungle i{display:none}
 .pet-portrait{display:block;width:78px;height:66px;margin:0 auto 7px;overflow:visible;filter:drop-shadow(0 5px 0 #071d1a66)}
 .pet-detail>.pet-portrait{width:116px;height:98px;margin:0 auto 8px}
 .empty-state>.egg-art{transform:scale(.72);margin-bottom:-4px}

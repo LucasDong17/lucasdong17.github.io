@@ -3,14 +3,14 @@ import { BALANCE, PETS, SPAWNS, eggDefinition, enemyCountForWave, enemyForWave, 
 export const SAVE_KEY = 'mossvale-save-v2';
 
 export function defaultProgress() {
-  return { version: 4, inventory: [], equipped: {}, nextItemId: 1, coins: 0, pets: [], equippedPetIds: [], nextPetId: 1, discovered: [], unlocked: { meadow: 1, frost: 0 }, highest: { meadow: 1, frost: 0 }, completed: { meadow: false, frost: false } };
+  return { version: 4, inventory: [], equipped: {}, nextItemId: 1, coins: 0, pets: [], equippedPetIds: [], nextPetId: 1, discovered: [], unlocked: { meadow: 1, frost: 0, jungle: 0 }, highest: { meadow: 1, frost: 0, jungle: 0 }, completed: { meadow: false, frost: false, jungle: false } };
 }
 
 export function loadProgress(storage = globalThis.localStorage) {
   try {
     const data = JSON.parse(storage?.getItem(SAVE_KEY));
     if (![2, 3, 4].includes(data?.version) || !Array.isArray(data.inventory)) return defaultProgress();
-    return { ...defaultProgress(), ...data, version: 4, pets: Array.isArray(data.pets) ? data.pets : [], equippedPetIds: Array.isArray(data.equippedPetIds) ? data.equippedPetIds.slice(0, 3) : [], discovered: Array.isArray(data.discovered) ? data.discovered : [], unlocked: { meadow: 1, frost: 0, ...data.unlocked }, highest: { meadow: 1, frost: 0, ...(data.highest || data.unlocked) }, completed: { meadow: false, frost: false, ...data.completed } };
+    return { ...defaultProgress(), ...data, version: 4, pets: Array.isArray(data.pets) ? data.pets : [], equippedPetIds: Array.isArray(data.equippedPetIds) ? data.equippedPetIds.slice(0, 3) : [], discovered: Array.isArray(data.discovered) ? data.discovered : [], unlocked: { meadow: 1, frost: 0, jungle: 0, ...data.unlocked }, highest: { meadow: 1, frost: 0, jungle: 0, ...(data.highest || data.unlocked) }, completed: { meadow: false, frost: false, jungle: false, ...data.completed } };
   } catch { return defaultProgress(); }
 }
 
@@ -38,7 +38,7 @@ export function createRun(saved = defaultProgress()) {
     status: 'hub', time: 0, spawnIndex: 0, biome: 'meadow', wave: 1, phase: 'hub', intermission: 0, portalLatch: false,
     player: { x: 0, z: 8.5, radius: BALANCE.player.radius, health: BALANCE.player.health, maxHealth: BALANCE.player.health, damage: BALANCE.player.damage, defense: 0, facing: Math.PI, attack: null, flash: 0, moving: false },
     enemies: [], projectiles: [], drops: [], inventory, equipped: { ...saved.equipped }, coins: Math.max(0, saved.coins || 0), pets, equippedPetIds: (saved.equippedPetIds || []).filter(id => pets.some(pet => pet.id === id)).slice(0, 3), nextPetId: saved.nextPetId || 1, discovered: new Set(saved.discovered || []), pickup: { id: null, progress: 0 }, nextItemId: saved.nextItemId || 1, nextProjectileId: 1,
-    progress: { unlocked: { meadow: 1, frost: 0, ...saved.unlocked }, highest: { meadow: 1, frost: 0, ...(saved.highest || saved.unlocked) }, completed: { meadow: false, frost: false, ...saved.completed } },
+    progress: { unlocked: { meadow: 1, frost: 0, jungle: 0, ...saved.unlocked }, highest: { meadow: 1, frost: 0, jungle: 0, ...(saved.highest || saved.unlocked) }, completed: { meadow: false, frost: false, jungle: false, ...saved.completed } },
   };
   recalculateStats(run, false);
   return run;
@@ -46,7 +46,7 @@ export function createRun(saved = defaultProgress()) {
 
 export function hatchEgg(run, eggKey, random = Math.random) {
   const egg = eggDefinition(eggKey);
-  if (!egg || run.coins < egg.cost || (egg.biome === 'frost' && !(run.progress.unlocked.frost > 0))) return null;
+  if (!egg || run.coins < egg.cost || !(run.progress.unlocked[egg.biome] > 0)) return null;
   run.coins -= egg.cost;
   let roll = Math.max(0, Math.min(0.999999, random())) * 100; let rarity = 'common';
   for (const [candidate, chance] of Object.entries(egg.odds)) { if (roll < chance) { rarity = candidate; break; } roll -= chance; }

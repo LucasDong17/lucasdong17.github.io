@@ -83,6 +83,14 @@ test('meadow final boss completion unlocks Frostfang and its own checkpoints', (
   tick(run, {}, Math.ceil(B.intermission / B.step) + 2); assert.equal(run.status, 'hub'); assert.ok(startLevel(run, 'frost', 1, world)); assert.equal(world.map.key, 'frost'); assert.match(run.enemies[0].name, /Frost|Tundra|Ice|Glacier|Aurora|Snow|Rime|Crystal/);
 });
 
+test('Frostfang completion unlocks Sunspire with stronger waves, gear, rewards, and egg', () => {
+  const run = activeRun(50, 'frost'); const boss = run.enemies[0]; Object.assign(boss, { x: 0, z: 4.5, health: 1, mode: 'idle' }); tick(run, { attack: true }, 12);
+  assert.equal(run.progress.completed.frost, true); assert.equal(run.progress.unlocked.jungle, 1); assert.equal(run.drops.length, 4);
+  tick(run, {}, Math.ceil(B.intermission / B.step) + 2); assert.equal(run.status, 'hub'); assert.ok(startLevel(run, 'jungle', 1, world)); assert.equal(world.map.key, 'jungle'); assert.match(run.enemies[0].name, /Beetle|Serpent|Monkey|Panther|Shaman|Scarab|Cobra|Treant/);
+  assert.ok(coinRewardForWave(1, 'jungle') > coinRewardForWave(1, 'frost')); assert.ok(itemDefinition('vineguard:chestplate').health > itemDefinition('starfall:chestplate').health);
+  run.coins = 4000; const pet = hatchEgg(run, 'jungle', () => 0); assert.equal(petDefinition(pet.key).rarity, 'common'); assert.equal(run.coins, 0);
+});
+
 test('corrupt and old saves safely fall back to defaults', () => {
   const broken = { getItem: () => '{oops' }; const old = { getItem: () => JSON.stringify({ version: 1, inventory: [{ id: 1 }] }) };
   assert.deepEqual(loadProgress(broken), defaultProgress()); assert.deepEqual(loadProgress(old), defaultProgress());
@@ -99,6 +107,7 @@ test('eggs enforce price and biome locks while rarity rolls determine damage', (
   const common = hatchEgg(run, 'meadow', () => 0); assert.equal(petDefinition(common.key).rarity, 'common'); assert.equal(run.coins, 2500);
   assert.equal(hatchEgg(run, 'frost', () => 0), null); run.progress.unlocked.frost = 1;
   const legendary = hatchEgg(run, 'frost', () => 0.999); assert.equal(petDefinition(legendary.key).rarity, 'legendary'); assert.ok(petDefinition(legendary.key).damage > petDefinition(common.key).damage); assert.equal(run.coins, 1000);
+  run.coins = 5000; assert.equal(hatchEgg(run, 'jungle', () => 0), null); run.progress.unlocked.jungle = 1; assert.ok(hatchEgg(run, 'jungle', () => 0));
 });
 
 test('only three pets equip and equipped pets attack once per second', () => {

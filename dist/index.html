@@ -19,8 +19,9 @@
     </section>
     <section class="wave-card"><small id="wave-label">SAFE HAVEN</small><strong id="wave-name">Home Camp</strong><span id="wave-mode">Choose your next journey</span></section>
     <section class="coin-card" aria-label="Coins"><span class="coin-icon" aria-hidden="true"></span><strong id="coin-count">0</strong><small>COINS</small></section>
-    <section class="vital-card enemy-card" id="enemy-panel">
-      <div class="enemy-copy"><div><b id="enemy-name">MEADOW COW</b><span id="enemy-health"></span></div><div class="meter enemy-meter"><i id="enemy-fill"></i></div><small id="enemy-state">Waiting in the meadow</small></div><div class="portrait" id="enemy-icon">🐄</div>
+    <section class="enemy-card" id="enemy-panel" aria-label="Enemy health">
+      <div class="enemy-panel-title"><b>ENEMIES</b><span id="enemy-state">0 remaining</span></div>
+      <div id="enemy-list" class="enemy-list"></div>
     </section>
 
     <nav class="side-actions" aria-label="Game menus">
@@ -71,6 +72,12 @@
       <div id="hatch-result" class="hatch-result" hidden aria-live="polite"></div>
     </article>
 
+    <article id="sell-menu" class="game-menu portal-menu" hidden aria-label="Sell collection items">
+      <header><div class="menu-title"><span class="menu-icon">🪙</span><div><small>HAVEN MARKET</small><h2 id="sell-title">Sell Items</h2></div></div><button class="close-menu" aria-label="Close menu">×</button></header>
+      <p id="sell-help" class="upgrade-help">Select something to sell for coins. Equipped items are safely unequipped.</p>
+      <div id="sell-grid" class="item-grid sell-grid"></div>
+    </article>
+
     <article id="pets-menu" class="game-menu pets-menu" hidden aria-label="Pet collection">
       <header><div class="menu-title"><span class="menu-icon">🐾</span><div><small>YOUR COMPANIONS</small><h2>Pets</h2></div></div><button class="close-menu" aria-label="Close menu">×</button></header>
       <div class="pet-summary"><span id="pet-count">0 pets</span><strong id="equipped-pet-count">0 / 3 EQUIPPED</strong></div>
@@ -78,7 +85,7 @@
     </article>
   </section>
 
-  <section id="overlay" class="overlay"><div class="welcome-mark">⚔</div><div class="dialog"><span class="eyebrow" id="overlay-kicker">YOUR GEAR AWAITS</span><h1 id="overlay-title">Welcome to<br><em>Mossvale</em></h1><p id="overlay-copy">Return to the safe haven after defeat, upgrade duplicate gear, and conquer two 50-wave biomes.</p><button id="play" disabled>Loading Mossvale…</button><small>Move with WASD · Attack with Space · Hold E to collect</small></div></section>
+  <section id="overlay" class="overlay"><div class="welcome-mark">⚔</div><div class="dialog"><span class="eyebrow" id="overlay-kicker">YOUR GEAR AWAITS</span><h1 id="overlay-title">Welcome to<br><em>Mossvale</em></h1><p id="overlay-copy">Return to the safe haven after defeat, upgrade duplicate gear, and conquer three 50-wave biomes.</p><button id="play" disabled>Loading Mossvale…</button><small>Move with WASD · Attack with Space · Hold E to collect</small></div></section>
   <p id="error" hidden role="alert"></p>
   <script type="module" src="./src/main.js"></script>
 </body>

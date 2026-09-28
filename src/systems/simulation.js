@@ -5,7 +5,7 @@ export function attackStage(attack) { if (!attack) return 'ready'; if (attack.el
 export const attackDuration = B.player.windup + B.player.active + B.player.recovery;
 export function canHit(player, enemy, facing = player.facing) { if (!enemy || enemy.health <= 0) return false; const dx = enemy.x - player.x; const dz = enemy.z - player.z; const distance = Math.hypot(dx, dz); return distance <= B.player.range && (distance < 1e-8 || (Math.sin(facing) * dx + Math.cos(facing) * dz) / distance >= Math.cos(B.player.arc / 2)); }
 
-function randomFor(wave, salt, biome = 'meadow') { let value = (wave * 2654435761 + salt * 1013904223 + (biome === 'frost' ? 7919 : 0)) >>> 0; value ^= value << 13; value ^= value >>> 17; value ^= value << 5; return (value >>> 0) / 4294967296; }
+function randomFor(wave, salt, biome = 'meadow') { const biomeSalt = biome === 'frost' ? 7919 : biome === 'jungle' ? 15401 : 0; let value = (wave * 2654435761 + salt * 1013904223 + biomeSalt) >>> 0; value ^= value << 13; value ^= value >>> 17; value ^= value << 5; return (value >>> 0) / 4294967296; }
 
 function createDrops(run, enemy) {
   const defeated = run.enemies.filter(entry => entry.health <= 0).length;
@@ -44,7 +44,11 @@ function damageEnemy(run, enemy, amount, bus) {
   const coins = coinRewardForWave(run.wave, run.biome); run.coins += coins; bus.emit('coinsEarned', { amount: coins, total: run.coins, biome: run.biome, wave: run.wave });
   run.phase = 'intermission'; run.intermission = B.intermission;
   if (run.wave < B.maxWave) run.progress.unlocked[run.biome] = Math.max(run.progress.unlocked[run.biome] || 1, run.wave + 1);
-  else { run.progress.completed[run.biome] = true; if (run.biome === 'meadow') run.progress.unlocked.frost = Math.max(1, run.progress.unlocked.frost || 0); }
+  else {
+    run.progress.completed[run.biome] = true;
+    const nextBiome = { meadow: 'frost', frost: 'jungle' }[run.biome];
+    if (nextBiome) run.progress.unlocked[nextBiome] = Math.max(1, run.progress.unlocked[nextBiome] || 0);
+  }
   bus.emit('waveCleared', { biome: run.biome, wave: run.wave });
 }
 
