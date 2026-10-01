@@ -1,4 +1,4 @@
-import { BALANCE as B, ITEM_TYPES, SETS, coinRewardForWave, isBossWave, maxWaveForBiome, petDefinition } from '../data/balance.js';
+import { BALANCE as B, ITEM_TYPES, SETS, coinRewardForWave, isBossWave, maxWaveForBiome, petDefinition, towerLootBand } from '../data/balance.js';
 import { createWaveEnemies, enterHub } from '../state/run.js';
 
 export function attackStage(attack) { if (!attack) return 'ready'; if (attack.elapsed < B.player.windup) return 'windup'; if (attack.elapsed < B.player.windup + B.player.active) return 'active'; return 'recovery'; }
@@ -11,16 +11,19 @@ function createDrops(run, enemy) {
   const defeated = run.enemies.filter(entry => entry.health <= 0).length;
   const chance = Math.min(0.98, 0.78 + run.wave * 0.004);
   const count = enemy.boss ? 4 : (randomFor(run.wave, defeated * 13, run.biome) < chance ? 1 : 0);
-  const available = run.biome === 'tower'
-    ? SETS.filter(set => set.biome !== 'tower' || set.unlock <= run.wave)
-    : SETS.filter(set => set.biome === run.biome && set.unlock <= run.wave);
+  const towerBand = run.biome === 'tower' ? towerLootBand(run.wave) : null;
+  const available = towerBand ? towerBand.sets : SETS.filter(set => set.biome === run.biome && set.unlock <= run.wave);
   for (let index = 0; index < count; index++) {
-    const duplicate = run.inventory.length && randomFor(run.wave, defeated * 31 + index + 2, run.biome) < 0.45;
+    const duplicatePool = towerBand ? run.inventory.filter(item => {
+      const [setKey, typeKey] = item.key.split(':'); const set = available.find(entry => entry.key === setKey); const type = ITEM_TYPES.find(entry => entry.key === typeKey);
+      return set && type && (set.biome !== 'tower' || type.category === 'armor');
+    }) : run.inventory;
+    const duplicate = duplicatePool.length && randomFor(run.wave, defeated * 31 + index + 2, run.biome) < 0.45;
     let key;
-    if (duplicate) key = run.inventory[Math.floor(randomFor(run.wave, defeated * 41 + index, run.biome) * run.inventory.length)].key;
+    if (duplicate) key = duplicatePool[Math.floor(randomFor(run.wave, defeated * 41 + index, run.biome) * duplicatePool.length)].key;
     else {
       const roll = randomFor(run.wave, defeated * 47 + index + 4, run.biome);
-      const weighted = run.biome === 'tower' ? Math.pow(roll, 1.8 - Math.min(1, run.wave / 100) * 1.25) : Math.pow(roll, 0.62);
+      const weighted = run.biome === 'tower' ? roll : Math.pow(roll, 0.62);
       const set = available[Math.min(available.length - 1, Math.floor(weighted * available.length))];
       const itemPool = run.biome === 'tower' && set.biome === 'tower' ? ITEM_TYPES.filter(type => type.category === 'armor') : ITEM_TYPES;
       const type = itemPool[Math.floor(randomFor(run.wave, defeated * 59 + index + 20, run.biome) * itemPool.length)];

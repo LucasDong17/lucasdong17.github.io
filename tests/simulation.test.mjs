@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BALANCE as B, EGGS, SETS, TOWER_BOSSES, coinRewardForWave, enemyCountForWave, enemyForWave, itemDefinition, petDefinition, petSellValue } from '../src/data/balance.js';
+import { BALANCE as B, EGGS, TOWER_BOSSES, coinRewardForWave, enemyCountForWave, enemyForWave, itemDefinition, petDefinition, petSellValue, towerLootBand } from '../src/data/balance.js';
 import { EventBus } from '../src/core/event-bus.js';
 import { SAVE_KEY, combineItems, createRun, defaultProgress, enterHub, equipBestItems, equipItem, hatchEgg, loadProgress, saveProgress, sellItem, sellPet, startLevel, togglePet } from '../src/state/run.js';
 import { World } from '../src/world/world.js';
@@ -34,10 +34,16 @@ test('wave population scales to eight and wave 50 is a single final boss', () =>
 
 test('endless tower saves 100 waves, milestone bosses, cross-biome loot, and rare armor', () => {
   assert.equal(enemyCountForWave(25, 'tower'), 1); assert.equal(enemyForWave(25, 'tower').key, TOWER_BOSSES[25].key); assert.equal(enemyForWave(100, 'tower').key, TOWER_BOSSES[100].key);
+  const bands = [1, 25, 50, 75, 100].map(towerLootBand); for (let index = 1; index < bands.length; index++) assert.ok(bands[index].minimumPower > bands[index - 1].minimumPower, 'tower loot floor did not improve');
+  assert.ok(bands[0].sets.some(set => set.biome !== 'meadow' && set.biome !== 'tower'), 'locked-biome loot missing');
+  for (const [index, key] of ['runebound', 'voidglass', 'celestial', 'eternity'].entries()) assert.ok(bands[index + 1].sets.some(set => set.key === key), `${key} armor missing from its tier`);
+  for (const [wave, key] of [[20, 'runebound'], [45, 'voidglass'], [70, 'celestial'], [90, 'eternity']]) assert.ok(towerLootBand(wave).sets.some(set => set.key === key), `${key} armor missing at unlock`);
+  for (const band of bands) assert.ok(band.sets.every(set => set.power >= band.minimumPower - 1e-6 && set.power <= band.maximumPower + 1e-6), 'set escaped its wave power band');
   const progress = defaultProgress(); progress.unlocked.tower = 100; progress.highest.tower = 100; const run = activeRun(100, 'tower', progress);
   assert.equal(world.map.key, 'tower'); assert.equal(run.enemies.length, 1); assert.equal(run.enemies[0].boss, true);
+  run.inventory.push({ id: 999, key: 'stone:sword', level: 1 });
   Object.assign(run.player, { damage: run.enemies[0].maxHealth + 1, x: 0, z: 6, facing: Math.PI }); Object.assign(run.enemies[0], { x: 0, z: 4.5, health: 1, mode: 'idle' }); tick(run, { attack: true }, 12);
-  assert.equal(run.phase, 'intermission'); assert.equal(run.drops.length, 4); assert.ok(run.drops.every(drop => SETS.some(set => drop.key.startsWith(`${set.key}:`))));
+  assert.equal(run.phase, 'intermission'); assert.equal(run.drops.length, 4); assert.ok(run.drops.every(drop => drop.key.startsWith('eternity:') && itemDefinition(drop.key).category === 'armor'));
   tick(run, {}, Math.ceil(B.intermission / B.step) + 2); assert.equal(run.status, 'hub'); assert.equal(run.progress.completed.tower, true);
 });
 

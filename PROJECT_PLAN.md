@@ -128,7 +128,7 @@ A seventh labeled hub circle and a tall twin-spire tower entrance now sit behind
 
 The tower uses a separate arcane arena collision map and procedural rune-pillar scenery. Its eight custom enemy families and four milestone bosses use new low-poly construct, mimic, void-beast, floating-eye, armored-knight, sphinx, and time-dragon silhouettes. Waves scale to eight simultaneous enemies and stop after the wave-100 Dragon of Eternity.
 
-Tower enemies can drop equipment sets from any regular biome regardless of campaign unlocks. Drop weighting shifts toward stronger sets on later floors. Four tower-exclusive armor families—Runebound, Voidglass, Celestial, and Eternity—enter the pool at waves 20, 45, 70, and 90, and their tower drops are armor-only. Tower waves also grant the highest coin rewards currently in the game.
+Tower enemies can drop equipment sets from any regular biome regardless of campaign unlocks. A rising power band now increases the guaranteed minimum set quality every floor and removes weak early sets from later-wave pools; randomness only chooses among sets appropriate for the current band. Four tower-exclusive armor families—Runebound, Voidglass, Celestial, and Eternity—enter the pool at waves 20, 45, 70, and 90, and their tower drops are armor-only. Tower waves also grant the highest coin rewards currently in the game.
 
 ### Recorded checks
 

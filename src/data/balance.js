@@ -180,8 +180,21 @@ export const SETS = Object.freeze([
   { key: 'frostbite', name: 'Frostbite', color: '#8ee8ff', biome: 'frost', unlock: 1, power: 3.4 }, { key: 'glacier', name: 'Glacier', color: '#66a9e8', biome: 'frost', unlock: 10, power: 3.9 }, { key: 'aurora', name: 'Aurora', color: '#b686f4', biome: 'frost', unlock: 20, power: 4.5 }, { key: 'mammoth', name: 'Mammoth', color: '#d9c7aa', biome: 'frost', unlock: 30, power: 5.2 }, { key: 'rime', name: 'Rimeforged', color: '#79f1df', biome: 'frost', unlock: 40, power: 6 }, { key: 'starfall', name: 'Starfall', color: '#f1b2ff', biome: 'frost', unlock: 48, power: 7 },
   { key: 'vineguard', name: 'Vineguard', color: '#6fbd58', biome: 'jungle', unlock: 1, power: 7.6 }, { key: 'sunstone', name: 'Sunstone', color: '#e6b84d', biome: 'jungle', unlock: 10, power: 8.4 }, { key: 'venom', name: 'Venom', color: '#42d987', biome: 'jungle', unlock: 20, power: 9.3 }, { key: 'relic', name: 'Relic', color: '#59b3a7', biome: 'jungle', unlock: 30, power: 10.3 }, { key: 'temple', name: 'Temple', color: '#d88e45', biome: 'jungle', unlock: 40, power: 11.5 }, { key: 'sunspire', name: 'Sunspire', color: '#ffe16b', biome: 'jungle', unlock: 48, power: 13 },
   { key: 'cinder', name: 'Cinder', color: '#d76745', biome: 'ember', unlock: 1, power: 14.2 }, { key: 'basalt', name: 'Basalt', color: '#665f68', biome: 'ember', unlock: 10, power: 15.7 }, { key: 'magma', name: 'Magma', color: '#ff7040', biome: 'ember', unlock: 20, power: 17.4 }, { key: 'inferno', name: 'Inferno', color: '#f13f36', biome: 'ember', unlock: 30, power: 19.3 }, { key: 'obsidian', name: 'Obsidian', color: '#514767', biome: 'ember', unlock: 40, power: 21.5 }, { key: 'caldera', name: 'Caldera', color: '#ffc04f', biome: 'ember', unlock: 48, power: 24 },
-  { key: 'runebound', name: 'Runebound', color: '#64f2dc', biome: 'tower', unlock: 20, power: 26 }, { key: 'voidglass', name: 'Voidglass', color: '#b06cff', biome: 'tower', unlock: 45, power: 31 }, { key: 'celestial', name: 'Celestial', color: '#ffe27a', biome: 'tower', unlock: 70, power: 37 }, { key: 'eternity', name: 'Eternity', color: '#ff70da', biome: 'tower', unlock: 90, power: 45 },
+  { key: 'runebound', name: 'Runebound', color: '#64f2dc', biome: 'tower', unlock: 20, power: 11 }, { key: 'voidglass', name: 'Voidglass', color: '#b06cff', biome: 'tower', unlock: 45, power: 20 }, { key: 'celestial', name: 'Celestial', color: '#ffe27a', biome: 'tower', unlock: 70, power: 29 }, { key: 'eternity', name: 'Eternity', color: '#ff70da', biome: 'tower', unlock: 90, power: 38 },
 ]);
+export function towerLootBand(wave) {
+  const floor = Math.max(1, Math.min(100, wave));
+  const anchors = [[1, 1], [25, 7.6], [50, 14.2], [75, 24], [100, 37]];
+  let lower = anchors[0]; let upper = anchors[1];
+  for (let index = 1; index < anchors.length; index++) if (floor >= anchors[index][0]) { lower = anchors[index]; upper = anchors[Math.min(index + 1, anchors.length - 1)]; }
+  const span = Math.max(1, upper[0] - lower[0]);
+  const minimumPower = lower[1] + (upper[1] - lower[1]) * ((floor - lower[0]) / span);
+  const maximumPower = minimumPower + 7.5;
+  const unlocked = SETS.filter(set => set.biome !== 'tower' || set.unlock <= floor).sort((a, b) => a.power - b.power);
+  let sets = unlocked.filter(set => set.power >= minimumPower - 1e-6 && set.power <= maximumPower + 1e-6);
+  if (!sets.length) sets = [unlocked.reduce((best, set) => Math.abs(set.power - minimumPower) < Math.abs(best.power - minimumPower) ? set : best)];
+  return { minimumPower, maximumPower, sets };
+}
 export const ITEM_TYPES = Object.freeze([
   { key: 'sword', name: 'Sword', category: 'tools', slot: 'weapon', icon: '⚔️', damage: 8 }, { key: 'mace', name: 'Mace', category: 'tools', slot: 'weapon', icon: '🎖️', damage: 10 }, { key: 'spear', name: 'Spear', category: 'tools', slot: 'weapon', icon: '🔱', damage: 9 }, { key: 'axe', name: 'Axe', category: 'tools', slot: 'weapon', icon: '🪓', damage: 11 }, { key: 'warhammer', name: 'War hammer', category: 'tools', slot: 'weapon', icon: '🔨', damage: 13 },
   { key: 'helmet', name: 'Helmet', category: 'armor', slot: 'helmet', icon: '⛑️', defense: 2, health: 4 }, { key: 'chestplate', name: 'Chestplate', category: 'armor', slot: 'chestplate', icon: '🛡️', defense: 4, health: 10 }, { key: 'leggings', name: 'Leggings', category: 'armor', slot: 'leggings', icon: '🩳', defense: 3, health: 7 }, { key: 'boots', name: 'Boots', category: 'armor', slot: 'boots', icon: '🥾', defense: 2, health: 5 },

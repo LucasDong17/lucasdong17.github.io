@@ -16,7 +16,7 @@ Every biome egg has a 1% Mythical hatch: the Mossvale Moonhorn Unicorn, Frostfan
 
 Mossvale Meadow is available immediately. Its checkpoints unlock after reaching waves 10, 20, 30, 40, and 50. Defeat the Crowned Colossus on wave 50 to unlock Frostfang Tundra, defeat the Aurora Wyrm to open Sunspire Jungle, then defeat the Sunken Temple Hydra to unlock Embercrag Badlands. Embercrag adds a volcanic arena, eight fire and obsidian creatures, six stronger equipment sets, a 9,000-coin egg, the Solar Manticore Mythical pet, and the Caldera Wyrm final boss.
 
-The Endless Tower is available immediately and has its own arcane arena, eight original enemy families, and bosses every 25 waves. Tower drops can come from any biome even when that biome is still locked. Later tower waves increasingly favor powerful sets and can drop the armor-only Runebound, Voidglass, Celestial, and Eternity collections.
+The Endless Tower is available immediately and has its own arcane arena, eight original enemy families, and bosses every 25 waves. Tower drops can come from any biome even when that biome is still locked. Each floor raises a guaranteed loot-power band, removing weak early sets from the pool as the climb advances. The armor-only Runebound, Voidglass, Celestial, and Eternity collections join at progressively higher tower tiers.
 
 ## Tests
 
