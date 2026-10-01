@@ -120,7 +120,49 @@ This remains intentionally narrower than the former Phase 2/3 roadmap: there are
 
 ## Immediate Next Step
 
-Long-form play-balance all three 50-wave campaigns, especially multi-enemy pressure, pet-assisted damage, egg affordability, final-boss survivability, upgrade pacing, and checkpoint recovery.
+Long-form play-balance all four 50-wave campaigns and the 100-wave Endless Tower, especially late multi-enemy pressure, tower checkpoint recovery, cross-biome drop quality, pet-assisted damage, and final-boss survivability.
+
+## Endless Tower Expansion — 2026-09-30
+
+A seventh labeled hub circle and a tall twin-spire tower entrance now sit behind the player spawn. Entering the circle opens a dedicated tower screen with resume-from-highest-progress and unlockable wave 25, 50, 75, and 100 boss checkpoints. Tower progress is independent, available from a fresh save, stored in save schema version 5, and safely added to version 2–4 saves.
+
+The tower uses a separate arcane arena collision map and procedural rune-pillar scenery. Its eight custom enemy families and four milestone bosses use new low-poly construct, mimic, void-beast, floating-eye, armored-knight, sphinx, and time-dragon silhouettes. Waves scale to eight simultaneous enemies and stop after the wave-100 Dragon of Eternity.
+
+Tower enemies can drop equipment sets from any regular biome regardless of campaign unlocks. Drop weighting shifts toward stronger sets on later floors. Four tower-exclusive armor families—Runebound, Voidglass, Celestial, and Eternity—enter the pool at waves 20, 45, 70, and 90, and their tower drops are armor-only. Tower waves also grant the highest coin rewards currently in the game.
+
+### Recorded checks
+
+- **Logic: 21/21 passing.** Added portal, 100-wave completion, milestone-boss, tower-map, cross-biome loot, checkpoint persistence, and save-migration coverage alongside all prior systems.
+- **Browser: 18/18 passing.** The live WebGL build confirmed the seven labeled circles, unobstructed twin-spire spawn sightline, tower checkpoint screen, arcane arena, custom tower model, expanded indexes, and no console errors or warnings.
+
+### Known limitations
+
+The 100-wave tower balance and high-floor drop curve are an initial pass. A full uninterrupted climb still needs play-balance testing, especially waves 75–100 with varied equipment and pet teams.
+
+## Mobile Touch Controls — 2026-09-29
+
+Touch-capable coarse-pointer devices now automatically receive an analog movement joystick and a holdable attack button. When the player enters pickup range, a separate hold-to-loot button appears and mirrors the existing pickup progress. These controls feed the same named movement, attack, and pickup actions as the unchanged WASD/arrow, Space/left-click, and E keyboard controls.
+
+### Recorded checks
+
+- **Logic: 19/19 passing.** Device-mode coverage distinguishes touch-first devices from pointer PCs alongside all existing gameplay checks.
+- **Browser: 15/15 passing.** The touch HUD was detected in a mobile browser viewport, joystick movement entered the Play portal, the HIT button triggered a real combat swing, contextual loot visibility/progress passed, and the console stayed free of errors and warnings.
+
+## Embercrag Badlands Expansion — 2026-09-29
+
+A fourth 50-wave biome, Embercrag Badlands, now unlocks after defeating the Sunspire wave-50 Sunken Temple Hydra. It has its own volcanic collision map and procedural basalt, lava-vent, obsidian-spire, and molten-crack scenery. Eight fire-themed enemy families mix fast melee pressure, durable bruisers, and long-range firebolts before the wave-50 Caldera Wyrm.
+
+Six Embercrag equipment sets extend gear progression beyond Sunspire, while Embercrag wave rewards form a new highest coin tier. The 9,000-coin Embercrag Egg contains Common through Mythical volcanic companions, including the 1% Solar Manticore. Existing version-4 saves receive safe locked defaults for the new biome without a schema reset.
+
+### Recorded checks
+
+- **Logic: 20/20 passing.** Added coverage for the Sunspire-to-Embercrag unlock, volcanic map entry, stronger rewards and gear, egg gating and price, pet rarity, save defaults, and all prior systems.
+- **Browser: 16/16 passing.** The live WebGL build confirmed the fourth biome card, locked Embercrag progression, four complete egg cards, expanded indexes, and the distinct volcanic collision map and scenery with no console errors or warnings.
+- **Syntax:** All changed JavaScript modules and browser tests pass Node syntax checks.
+
+### Known limitations
+
+Embercrag combat values, wave rewards, and the 9,000-coin egg price are an initial balance pass. The full waves 1–50 campaign still needs a long-form play-balance run, particularly late ranged formations and the Caldera Wyrm.
 
 ## Sunspire Jungle Expansion — 2026-09-28
 

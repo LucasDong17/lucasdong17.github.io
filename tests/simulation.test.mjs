@@ -1,14 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BALANCE as B, EGGS, coinRewardForWave, enemyCountForWave, itemDefinition, petDefinition, petSellValue } from '../src/data/balance.js';
+import { BALANCE as B, EGGS, SETS, TOWER_BOSSES, coinRewardForWave, enemyCountForWave, enemyForWave, itemDefinition, petDefinition, petSellValue } from '../src/data/balance.js';
 import { EventBus } from '../src/core/event-bus.js';
 import { SAVE_KEY, combineItems, createRun, defaultProgress, enterHub, equipBestItems, equipItem, hatchEgg, loadProgress, saveProgress, sellItem, sellPet, startLevel, togglePet } from '../src/state/run.js';
 import { World } from '../src/world/world.js';
 import { stepRun, canHit, attackStage } from '../src/systems/simulation.js';
+import { usesTouchControls } from '../src/input/input.js';
 
 const world = new World();
 const tick = (run, input = {}, count = 1, bus = new EventBus()) => { for (let i = 0; i < count; i++) stepRun(run, input, world, bus); };
 const activeRun = (wave = 1, biome = 'meadow', progress = defaultProgress()) => { progress.unlocked[biome] = Math.max(progress.unlocked[biome] || 0, wave); const run = createRun(progress); assert.ok(startLevel(run, biome, wave, world)); return run; };
+
+test('control mode distinguishes touch-first devices from pointer PCs', () => {
+  const view = coarse => ({ matchMedia: () => ({ matches: coarse }) });
+  assert.equal(usesTouchControls(view(true), { maxTouchPoints: 5, userAgent: 'Tablet' }), true);
+  assert.equal(usesTouchControls(view(false), { maxTouchPoints: 0, userAgent: 'Desktop' }), false);
+  assert.equal(usesTouchControls(view(false), { maxTouchPoints: 1, userAgent: 'iPhone' }), true);
+});
 
 test('hub movement opens all labeled service and sell circles', () => {
   const run = createRun(); const bus = new EventBus(); const opened = []; bus.on('portalEntered', event => opened.push(event.portal));
@@ -16,11 +24,21 @@ test('hub movement opens all labeled service and sell circles', () => {
   Object.assign(run.player, { x: B.portal.upgradeX + B.portal.radius + 0.05, z: B.portal.upgradeZ }); run.portalLatch = false; tick(run, { moveX: -1 }, 2, bus); assert.deepEqual(opened, ['play', 'upgrade']);
   Object.assign(run.player, { x: B.portal.petsX - B.portal.radius - 0.05, z: B.portal.petsZ }); run.portalLatch = false; tick(run, { moveX: 1 }, 2, bus); assert.deepEqual(opened, ['play', 'upgrade', 'pet-shop']);
   for (const [x, z, portal] of [[B.portal.sellPetsX, B.portal.sellPetsZ, 'sell-pets'], [B.portal.sellArmorX, B.portal.sellArmorZ, 'sell-armor'], [B.portal.sellWeaponsX, B.portal.sellWeaponsZ, 'sell-tools']]) { Object.assign(run.player, { x, z }); run.portalLatch = false; tick(run, {}, 1, bus); assert.equal(opened.at(-1), portal); }
+  Object.assign(run.player, { x: B.portal.towerX, z: B.portal.towerZ }); run.portalLatch = false; tick(run, {}, 1, bus); assert.equal(opened.at(-1), 'tower');
 });
 
 test('wave population scales to eight and wave 50 is a single final boss', () => {
   assert.equal(enemyCountForWave(1), 1); assert.equal(enemyCountForWave(8), 2); assert.equal(enemyCountForWave(49), 7); assert.equal(enemyCountForWave(50), 1);
   const run = activeRun(50); assert.equal(run.enemies.length, 1); assert.equal(run.enemies[0].boss, true); assert.equal(run.enemies[0].name, 'Crowned Colossus'); assert.ok(run.enemies[0].health >= 2500);
+});
+
+test('endless tower saves 100 waves, milestone bosses, cross-biome loot, and rare armor', () => {
+  assert.equal(enemyCountForWave(25, 'tower'), 1); assert.equal(enemyForWave(25, 'tower').key, TOWER_BOSSES[25].key); assert.equal(enemyForWave(100, 'tower').key, TOWER_BOSSES[100].key);
+  const progress = defaultProgress(); progress.unlocked.tower = 100; progress.highest.tower = 100; const run = activeRun(100, 'tower', progress);
+  assert.equal(world.map.key, 'tower'); assert.equal(run.enemies.length, 1); assert.equal(run.enemies[0].boss, true);
+  Object.assign(run.player, { damage: run.enemies[0].maxHealth + 1, x: 0, z: 6, facing: Math.PI }); Object.assign(run.enemies[0], { x: 0, z: 4.5, health: 1, mode: 'idle' }); tick(run, { attack: true }, 12);
+  assert.equal(run.phase, 'intermission'); assert.equal(run.drops.length, 4); assert.ok(run.drops.every(drop => SETS.some(set => drop.key.startsWith(`${set.key}:`))));
+  tick(run, {}, Math.ceil(B.intermission / B.step) + 2); assert.equal(run.status, 'hub'); assert.equal(run.progress.completed.tower, true);
 });
 
 test('movement stays normalized and attack can hit multiple animals once each', () => {
@@ -91,6 +109,14 @@ test('Frostfang completion unlocks Sunspire with stronger waves, gear, rewards, 
   run.coins = 4000; const pet = hatchEgg(run, 'jungle', () => 0); assert.equal(petDefinition(pet.key).rarity, 'common'); assert.equal(run.coins, 0);
 });
 
+test('Sunspire completion unlocks Embercrag with volcanic content and rewards', () => {
+  const run = activeRun(50, 'jungle'); const boss = run.enemies[0]; Object.assign(boss, { x: 0, z: 4.5, health: 1, mode: 'idle' }); tick(run, { attack: true }, 12);
+  assert.equal(run.progress.completed.jungle, true); assert.equal(run.progress.unlocked.ember, 1); assert.equal(run.drops.length, 4);
+  tick(run, {}, Math.ceil(B.intermission / B.step) + 2); assert.equal(run.status, 'hub'); assert.ok(startLevel(run, 'ember', 1, world)); assert.equal(world.map.key, 'ember'); assert.match(run.enemies[0].name, /Cinder|Magma|Ashhorn|Ember|Lava|Fire|Pyre|Obsidian/);
+  assert.ok(coinRewardForWave(1, 'ember') > coinRewardForWave(1, 'jungle')); assert.ok(itemDefinition('cinder:chestplate').health > itemDefinition('sunspire:chestplate').health);
+  run.coins = 9000; const pet = hatchEgg(run, 'ember', () => 0); assert.equal(petDefinition(pet.key).rarity, 'common'); assert.equal(run.coins, 0);
+});
+
 test('corrupt and old saves safely fall back to defaults', () => {
   const broken = { getItem: () => '{oops' }; const old = { getItem: () => JSON.stringify({ version: 1, inventory: [{ id: 1 }] }) };
   assert.deepEqual(loadProgress(broken), defaultProgress()); assert.deepEqual(loadProgress(old), defaultProgress());
@@ -108,20 +134,21 @@ test('eggs enforce price and biome locks while rarity rolls determine damage', (
   assert.equal(hatchEgg(run, 'frost', () => 0), null); run.progress.unlocked.frost = 1;
   const legendary = hatchEgg(run, 'frost', () => 0.985); assert.equal(petDefinition(legendary.key).rarity, 'legendary'); assert.ok(petDefinition(legendary.key).damage > petDefinition(common.key).damage); assert.equal(run.coins, 1000);
   run.coins = 5000; assert.equal(hatchEgg(run, 'jungle', () => 0), null); run.progress.unlocked.jungle = 1; assert.ok(hatchEgg(run, 'jungle', () => 0));
+  run.coins = 9000; assert.equal(hatchEgg(run, 'ember', () => 0), null); run.progress.unlocked.ember = 1; assert.ok(hatchEgg(run, 'ember', () => 0));
 });
 
 test('every egg has a one-percent Mythical animal with top-tier power and value', () => {
-  const run = createRun(); run.progress.unlocked = { meadow: 1, frost: 1, jungle: 1 }; run.coins = 10000;
+  const run = createRun(); run.progress.unlocked = { meadow: 1, frost: 1, jungle: 1, ember: 1 }; run.coins = 30000;
   const mythicalPets = EGGS.map(egg => {
     assert.equal(Object.values(egg.odds).reduce((sum, chance) => sum + chance, 0), 100);
     assert.equal(egg.odds.mythical, 1);
     const pet = hatchEgg(run, egg.key, () => 0.999999); const definition = petDefinition(pet.key);
     assert.equal(definition.rarity, 'mythical');
-    const legendary = petDefinition({ meadow: 'crown-griffin', frost: 'starfall-drake', jungle: 'temple-hydra' }[egg.key]);
+    const legendary = petDefinition({ meadow: 'crown-griffin', frost: 'starfall-drake', jungle: 'temple-hydra', ember: 'obsidian-drake' }[egg.key]);
     assert.ok(definition.damage > legendary.damage);
     return pet;
   });
-  assert.deepEqual(mythicalPets.map(pet => petDefinition(pet.key).name), ['Moonhorn Unicorn', 'Frost Phoenix', 'Verdant Basilisk']);
+  assert.deepEqual(mythicalPets.map(pet => petDefinition(pet.key).name), ['Moonhorn Unicorn', 'Frost Phoenix', 'Verdant Basilisk', 'Solar Manticore']);
   assert.ok(petSellValue(mythicalPets[0]) > petSellValue({ key: 'crown-griffin' }));
 });
 

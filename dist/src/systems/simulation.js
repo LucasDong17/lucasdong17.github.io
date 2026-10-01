@@ -1,25 +1,29 @@
-import { BALANCE as B, ITEM_TYPES, SETS, coinRewardForWave, petDefinition } from '../data/balance.js';
+import { BALANCE as B, ITEM_TYPES, SETS, coinRewardForWave, isBossWave, maxWaveForBiome, petDefinition } from '../data/balance.js';
 import { createWaveEnemies, enterHub } from '../state/run.js';
 
 export function attackStage(attack) { if (!attack) return 'ready'; if (attack.elapsed < B.player.windup) return 'windup'; if (attack.elapsed < B.player.windup + B.player.active) return 'active'; return 'recovery'; }
 export const attackDuration = B.player.windup + B.player.active + B.player.recovery;
 export function canHit(player, enemy, facing = player.facing) { if (!enemy || enemy.health <= 0) return false; const dx = enemy.x - player.x; const dz = enemy.z - player.z; const distance = Math.hypot(dx, dz); return distance <= B.player.range && (distance < 1e-8 || (Math.sin(facing) * dx + Math.cos(facing) * dz) / distance >= Math.cos(B.player.arc / 2)); }
 
-function randomFor(wave, salt, biome = 'meadow') { const biomeSalt = biome === 'frost' ? 7919 : biome === 'jungle' ? 15401 : 0; let value = (wave * 2654435761 + salt * 1013904223 + biomeSalt) >>> 0; value ^= value << 13; value ^= value >>> 17; value ^= value << 5; return (value >>> 0) / 4294967296; }
+function randomFor(wave, salt, biome = 'meadow') { const biomeSalt = biome === 'frost' ? 7919 : biome === 'jungle' ? 15401 : biome === 'ember' ? 23173 : 0; let value = (wave * 2654435761 + salt * 1013904223 + biomeSalt) >>> 0; value ^= value << 13; value ^= value >>> 17; value ^= value << 5; return (value >>> 0) / 4294967296; }
 
 function createDrops(run, enemy) {
   const defeated = run.enemies.filter(entry => entry.health <= 0).length;
   const chance = Math.min(0.98, 0.78 + run.wave * 0.004);
   const count = enemy.boss ? 4 : (randomFor(run.wave, defeated * 13, run.biome) < chance ? 1 : 0);
-  const available = SETS.filter(set => set.biome === run.biome && set.unlock <= run.wave);
+  const available = run.biome === 'tower'
+    ? SETS.filter(set => set.biome !== 'tower' || set.unlock <= run.wave)
+    : SETS.filter(set => set.biome === run.biome && set.unlock <= run.wave);
   for (let index = 0; index < count; index++) {
     const duplicate = run.inventory.length && randomFor(run.wave, defeated * 31 + index + 2, run.biome) < 0.45;
     let key;
     if (duplicate) key = run.inventory[Math.floor(randomFor(run.wave, defeated * 41 + index, run.biome) * run.inventory.length)].key;
     else {
-      const weighted = Math.pow(randomFor(run.wave, defeated * 47 + index + 4, run.biome), 0.62);
+      const roll = randomFor(run.wave, defeated * 47 + index + 4, run.biome);
+      const weighted = run.biome === 'tower' ? Math.pow(roll, 1.8 - Math.min(1, run.wave / 100) * 1.25) : Math.pow(roll, 0.62);
       const set = available[Math.min(available.length - 1, Math.floor(weighted * available.length))];
-      const type = ITEM_TYPES[Math.floor(randomFor(run.wave, defeated * 59 + index + 20, run.biome) * ITEM_TYPES.length)];
+      const itemPool = run.biome === 'tower' && set.biome === 'tower' ? ITEM_TYPES.filter(type => type.category === 'armor') : ITEM_TYPES;
+      const type = itemPool[Math.floor(randomFor(run.wave, defeated * 59 + index + 20, run.biome) * itemPool.length)];
       key = `${set.key}:${type.key}`;
     }
     run.drops.push({ id: run.nextItemId++, key, level: 1, x: enemy.x + (index % 2) * 0.55, z: enemy.z + Math.floor(index / 2) * 0.55, spin: randomFor(run.wave, defeated * 67 + index + 40, run.biome) * Math.PI * 2 });
@@ -43,10 +47,10 @@ function damageEnemy(run, enemy, amount, bus) {
   if (run.enemies.some(entry => entry.health > 0)) return;
   const coins = coinRewardForWave(run.wave, run.biome); run.coins += coins; bus.emit('coinsEarned', { amount: coins, total: run.coins, biome: run.biome, wave: run.wave });
   run.phase = 'intermission'; run.intermission = B.intermission;
-  if (run.wave < B.maxWave) run.progress.unlocked[run.biome] = Math.max(run.progress.unlocked[run.biome] || 1, run.wave + 1);
+  if (run.wave < maxWaveForBiome(run.biome)) run.progress.unlocked[run.biome] = Math.max(run.progress.unlocked[run.biome] || 1, run.wave + 1);
   else {
     run.progress.completed[run.biome] = true;
-    const nextBiome = { meadow: 'frost', frost: 'jungle' }[run.biome];
+    const nextBiome = { meadow: 'frost', frost: 'jungle', jungle: 'ember' }[run.biome];
     if (nextBiome) run.progress.unlocked[nextBiome] = Math.max(1, run.progress.unlocked[nextBiome] || 0);
   }
   bus.emit('waveCleared', { biome: run.biome, wave: run.wave });
@@ -71,10 +75,11 @@ function updateHub(run, world, bus, input, dt) {
   const sellPets = Math.hypot(p.x - B.portal.sellPetsX, p.z - B.portal.sellPetsZ) <= B.portal.radius;
   const sellArmor = Math.hypot(p.x - B.portal.sellArmorX, p.z - B.portal.sellArmorZ) <= B.portal.radius;
   const sellWeapons = Math.hypot(p.x - B.portal.sellWeaponsX, p.z - B.portal.sellWeaponsZ) <= B.portal.radius;
-  if (!play && !upgrade && !pets && !sellPets && !sellArmor && !sellWeapons) run.portalLatch = false;
-  if (!run.portalLatch && (play || upgrade || pets || sellPets || sellArmor || sellWeapons)) {
+  const tower = Math.hypot(p.x - B.portal.towerX, p.z - B.portal.towerZ) <= B.portal.radius;
+  if (!play && !upgrade && !pets && !sellPets && !sellArmor && !sellWeapons && !tower) run.portalLatch = false;
+  if (!run.portalLatch && (play || upgrade || pets || sellPets || sellArmor || sellWeapons || tower)) {
     run.portalLatch = true;
-    const portal = play ? 'play' : upgrade ? 'upgrade' : pets ? 'pet-shop' : sellPets ? 'sell-pets' : sellArmor ? 'sell-armor' : 'sell-tools';
+    const portal = play ? 'play' : upgrade ? 'upgrade' : pets ? 'pet-shop' : sellPets ? 'sell-pets' : sellArmor ? 'sell-armor' : sellWeapons ? 'sell-tools' : 'tower';
     bus.emit('portalEntered', { portal });
   }
 }
@@ -143,6 +148,6 @@ export function stepRun(run, input, world, bus, dt = B.step) {
   if (run.status !== 'playing') return;
   if (input.attack && !p.attack && run.phase === 'combat') { p.attack = { elapsed: 0, hitIds: [], facing: p.facing }; bus.emit('attackStarted', { target: 'player' }); }
   if (p.attack) { p.attack.elapsed += dt; if (attackStage(p.attack) === 'active') for (const enemy of run.enemies) if (!p.attack.hitIds.includes(enemy.id) && canHit(p, enemy, p.attack.facing)) { p.attack.hitIds.push(enemy.id); damageEnemy(run, enemy, p.damage, bus); } if (p.attack.elapsed >= attackDuration) p.attack = null; }
-  if (run.phase === 'intermission') { run.intermission -= dt; if (run.intermission <= 0) { if (run.wave >= B.maxWave) { bus.emit('biomeCompleted', { biome: run.biome }); enterHub(run, world); return; } run.drops = []; run.projectiles = []; run.wave++; run.progress.highest[run.biome] = Math.max(run.progress.highest[run.biome] || 0, run.wave); run.spawnIndex += run.enemies.length; run.enemies = createWaveEnemies(run.wave, run.biome, world, p, run.spawnIndex); run.phase = 'combat'; run.intermission = 0; bus.emit('waveStarted', { wave: run.wave, enemy: run.enemies[0].name, count: run.enemies.length, boss: run.wave === B.maxWave }); } return; }
+  if (run.phase === 'intermission') { run.intermission -= dt; if (run.intermission <= 0) { if (run.wave >= maxWaveForBiome(run.biome)) { bus.emit('biomeCompleted', { biome: run.biome }); enterHub(run, world); return; } run.drops = []; run.projectiles = []; run.wave++; run.progress.highest[run.biome] = Math.max(run.progress.highest[run.biome] || 0, run.wave); run.spawnIndex += run.enemies.length; run.enemies = createWaveEnemies(run.wave, run.biome, world, p, run.spawnIndex); run.phase = 'combat'; run.intermission = 0; bus.emit('waveStarted', { wave: run.wave, enemy: run.enemies[0].name, count: run.enemies.length, boss: isBossWave(run.wave, run.biome) }); } return; }
   for (const enemy of run.enemies) updateEnemy(run, enemy, world, bus, dt);
 }

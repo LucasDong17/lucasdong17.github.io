@@ -132,6 +132,8 @@ export class SceneView {
     this.sellPetPortal = makePortal(B.portal.sellPetsX, B.portal.sellPetsZ, '#e2a755', '#fff0b0', 'Sell Pets');
     this.sellArmorPortal = makePortal(B.portal.sellArmorX, B.portal.sellArmorZ, '#65a9dd', '#dff4ff', 'Sell Armor');
     this.sellWeaponPortal = makePortal(B.portal.sellWeaponsX, B.portal.sellWeaponsZ, '#df6c6c', '#ffe1cf', 'Sell Weapons');
+    this.towerPortal = makePortal(B.portal.towerX, B.portal.towerZ, '#725ee8', '#91fff0', 'Endless Tower');
+    this.mesh(this.towerPortal, new THREE.OctahedronGeometry(0.38, 0), new THREE.MeshStandardMaterial({ color: '#9bfff0', emissive: '#56d9dc', emissiveIntensity: 1.2 }), 0, 0.7, 0);
     this.scene.add(this.portals);
     this.frostDecor = new THREE.Group();
     const ice = [material('#a9efff'), material('#71bce8'), material('#d9c9ff')];
@@ -189,6 +191,59 @@ export class SceneView {
     }
     this.jungleDecor.visible = false;
     this.scene.add(this.jungleDecor);
+    this.emberDecor = new THREE.Group();
+    const basalt = [material('#302f36'), material('#4c3a3b'), material('#67504a')];
+    const lava = new THREE.MeshStandardMaterial({ color: '#ff6a2e', emissive: '#ff3b16', emissiveIntensity: 1.7, roughness: 0.6 });
+    for (const [index, o] of MAPS.ember.obstacles.entries()) {
+      if (o.kind === 'lava-vent') {
+        const rim = this.mesh(this.emberDecor, new THREE.TorusGeometry(o.radius * 0.68, 0.24, 7, 12), basalt[index % basalt.length], o.x, 0.24, o.z);
+        rim.rotation.x = Math.PI / 2;
+        const pool = this.mesh(this.emberDecor, new THREE.CircleGeometry(o.radius * 0.62, 14), lava, o.x, 0.08, o.z);
+        pool.rotation.x = -Math.PI / 2;
+        for (let puff = 0; puff < 3; puff++) this.mesh(this.emberDecor, new THREE.OctahedronGeometry(0.12 + puff * 0.04, 0), lava, o.x + (puff - 1) * 0.32, 0.42 + puff * 0.23, o.z);
+      } else if (o.kind === 'obsidian-spire') {
+        for (let shard = 0; shard < 4; shard++) {
+          const spire = this.mesh(this.emberDecor, new THREE.ConeGeometry(0.34 + shard * 0.06, 1.8 + shard * 0.35, 5), basalt[0], o.x + (shard - 1.5) * 0.3, 0.9 + shard * 0.18, o.z + Math.sin(shard) * 0.25);
+          spire.rotation.z = (shard - 1.5) * 0.1;
+        }
+      } else {
+        const rock = this.mesh(this.emberDecor, new THREE.DodecahedronGeometry(1, 0), basalt[index % basalt.length], o.x, o.radius * 0.6, o.z);
+        rock.scale.set(o.radius, o.radius * 0.9, o.radius);
+        for (const offset of [-0.35, 0.25]) this.mesh(this.emberDecor, new THREE.BoxGeometry(0.1, 0.08, o.radius * 1.25), lava, o.x + offset, o.radius * 0.72, o.z).rotation.y = offset;
+      }
+    }
+    for (const [index, point] of [[-10,-9],[-10,4],[-8,10],[-2,10],[5,10],[10,6],[10,-3],[7,-10]].entries()) {
+      const [x, z] = point;
+      const spire = this.mesh(this.emberDecor, new THREE.ConeGeometry(0.45 + index % 3 * 0.08, 1.8 + index % 2 * 0.7, 5), basalt[index % basalt.length], x, 0.9, z);
+      spire.rotation.z = (index % 2 ? -1 : 1) * 0.1;
+    }
+    for (const z of [-7.4, 0.2, 7.6]) {
+      const crack = this.mesh(this.emberDecor, new THREE.PlaneGeometry(18, 0.18), lava, 0, 0.012, z);
+      crack.rotation.x = -Math.PI / 2;
+      crack.rotation.z = (z % 2) * 0.04;
+    }
+    this.emberDecor.visible = false;
+    this.scene.add(this.emberDecor);
+    this.towerDecor = new THREE.Group();
+    const towerStone = [material('#303a51'), material('#414b68'), material('#232a40')];
+    const towerGlow = new THREE.MeshStandardMaterial({ color: '#79f5e4', emissive: '#4ddbd4', emissiveIntensity: 1.35, roughness: 0.35 });
+    for (const [index, o] of MAPS.tower.obstacles.entries()) {
+      if (o.kind === 'arcane-core') {
+        const ring = this.mesh(this.towerDecor, new THREE.TorusGeometry(0.78, 0.12, 8, 20), towerGlow, o.x, 0.72, o.z); ring.rotation.x = Math.PI / 2;
+        this.mesh(this.towerDecor, new THREE.OctahedronGeometry(0.5, 1), towerGlow, o.x, 0.72, o.z);
+      } else {
+        this.mesh(this.towerDecor, new THREE.CylinderGeometry(0.7, 0.9, 2.8, 6), towerStone[index % towerStone.length], o.x, 1.4, o.z);
+        this.mesh(this.towerDecor, new THREE.OctahedronGeometry(0.36, 0), towerGlow, o.x, 2.95, o.z);
+        for (const y of [0.55, 1.15, 1.75, 2.35]) this.mesh(this.towerDecor, new THREE.TorusGeometry(0.73, 0.055, 5, 12), towerGlow, o.x, y, o.z).rotation.x = Math.PI / 2;
+      }
+    }
+    for (let i = 0; i < 16; i++) {
+      const angle = i / 16 * Math.PI * 2; const radius = 11.4;
+      const crystal = this.mesh(this.towerDecor, new THREE.OctahedronGeometry(0.25 + i % 3 * 0.06, 0), i % 2 ? towerGlow : towerStone[1], Math.sin(angle) * radius, 0.45 + i % 3 * 0.15, Math.cos(angle) * radius);
+      crystal.scale.y = 2.1;
+    }
+    this.towerDecor.visible = false;
+    this.scene.add(this.towerDecor);
     // Deterministic scenery uses no gameplay randomness or external textures.
     let seed = 24;
     const random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
@@ -237,6 +292,16 @@ export class SceneView {
       const banner = this.mesh(this.hubDecor, new THREE.PlaneGeometry(1.3, 1.8), bannerMat, x, 2.25, -10.82);
       banner.rotation.y = Math.PI;
     }
+    const towerBase = material('#31394d'); const towerTrim = material('#695a91'); const towerLight = new THREE.MeshStandardMaterial({ color: '#8fffee', emissive: '#45cfd2', emissiveIntensity: 1.4 });
+    for (const side of [-1, 1]) for (let floor = 0; floor < 6; floor++) {
+      const y = 1.5 + floor * 2.15; const width = 2.7 - floor * 0.12; const x = side * 5.25;
+      this.mesh(this.hubDecor, new THREE.CylinderGeometry(width * 0.46, width * 0.52, 2.05, 8), floor % 2 ? towerTrim : towerBase, x, y, 14.4);
+      this.mesh(this.hubDecor, new THREE.BoxGeometry(0.22, 0.68, 0.12), towerLight, x - side * width * 0.12, y, 12.82 + floor * 0.08);
+    }
+    for (const side of [-1, 1]) this.mesh(this.hubDecor, new THREE.ConeGeometry(1.05, 3.2, 8), towerTrim, side * 5.25, 14.3, 14.4);
+    this.mesh(this.hubDecor, new THREE.BoxGeometry(9, 1.1, 0.65), towerTrim, 0, 12.15, 14.25);
+    this.mesh(this.hubDecor, new THREE.BoxGeometry(2.4, 3.2, 0.65), towerBase, 0, 1.6, 11.95);
+    this.mesh(this.hubDecor, new THREE.BoxGeometry(1.25, 2.25, 0.7), material('#15192a'), 0, 1.12, 11.58);
   }
   buildPlayer() {
     const root = new THREE.Group();
@@ -271,7 +336,50 @@ export class SceneView {
     const eye = x => this.mesh(body, new THREE.SphereGeometry(0.065, 6, 4), dark, x, 0.91, 0.61);
     const legs = (wide = 0.3, long = 0.34) => { for (const x of [-wide, wide]) for (const z of [-0.34, 0.34]) this.mesh(body, new THREE.BoxGeometry(0.17, long, 0.18), accent, x, long / 2, z); };
     const horn = (x, y, z, flip = 1) => { const part = this.mesh(body, new THREE.ConeGeometry(0.1, 0.48, 5), accent, x, y, z); part.rotation.z = flip * 0.75; return part; };
-    if (type === 'beetle' || type === 'scarab') {
+    if (type === 'clockwork-scarab' || type === 'brass-warden') {
+      const boss = type === 'brass-warden';
+      this.mesh(body, new THREE.BoxGeometry(boss ? 1.05 : 0.78, boss ? 1.05 : 0.55, boss ? 0.72 : 0.96), primary, 0, boss ? 0.82 : 0.55, 0);
+      const core = this.mesh(body, new THREE.OctahedronGeometry(boss ? 0.26 : 0.18, 0), accent, 0, boss ? 0.92 : 0.65, 0.39); flashMaterials.push(core.material);
+      for (const side of [-1, 1]) for (const z of [-0.42, 0, 0.42]) { const limb = this.mesh(body, new THREE.CylinderGeometry(0.07, 0.1, boss ? 0.9 : 0.62, 6), accent, side * (boss ? 0.68 : 0.5), 0.38, z); limb.rotation.z = side * 0.9; }
+      for (const z of [-0.34, 0.34]) { const gear = this.mesh(body, new THREE.TorusGeometry(boss ? 0.31 : 0.23, 0.09, 5, 10), accent, 0, boss ? 1.25 : 0.82, z); gear.rotation.x = Math.PI / 2; }
+      if (boss) for (const x of [-0.76, 0.76]) this.mesh(body, new THREE.BoxGeometry(0.42, 0.7, 0.5), primary, x, 0.75, 0);
+    } else if (type === 'rune-gargoyle' || type === 'astral-sphinx' || type === 'celestial-behemoth') {
+      const titan = type === 'celestial-behemoth';
+      this.mesh(body, new THREE.DodecahedronGeometry(titan ? 0.78 : 0.6), primary, 0, titan ? 0.95 : 0.8, 0).scale.set(1, 1.1, 1.25);
+      this.mesh(body, new THREE.DodecahedronGeometry(titan ? 0.48 : 0.36), primary, 0, titan ? 1.62 : 1.34, 0.42); eye(-0.14); eye(0.14); legs(titan ? 0.4 : 0.3, titan ? 0.55 : 0.35);
+      for (const x of [-0.68, 0.68]) { const wing = this.mesh(body, new THREE.ConeGeometry(titan ? 0.45 : 0.34, titan ? 1.55 : 1.15, 4), accent, x, titan ? 1.15 : 0.95, -0.18); wing.rotation.z = x > 0 ? -1.05 : 1.05; }
+      for (const x of [-0.22, 0.22]) horn(x, titan ? 2.05 : 1.72, 0.34, x > 0 ? 1 : -1);
+    } else if (type === 'chest-mimic') {
+      const lower = this.mesh(body, new THREE.BoxGeometry(1.05, 0.48, 0.78), primary, 0, 0.52, 0); lower.rotation.x = 0.04;
+      const lid = this.mesh(body, new THREE.BoxGeometry(1.08, 0.32, 0.8), primary, 0, 1.02, -0.1); lid.rotation.x = -0.28;
+      for (const x of [-0.38, -0.12, 0.12, 0.38]) this.mesh(body, new THREE.ConeGeometry(0.07, 0.28, 4), accent, x, 0.82, 0.43).rotation.x = Math.PI;
+      for (const x of [-0.38, 0.38]) this.mesh(body, new THREE.SphereGeometry(0.09, 6, 4), accent, x, 1.14, 0.36);
+      legs(0.32, 0.48);
+    } else if (type === 'void-hound') {
+      const torso = this.mesh(body, new THREE.IcosahedronGeometry(0.64, 0), primary, 0, 0.68, 0); torso.scale.set(1, 0.68, 1.5);
+      this.mesh(body, new THREE.DodecahedronGeometry(0.38), primary, 0, 0.86, 0.72); legs(0.31, 0.42); eye(-0.14); eye(0.14);
+      for (const x of [-0.24, 0.24]) this.mesh(body, new THREE.ConeGeometry(0.14, 0.55, 4), accent, x, 1.34, 0.52);
+      for (const z of [-0.62, -0.2, 0.22]) this.mesh(body, new THREE.ConeGeometry(0.1, 0.38, 4), accent, 0, 1.18, z);
+    } else if (type === 'tower-eye' || type === 'mirror-sorcerer') {
+      const mage = type === 'mirror-sorcerer';
+      const orb = this.mesh(body, new THREE.SphereGeometry(mage ? 0.68 : 0.58, 10, 7), primary, 0, mage ? 1.15 : 1.05, 0);
+      this.mesh(body, new THREE.SphereGeometry(mage ? 0.28 : 0.23, 8, 6), accent, 0, mage ? 1.16 : 1.06, 0.51);
+      this.mesh(body, new THREE.SphereGeometry(mage ? 0.12 : 0.1, 7, 5), dark, 0, mage ? 1.16 : 1.06, 0.72);
+      for (let i = 0; i < (mage ? 8 : 6); i++) { const a = i / (mage ? 8 : 6) * Math.PI * 2; const shard = this.mesh(body, new THREE.OctahedronGeometry(0.13, 0), accent, Math.sin(a) * 0.9, 1.05 + Math.cos(a) * 0.9, 0); shard.rotation.z = a; }
+      const tail = this.mesh(body, new THREE.ConeGeometry(0.42, 1.15, 7), primary, 0, 0.36, 0); tail.rotation.x = Math.PI;
+    } else if (type === 'rune-knight') {
+      this.mesh(body, new THREE.BoxGeometry(0.78, 0.9, 0.48), primary, 0, 0.82, 0); this.mesh(body, new THREE.BoxGeometry(0.48, 0.48, 0.45), primary, 0, 1.5, 0); legs(0.25, 0.48);
+      this.mesh(body, new THREE.BoxGeometry(0.12, 1.55, 0.16), accent, -0.62, 1.03, 0.22).rotation.z = -0.25;
+      this.mesh(body, new THREE.ConeGeometry(0.32, 0.62, 5), accent, 0, 2.02, 0);
+      for (const x of [-0.24, 0.24]) this.mesh(body, new THREE.BoxGeometry(0.34, 0.25, 0.5), accent, x, 1.1, 0);
+    } else if (type === 'chrono-drake' || type === 'eternity-dragon') {
+      const eternal = type === 'eternity-dragon';
+      const torso = this.mesh(body, new THREE.IcosahedronGeometry(eternal ? 0.86 : 0.68, 1), primary, 0, 0.82, 0); torso.scale.set(1, 0.74, 1.45);
+      this.mesh(body, new THREE.DodecahedronGeometry(eternal ? 0.52 : 0.4), primary, 0, 1, 0.83); legs(eternal ? 0.42 : 0.33, eternal ? 0.46 : 0.34); eye(-0.15); eye(0.15);
+      for (const x of [-0.75, 0.75]) { const wing = this.mesh(body, new THREE.ConeGeometry(eternal ? 0.52 : 0.4, eternal ? 1.8 : 1.35, 4), accent, x, 1.15, -0.1); wing.rotation.z = x > 0 ? -1.08 : 1.08; }
+      for (let i = 0; i < 5; i++) this.mesh(body, new THREE.OctahedronGeometry(0.13 + i * 0.015, 0), accent, 0, 1.35, 0.45 - i * 0.38);
+      const tail = this.mesh(body, new THREE.ConeGeometry(0.2, eternal ? 1.9 : 1.45, 6), primary, 0, 0.72, -1.25); tail.rotation.x = Math.PI / 2;
+    } else if (type === 'beetle' || type === 'scarab') {
       const shell = this.mesh(body, new THREE.SphereGeometry(type === 'scarab' ? 0.72 : 0.62, 7, 5), primary, 0, 0.58, 0); shell.scale.set(1, 0.58, 1.28);
       this.mesh(body, new THREE.SphereGeometry(0.34, 7, 5), accent, 0, 0.5, 0.66); eye(-0.13); eye(0.13);
       for (const side of [-1, 1]) for (let leg = -1; leg <= 1; leg++) { const limb = this.mesh(body, new THREE.BoxGeometry(0.48, 0.1, 0.12), accent, side * 0.55, 0.33, leg * 0.34); limb.rotation.y = side * (0.25 + leg * 0.12); }
@@ -447,7 +555,9 @@ export class SceneView {
     this.portals.visible = run.status === 'hub';
     this.frostDecor.visible = run.status === 'playing' && run.biome === 'frost';
     this.jungleDecor.visible = run.status === 'playing' && run.biome === 'jungle';
-    for (const portal of [this.playPortal, this.upgradePortal, this.petPortal, this.sellPetPortal, this.sellArmorPortal, this.sellWeaponPortal]) portal.children.slice(0, 3).forEach((child, index) => { if (index < 2) child.rotation.y += dt * (index ? -0.35 : 0.35); });
+    this.emberDecor.visible = run.status === 'playing' && run.biome === 'ember';
+    this.towerDecor.visible = run.status === 'playing' && run.biome === 'tower';
+    for (const portal of [this.playPortal, this.upgradePortal, this.petPortal, this.sellPetPortal, this.sellArmorPortal, this.sellWeaponPortal, this.towerPortal]) portal.children.slice(0, 3).forEach((child, index) => { if (index < 2) child.rotation.y += dt * (index ? -0.35 : 0.35); });
     const target = new THREE.Vector3(p.x, 0, p.z - 0.8);
     if (snap) this.focus.copy(target);
     else this.focus.lerp(target, 1 - Math.exp(-6 * dt));

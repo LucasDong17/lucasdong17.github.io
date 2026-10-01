@@ -1,4 +1,4 @@
-import { BALANCE } from '../data/balance.js';
+import { BALANCE, isBossWave } from '../data/balance.js';
 import { EventBus } from './event-bus.js';
 import { AudioService } from './audio.js';
 import { combineItems, createRun, enterHub, equipBestItems, equipItem, hatchEgg, loadProgress, saveProgress, sellItem, sellPet, startLevel, togglePet } from '../state/run.js';
@@ -28,7 +28,7 @@ export class Game {
   resume() { if (this.menuOpen) return; this.input.clear(); this.canvas.focus(); this.audio.unlock(); this.started = true; this.paused = false; this.accumulator = 0; this.lastTime = null; }
   setMenu(open) { this.menuOpen = open; if (open) this.pause(); else if (this.started) this.resume(); }
   save() { saveProgress(this.run); }
-  startLevel(biome, wave) { if (!startLevel(this.run, biome, wave, this.world)) return; this.menuOpen = false; this.save(); this.view.render(this.run, 0, true); this.resume(); this.hud.announce(wave, this.run.enemies[0].name, wave === BALANCE.maxWave, this.run.enemies.length); }
+  startLevel(biome, wave) { if (!startLevel(this.run, biome, wave, this.world)) return; this.menuOpen = false; this.save(); this.view.render(this.run, 0, true); this.resume(); this.hud.announce(wave, this.run.enemies[0].name, isBossWave(wave, biome), this.run.enemies.length); }
   returnToHub() { enterHub(this.run, this.world); this.save(); this.view.render(this.run, 0, true); this.resume(); }
   restart() { if (this.run.status === 'hub') this.resume(); }
   frame(now) {

@@ -36,6 +36,11 @@
     <section class="countdown" id="countdown" hidden><small>MEADOW CLEARED</small><strong><span id="countdown-value">10</span>s</strong><p>Collect your loot before the next wave</p></section>
     <section class="hub-prompt" id="hub-prompt" hidden><strong id="hub-prompt-title">Play Portal</strong><span id="hub-prompt-copy">Choose a biome and checkpoint</span></section>
     <aside class="controls"><span><kbd>WASD</kbd> Move</span><span><kbd>SPACE</kbd> Attack</span><span><kbd>E</kbd> Hold to loot</span></aside>
+    <section id="touch-controls" class="touch-controls" aria-label="Touch game controls" hidden>
+      <div id="touch-joystick" class="touch-joystick" role="group" aria-label="Movement joystick"><i id="touch-joystick-knob"></i><span>MOVE</span></div>
+      <button id="touch-attack" class="touch-action touch-attack" type="button" aria-label="Attack"><span aria-hidden="true">⚔</span><b>HIT</b></button>
+      <button id="touch-pickup" class="touch-action touch-pickup" type="button" aria-label="Hold to pick up loot" hidden><span aria-hidden="true">✋</span><b>HOLD<br>LOOT</b><i></i></button>
+    </section>
   </main>
 
   <section id="announcement" class="announcement" hidden aria-live="polite"><small id="announcement-kicker">GET READY</small><strong id="announcement-title">Wave 1</strong><span id="announcement-copy">A Meadow Cow approaches</span></section>
@@ -57,6 +62,11 @@
     <article id="play-menu" class="game-menu portal-menu" hidden aria-label="Choose a biome and checkpoint">
       <header><div class="menu-title"><span class="menu-icon">🌀</span><div><small>PLAY PORTAL</small><h2>Choose a Journey</h2></div></div><button class="close-menu" aria-label="Close menu">×</button></header>
       <div id="biome-grid" class="biome-grid"></div>
+    </article>
+
+    <article id="tower-menu" class="game-menu portal-menu tower-menu" hidden aria-label="Choose an endless tower checkpoint">
+      <header><div class="menu-title"><span class="menu-icon tower-menu-icon">♜</span><div><small>ENDLESS TOWER</small><h2>Climb the Tower</h2></div></div><button class="close-menu" aria-label="Close menu">×</button></header>
+      <div id="tower-panel" class="tower-panel"></div>
     </article>
 
     <article id="upgrade-menu" class="game-menu portal-menu" hidden aria-label="Upgrade equipment">
@@ -85,7 +95,7 @@
     </article>
   </section>
 
-  <section id="overlay" class="overlay"><div class="welcome-mark">⚔</div><div class="dialog"><span class="eyebrow" id="overlay-kicker">YOUR GEAR AWAITS</span><h1 id="overlay-title">Welcome to<br><em>Mossvale</em></h1><p id="overlay-copy">Return to the safe haven after defeat, upgrade duplicate gear, and conquer three 50-wave biomes.</p><button id="play" disabled>Loading Mossvale…</button><small>Move with WASD · Attack with Space · Hold E to collect</small></div></section>
+  <section id="overlay" class="overlay"><div class="welcome-mark">⚔</div><div class="dialog"><span class="eyebrow" id="overlay-kicker">YOUR GEAR AWAITS</span><h1 id="overlay-title">Welcome to<br><em>Mossvale</em></h1><p id="overlay-copy">Conquer four 50-wave biomes, then test your build across the Endless Tower's 100 floors.</p><button id="play" disabled>Loading Mossvale…</button><small class="desktop-instructions">Move with WASD · Attack with Space · Hold E to collect</small><small class="mobile-instructions">Use the joystick · Tap HIT · Hold LOOT near drops</small></div></section>
   <p id="error" hidden role="alert"></p>
   <script type="module" src="./src/main.js"></script>
 </body>
