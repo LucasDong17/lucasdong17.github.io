@@ -1,5 +1,16 @@
 # Project Plan
 
+## Forge Upgrade-All and Endless Egg — 2026-10-02
+
+The Forge now includes an **Upgrade All** action that performs every currently possible duplicate merge, including newly enabled chain merges, while preserving equipped item references. “Max” means the highest level producible from the gear currently owned; gear levels remain uncapped.
+
+The Hatchery now permanently offers a 1,000,000-coin Endless Egg as a long-term coin sink. Its pool contains five original endgame companions across Mythical, Divine, Secret, Cosmic, and Glitched rarities. Their damage ranges from 450 to 1,200 per one-second attack, making them substantially stronger than prior pets without trivializing the 36,000-health final tower boss.
+
+Acceptance checks: recursive bulk merges produce the correct highest levels; equipped gear remains equipped; the Endless Egg is always unlocked, charges exactly 1,000,000 coins, its odds total 100%, and every result belongs to the requested endgame rarity pool.
+
+- **Logic: 23/23 passing.** Coverage includes chain merges, equipped-ID preservation, exact price deduction, endgame rarity rolls, damage ordering, and all prior systems.
+- **Browser: 19/19 passing.** The live WebGL fixture confirmed the five-card hatchery, Endless Egg artwork and odds, one-action forge merging, and a clean console. A separate responsive visual check confirmed the new egg remains readable and scrollable in the compact menu layout.
+
 ## Vision and Source Interpretation
 
 Create an original, lightweight browser action RPG with a colorful low-poly grassland, an angled follow camera, melee combat, enemy drops, and character growth. The supplied screenshots show the likely long-term inspiration: chickens, sheep, pigs, cows, wolves, bears, and a king-chicken boss; health and XP bars; coins; equipment and item inventories; quests and achievements; stat choices; crafting/dismantling; gear upgrades; an enemy index; pickups; and waypoint markers.

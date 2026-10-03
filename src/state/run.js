@@ -101,13 +101,29 @@ export function equipBestItems(run, category) {
 }
 
 export function combineItems(run, key, level = 1) {
-  const matches = run.inventory.filter(item => item.key === key && (item.level || 1) === level).slice(0, 2);
+  const equippedIds = new Set(Object.values(run.equipped));
+  const matches = run.inventory.filter(item => item.key === key && (item.level || 1) === level).sort((a, b) => Number(equippedIds.has(b.id)) - Number(equippedIds.has(a.id))).slice(0, 2);
   if (matches.length < 2) return false;
   const equippedSlots = Object.entries(run.equipped).filter(([, id]) => matches.some(item => item.id === id)).map(([slot]) => slot);
   const keep = matches[0]; keep.level = level + 1;
   run.inventory = run.inventory.filter(item => item.id !== matches[1].id);
   for (const slot of equippedSlots) run.equipped[slot] = keep.id;
   recalculateStats(run); return keep;
+}
+
+export function upgradeAllItems(run) {
+  let upgraded = 0;
+  while (true) {
+    const groups = new Map();
+    for (const item of run.inventory) {
+      const token = `${item.key}|${item.level || 1}`;
+      const group = groups.get(token) || { key: item.key, level: item.level || 1, count: 0 };
+      group.count++; groups.set(token, group);
+    }
+    const match = [...groups.values()].find(group => group.count >= 2);
+    if (!match || !combineItems(run, match.key, match.level)) return upgraded;
+    upgraded++;
+  }
 }
 
 export function sellItem(run, itemId, category) {

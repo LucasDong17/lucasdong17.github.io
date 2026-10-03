@@ -140,7 +140,9 @@ export const BOSS = BOSSES.meadow;
 export const RARITIES = Object.freeze({
   common: { name: 'Common', color: '#a9c4af' }, rare: { name: 'Rare', color: '#58b9ef' },
   epic: { name: 'Epic', color: '#c477ef' }, legendary: { name: 'Legendary', color: '#ffc857' },
-  mythical: { name: 'Mythical', color: '#ff72e8' },
+  mythical: { name: 'Mythical', color: '#ff72e8' }, divine: { name: 'Divine', color: '#fff08a' },
+  secret: { name: 'Secret', color: '#66ffd8' }, cosmic: { name: 'Cosmic', color: '#9e8cff' },
+  glitched: { name: 'Glitched', color: '#ff5f9e' },
 });
 export const PETS = Object.freeze([
   { key: 'squire-pup', egg: 'meadow', name: 'Squire Pup', icon: '🐕', rarity: 'common', damage: 12, color: '#b98758', accent: '#d9dde0', kind: 'beast' },
@@ -163,18 +165,24 @@ export const PETS = Object.freeze([
   { key: 'ember-phoenix', egg: 'ember', name: 'Ember Phoenix', icon: '🐦', rarity: 'epic', damage: 205, color: '#b93b2f', accent: '#ffd052', kind: 'phoenix' },
   { key: 'obsidian-drake', egg: 'ember', name: 'Obsidian Drake', icon: '🐉', rarity: 'legendary', damage: 275, color: '#342f40', accent: '#f05b3e', kind: 'drake' },
   { key: 'solar-manticore', egg: 'ember', name: 'Solar Manticore', icon: '🦁', rarity: 'mythical', damage: 360, color: '#a94335', accent: '#ffe06a', kind: 'griffin' },
+  { key: 'eternal-stag', egg: 'endless', name: 'Eternal Stag', icon: '🦌', rarity: 'mythical', damage: 450, color: '#563b7f', accent: '#ff79dc', kind: 'beast' },
+  { key: 'seraphic-lion', egg: 'endless', name: 'Seraphic Lion', icon: '🦁', rarity: 'divine', damage: 575, color: '#fff0a3', accent: '#f6b94d', kind: 'griffin' },
+  { key: 'abyssal-watcher', egg: 'endless', name: 'Abyssal Watcher', icon: '👁️', rarity: 'secret', damage: 725, color: '#173f4d', accent: '#65ffd8', kind: 'golem' },
+  { key: 'cosmic-wyrmling', egg: 'endless', name: 'Cosmic Wyrmling', icon: '🌌', rarity: 'cosmic', damage: 925, color: '#493d9e', accent: '#bda2ff', kind: 'drake' },
+  { key: 'glitch-fox', egg: 'endless', name: 'Glitch Fox', icon: '🦊', rarity: 'glitched', damage: 1200, color: '#1f2633', accent: '#ff4e9e', kind: 'beast' },
 ]);
 export const EGGS = Object.freeze([
   { key: 'meadow', name: 'Mossvale Egg', biome: 'meadow', cost: 500, icon: '🥚', description: 'A warm speckled egg with a loyal medieval companion inside.', odds: { common: 59, rare: 25, epic: 11, legendary: 4, mythical: 1 } },
   { key: 'frost', name: 'Frostfang Egg', biome: 'frost', cost: 1500, icon: '❄️', description: 'A difficult icy hatch containing stronger tundra companions.', odds: { common: 67, rare: 22, epic: 8, legendary: 2, mythical: 1 } },
   { key: 'jungle', name: 'Sunspire Egg', biome: 'jungle', cost: 4000, icon: '🌿', description: 'A vine-wrapped relic egg hiding a powerful jungle companion.', odds: { common: 69, rare: 20, epic: 8, legendary: 2, mythical: 1 } },
   { key: 'ember', name: 'Embercrag Egg', biome: 'ember', cost: 9000, icon: '🔥', description: 'A warm obsidian egg containing a fearless volcanic companion.', odds: { common: 69, rare: 20, epic: 8, legendary: 2, mythical: 1 } },
+  { key: 'endless', name: 'Endless Egg', biome: 'tower', cost: 1000000, icon: '♾️', description: 'A reality-bending prize for dedicated adventurers, filled only with endgame companions.', odds: { mythical: 50, divine: 27, secret: 14, cosmic: 7, glitched: 2 } },
 ]);
 export function petDefinition(key) { return PETS.find(pet => pet.key === key) || null; }
 export function eggDefinition(key) { return EGGS.find(egg => egg.key === key) || null; }
 export function coinRewardForWave(wave, biome = 'meadow') { if (biome === 'tower') return 900 + wave * 165; if (biome === 'ember') return 650 + wave * 120; if (biome === 'jungle') return 300 + wave * 70; return biome === 'frost' ? 120 + wave * 35 : 40 + wave * 12; }
 export function itemSellValue(item) { const definition = itemDefinition(item.key, item.level || 1); if (!definition) return 0; const base = definition.category === 'tools' ? 18 + definition.damage * 2 : 14 + definition.defense * 5 + definition.health * 2; return Math.max(10, Math.round(base * (1 + ((item.level || 1) - 1) * 0.35))); }
-export function petSellValue(pet) { const definition = petDefinition(pet.key); if (!definition) return 0; const rarityValue = { common: 100, rare: 260, epic: 650, legendary: 1500, mythical: 3500 }; return rarityValue[definition.rarity] + definition.damage * 5; }
+export function petSellValue(pet) { const definition = petDefinition(pet.key); if (!definition) return 0; const rarityValue = { common: 100, rare: 260, epic: 650, legendary: 1500, mythical: 3500, divine: 9000, secret: 18000, cosmic: 35000, glitched: 75000 }; return rarityValue[definition.rarity] + definition.damage * 5; }
 export const SETS = Object.freeze([
   { key: 'stone', name: 'Stone', color: '#93a29d', biome: 'meadow', unlock: 1, power: 1 }, { key: 'iron', name: 'Iron', color: '#9ebad1', biome: 'meadow', unlock: 10, power: 1.35 }, { key: 'jade', name: 'Jade', color: '#38d193', biome: 'meadow', unlock: 20, power: 1.75 }, { key: 'diamond', name: 'Diamond', color: '#55ddff', biome: 'meadow', unlock: 35, power: 2.25 }, { key: 'warborn', name: 'Warborn', color: '#d26aff', biome: 'meadow', unlock: 45, power: 3 },
   { key: 'frostbite', name: 'Frostbite', color: '#8ee8ff', biome: 'frost', unlock: 1, power: 3.4 }, { key: 'glacier', name: 'Glacier', color: '#66a9e8', biome: 'frost', unlock: 10, power: 3.9 }, { key: 'aurora', name: 'Aurora', color: '#b686f4', biome: 'frost', unlock: 20, power: 4.5 }, { key: 'mammoth', name: 'Mammoth', color: '#d9c7aa', biome: 'frost', unlock: 30, power: 5.2 }, { key: 'rime', name: 'Rimeforged', color: '#79f1df', biome: 'frost', unlock: 40, power: 6 }, { key: 'starfall', name: 'Starfall', color: '#f1b2ff', biome: 'frost', unlock: 48, power: 7 },

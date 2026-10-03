@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BALANCE as B, EGGS, TOWER_BOSSES, coinRewardForWave, enemyCountForWave, enemyForWave, itemDefinition, petDefinition, petSellValue, towerLootBand } from '../src/data/balance.js';
 import { EventBus } from '../src/core/event-bus.js';
-import { SAVE_KEY, combineItems, createRun, defaultProgress, enterHub, equipBestItems, equipItem, hatchEgg, loadProgress, saveProgress, sellAllUnequipped, sellItem, sellPet, startLevel, togglePet } from '../src/state/run.js';
+import { SAVE_KEY, combineItems, createRun, defaultProgress, enterHub, equipBestItems, equipItem, hatchEgg, loadProgress, saveProgress, sellAllUnequipped, sellItem, sellPet, startLevel, togglePet, upgradeAllItems } from '../src/state/run.js';
 import { World } from '../src/world/world.js';
 import { stepRun, canHit, attackStage } from '../src/systems/simulation.js';
 import { usesTouchControls } from '../src/input/input.js';
@@ -69,6 +69,22 @@ test('loot pickup, equipment, duplicate combining, and save reload preserve gear
   const run = activeRun(); run.drops = [{ id: 10, key: 'stone:chestplate', level: 1, x: run.player.x, z: run.player.z, spin: 0 }]; tick(run, { pickup: true }, Math.ceil(B.pickup.hold / B.step) + 1); assert.equal(run.inventory.length, 1);
   run.inventory.push({ id: 11, key: 'stone:chestplate', level: 1 }); run.nextItemId = 12; assert.ok(equipItem(run, 10)); const before = { health: run.player.maxHealth, defense: run.player.defense }; assert.ok(combineItems(run, 'stone:chestplate', 1)); assert.equal(run.inventory.length, 1); assert.equal(run.inventory[0].level, 2); assert.ok(run.player.maxHealth > before.health); assert.ok(run.player.defense >= before.defense);
   const memory = new Map(); const storage = { getItem: key => memory.get(key) ?? null, setItem: (key, value) => memory.set(key, value) }; saveProgress(run, storage); assert.ok(memory.has(SAVE_KEY)); const restored = createRun(loadProgress(storage)); assert.equal(restored.inventory[0].level, 2); assert.equal(restored.equipped.chestplate, 10); assert.equal(restored.player.maxHealth, 113); assert.equal(itemDefinition('stone:chestplate', 2).health, 13);
+});
+
+test('upgrade all performs every available chain merge and keeps equipped gear equipped', () => {
+  const run = createRun();
+  run.inventory = [
+    { id: 1, key: 'stone:sword', level: 1 }, { id: 2, key: 'stone:sword', level: 1 },
+    { id: 3, key: 'stone:sword', level: 1 }, { id: 4, key: 'stone:sword', level: 1 },
+    { id: 5, key: 'jade:helmet', level: 2 }, { id: 6, key: 'jade:helmet', level: 2 },
+    { id: 7, key: 'iron:boots', level: 1 },
+  ];
+  run.equipped = { weapon: 4, helmet: 6 }; recalculate(run);
+  assert.equal(upgradeAllItems(run), 4);
+  assert.deepEqual(run.inventory.map(item => [item.key, item.level]).sort(), [['iron:boots', 1], ['jade:helmet', 3], ['stone:sword', 3]]);
+  assert.equal(run.inventory.find(item => item.id === run.equipped.weapon).level, 3);
+  assert.equal(run.inventory.find(item => item.id === run.equipped.helmet).level, 3);
+  assert.equal(upgradeAllItems(run), 0);
 });
 
 test('equip best selects the strongest weapon and every strongest armor slot', () => {
@@ -143,9 +159,9 @@ test('eggs enforce price and biome locks while rarity rolls determine damage', (
   run.coins = 9000; assert.equal(hatchEgg(run, 'ember', () => 0), null); run.progress.unlocked.ember = 1; assert.ok(hatchEgg(run, 'ember', () => 0));
 });
 
-test('every egg has a one-percent Mythical animal with top-tier power and value', () => {
+test('every biome egg has a one-percent Mythical animal with top-tier power and value', () => {
   const run = createRun(); run.progress.unlocked = { meadow: 1, frost: 1, jungle: 1, ember: 1 }; run.coins = 30000;
-  const mythicalPets = EGGS.map(egg => {
+  const mythicalPets = EGGS.filter(egg => egg.key !== 'endless').map(egg => {
     assert.equal(Object.values(egg.odds).reduce((sum, chance) => sum + chance, 0), 100);
     assert.equal(egg.odds.mythical, 1);
     const pet = hatchEgg(run, egg.key, () => 0.999999); const definition = petDefinition(pet.key);
@@ -156,6 +172,18 @@ test('every egg has a one-percent Mythical animal with top-tier power and value'
   });
   assert.deepEqual(mythicalPets.map(pet => petDefinition(pet.key).name), ['Moonhorn Unicorn', 'Frost Phoenix', 'Verdant Basilisk', 'Solar Manticore']);
   assert.ok(petSellValue(mythicalPets[0]) > petSellValue({ key: 'crown-griffin' }));
+});
+
+test('the million-coin Endless Egg contains only powerful endgame rarities', () => {
+  const egg = EGGS.find(entry => entry.key === 'endless');
+  assert.equal(egg.cost, 1000000);
+  assert.deepEqual(Object.keys(egg.odds), ['mythical', 'divine', 'secret', 'cosmic', 'glitched']);
+  assert.equal(Object.values(egg.odds).reduce((sum, chance) => sum + chance, 0), 100);
+  const run = createRun(); run.coins = egg.cost;
+  const glitched = hatchEgg(run, 'endless', () => 0.999999);
+  assert.equal(petDefinition(glitched.key).rarity, 'glitched');
+  assert.ok(petDefinition(glitched.key).damage > petDefinition('solar-manticore').damage);
+  assert.equal(run.coins, 0);
 });
 
 test('only three pets equip and equipped pets attack once per second', () => {
