@@ -113,10 +113,9 @@ export function combineItems(run, key, level = 1) {
 export function sellItem(run, itemId, category) {
   const item = run.inventory.find(entry => entry.id === itemId);
   const definition = item && itemDefinition(item.key, item.level);
-  if (!definition || definition.category !== category) return 0;
+  if (!definition || definition.category !== category || Object.values(run.equipped).includes(itemId)) return 0;
   const value = itemSellValue(item);
   run.inventory = run.inventory.filter(entry => entry.id !== itemId);
-  for (const [slot, equippedId] of Object.entries(run.equipped)) if (equippedId === itemId) delete run.equipped[slot];
   run.coins += value;
   recalculateStats(run, false);
   return value;
@@ -124,10 +123,34 @@ export function sellItem(run, itemId, category) {
 
 export function sellPet(run, petId) {
   const pet = run.pets.find(entry => entry.id === petId);
-  if (!pet) return 0;
+  if (!pet || run.equippedPetIds.includes(petId)) return 0;
   const value = petSellValue(pet);
   run.pets = run.pets.filter(entry => entry.id !== petId);
-  run.equippedPetIds = run.equippedPetIds.filter(id => id !== petId);
+  run.coins += value;
+  return value;
+}
+
+export function sellAllUnequipped(run, category) {
+  let value = 0;
+  if (category === 'pets') {
+    const equipped = new Set(run.equippedPetIds);
+    run.pets = run.pets.filter(pet => {
+      if (equipped.has(pet.id)) return true;
+      value += petSellValue(pet);
+      return false;
+    });
+  } else if (category === 'armor' || category === 'tools') {
+    const equipped = new Set(Object.values(run.equipped));
+    run.inventory = run.inventory.filter(item => {
+      const definition = itemDefinition(item.key, item.level);
+      if (!equipped.has(item.id) && definition?.category === category) {
+        value += itemSellValue(item);
+        return false;
+      }
+      return true;
+    });
+    if (value) recalculateStats(run, false);
+  }
   run.coins += value;
   return value;
 }

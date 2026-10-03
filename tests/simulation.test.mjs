@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BALANCE as B, EGGS, TOWER_BOSSES, coinRewardForWave, enemyCountForWave, enemyForWave, itemDefinition, petDefinition, petSellValue, towerLootBand } from '../src/data/balance.js';
 import { EventBus } from '../src/core/event-bus.js';
-import { SAVE_KEY, combineItems, createRun, defaultProgress, enterHub, equipBestItems, equipItem, hatchEgg, loadProgress, saveProgress, sellItem, sellPet, startLevel, togglePet } from '../src/state/run.js';
+import { SAVE_KEY, combineItems, createRun, defaultProgress, enterHub, equipBestItems, equipItem, hatchEgg, loadProgress, saveProgress, sellAllUnequipped, sellItem, sellPet, startLevel, togglePet } from '../src/state/run.js';
 import { World } from '../src/world/world.js';
 import { stepRun, canHit, attackStage } from '../src/systems/simulation.js';
 import { usesTouchControls } from '../src/input/input.js';
@@ -171,10 +171,13 @@ test('enemy index discovery happens on defeat and ranged enemies fire projectile
   Object.assign(ranged, { x: 0, z: 1.4, health: 1, mode: 'idle' }); Object.assign(run.player, { x: 0, z: 0, facing: 0, attack: null }); tick(run, { attack: true }, 12, bus); assert.equal(run.discovered.has(ranged.type), true);
 });
 
-test('sell circles convert pets, armor, and weapons to coins and unequip sold gear', () => {
-  const run = createRun(); run.inventory = [{ id: 1, key: 'stone:sword', level: 1 }, { id: 2, key: 'stone:helmet', level: 1 }]; run.equipped = { weapon: 1, helmet: 2 }; recalculate(run);
-  run.coins = 500; const pet = hatchEgg(run, 'meadow', () => 0); togglePet(run, pet.id); const before = run.coins;
-  assert.ok(sellItem(run, 1, 'tools') > 0); assert.equal(run.equipped.weapon, undefined); assert.ok(sellItem(run, 2, 'armor') > 0); assert.equal(run.equipped.helmet, undefined); assert.ok(sellPet(run, pet.id) > 0); assert.equal(run.pets.length, 0); assert.equal(run.equippedPetIds.length, 0); assert.ok(run.coins > before);
+test('sell circles and sell-all preserve equipped pets, armor, and weapons', () => {
+  const run = createRun(); run.inventory = [{ id: 1, key: 'stone:sword', level: 1 }, { id: 2, key: 'stone:helmet', level: 1 }, { id: 3, key: 'jade:sword', level: 1 }, { id: 4, key: 'jade:helmet', level: 1 }]; run.equipped = { weapon: 1, helmet: 2 }; recalculate(run);
+  run.coins = 1000; const equippedPet = hatchEgg(run, 'meadow', () => 0); const sparePet = hatchEgg(run, 'meadow', () => 0); togglePet(run, equippedPet.id); const before = run.coins;
+  assert.equal(sellItem(run, 1, 'tools'), 0); assert.equal(sellItem(run, 2, 'armor'), 0); assert.equal(sellPet(run, equippedPet.id), 0);
+  assert.ok(sellAllUnequipped(run, 'tools') > 0); assert.deepEqual(run.inventory.filter(item => itemDefinition(item.key).category === 'tools').map(item => item.id), [1]);
+  assert.ok(sellAllUnequipped(run, 'armor') > 0); assert.deepEqual(run.inventory.filter(item => itemDefinition(item.key).category === 'armor').map(item => item.id), [2]);
+  assert.ok(sellAllUnequipped(run, 'pets') > 0); assert.deepEqual(run.pets.map(pet => pet.id), [equippedPet.id]); assert.equal(run.equippedPetIds[0], equippedPet.id); assert.ok(!run.pets.some(pet => pet.id === sparePet.id)); assert.ok(run.coins > before);
 });
 
 function recalculate(run) {

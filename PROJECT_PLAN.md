@@ -122,6 +122,15 @@ This remains intentionally narrower than the former Phase 2/3 roadmap: there are
 
 Long-form play-balance all four 50-wave campaigns and the 100-wave Endless Tower, especially late multi-enemy pressure, tower checkpoint recovery, cross-biome drop quality, pet-assisted damage, and final-boss survivability.
 
+## Equipped Item Sell Protection — 2026-10-02
+
+The Sell Armor, Sell Weapons, and Sell Pets stations now identify equipped entries with a prominent checkmarked badge and a protected, disabled sell state. Each station has a category-specific **Sell All Unequipped** button that previews both the affected count and total gold value. Individual and bulk state operations reject equipped entries, so equipped gear and pets cannot be removed even if UI protections are bypassed.
+
+### Recorded checks
+
+- **Logic: 21/21 passing.** Sell coverage now verifies that individual and bulk sales preserve equipped armor, weapons, and pets while removing every eligible unequipped entry and awarding gold.
+- **Browser: 18/18 passing.** The live WebGL fixture verified the equipped marker, disabled protected card, sell-all action, retained equipped weapon, gold award, and an error-free console.
+
 ## Endless Tower Expansion — 2026-09-30
 
 A seventh labeled hub circle and a tall twin-spire tower entrance now sit behind the player spawn. Entering the circle opens a dedicated tower screen with resume-from-highest-progress and unlockable wave 25, 50, 75, and 100 boss checkpoints. Tower progress is independent, available from a fresh save, stored in save schema version 5, and safely added to version 2–4 saves.
@@ -194,7 +203,7 @@ Multi-enemy waves now show a compact health roster with one bar and exact health
 
 Enemy definitions now carry distinct movement speed, health, damage, attack range, attack cadence, melee/ranged style, and projectile speed where applicable. Jade Guardians, Aurora Owls, Rime Wraiths, Crystal Drakes, and the Aurora Wyrm use authoritative simulated projectiles. The creature index remains hidden until that creature has actually been defeated, then shows all combat attributes.
 
-The safe haven now contains six spaced, permanently labeled circles: Play, Upgrade, Pet Hatchery, Sell Pets, Sell Armor, and Sell Weapons. Each sell circle opens a category-specific market; selling equipped gear or pets safely unequips it and grants a centralized, level/rarity-aware gold value. Save schema version 4 preserves existing version-2 and version-3 progression while storing defeat-based discoveries going forward.
+The safe haven now contains six spaced, permanently labeled circles: Play, Upgrade, Pet Hatchery, Sell Pets, Sell Armor, and Sell Weapons. Each sell circle opens a category-specific market with centralized, level/rarity-aware gold values. Equipped gear and pets were originally sold by safely unequipping them; the 2026-10-02 protection update above intentionally supersedes that behavior. Save schema version 4 preserves existing version-2 and version-3 progression while storing defeat-based discoveries going forward.
 
 ### Recorded checks
 
