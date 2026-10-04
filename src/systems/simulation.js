@@ -7,7 +7,7 @@ export function canHit(player, enemy, facing = player.facing) { if (!enemy || en
 
 function randomFor(wave, salt, biome = 'meadow') { const biomeSalt = biome === 'frost' ? 7919 : biome === 'jungle' ? 15401 : biome === 'ember' ? 23173 : 0; let value = (wave * 2654435761 + salt * 1013904223 + biomeSalt) >>> 0; value ^= value << 13; value ^= value >>> 17; value ^= value << 5; return (value >>> 0) / 4294967296; }
 
-function createDrops(run, enemy) {
+function createDrops(run, enemy, bus) {
   const defeated = run.enemies.filter(entry => entry.health <= 0).length;
   const chance = Math.min(0.98, 0.78 + run.wave * 0.004);
   const count = enemy.boss ? 4 : (randomFor(run.wave, defeated * 13, run.biome) < chance ? 1 : 0);
@@ -29,7 +29,12 @@ function createDrops(run, enemy) {
       const type = itemPool[Math.floor(randomFor(run.wave, defeated * 59 + index + 20, run.biome) * itemPool.length)];
       key = `${set.key}:${type.key}`;
     }
-    run.drops.push({ id: run.nextItemId++, key, level: 1, x: enemy.x + (index % 2) * 0.55, z: enemy.z + Math.floor(index / 2) * 0.55, spin: randomFor(run.wave, defeated * 67 + index + 40, run.biome) * Math.PI * 2 });
+    const drop = { id: run.nextItemId++, key, level: 1, x: enemy.x + (index % 2) * 0.55, z: enemy.z + Math.floor(index / 2) * 0.55, spin: randomFor(run.wave, defeated * 67 + index + 40, run.biome) * Math.PI * 2 };
+    const setKey = key.split(':')[0];
+    if (run.autoCollectSets.has(setKey)) {
+      run.inventory.push({ id: drop.id, key: drop.key, level: drop.level, new: true });
+      bus.emit('pickupCollected', { itemId: drop.id, key: drop.key, automatic: true });
+    } else run.drops.push(drop);
   }
 }
 
@@ -46,7 +51,7 @@ function damageEnemy(run, enemy, amount, bus) {
   enemy.health = Math.max(0, enemy.health - amount); enemy.flash = B.hitFlash;
   bus.emit('damageTaken', { target: 'enemy', amount, x: enemy.x, z: enemy.z, id: enemy.id });
   if (enemy.health > 0) return;
-  enemy.mode = 'defeated'; run.discovered.add(enemy.type); createDrops(run, enemy); bus.emit('enemyDefeated', { wave: run.wave, enemy: enemy.name, type: enemy.type, drops: run.drops.length });
+  enemy.mode = 'defeated'; run.discovered.add(enemy.type); createDrops(run, enemy, bus); bus.emit('enemyDefeated', { wave: run.wave, enemy: enemy.name, type: enemy.type, drops: run.drops.length });
   if (run.enemies.some(entry => entry.health > 0)) return;
   const coins = coinRewardForWave(run.wave, run.biome); run.coins += coins; bus.emit('coinsEarned', { amount: coins, total: run.coins, biome: run.biome, wave: run.wave });
   run.phase = 'intermission'; run.intermission = B.intermission;

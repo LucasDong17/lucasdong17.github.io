@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BALANCE as B, EGGS, TOWER_BOSSES, coinRewardForWave, enemyCountForWave, enemyForWave, itemDefinition, petDefinition, petSellValue, towerLootBand } from '../src/data/balance.js';
+import { BALANCE as B, EGGS, SETS, TOWER_BOSSES, coinRewardForWave, enemyCountForWave, enemyForWave, itemDefinition, petDefinition, petSellValue, towerLootBand } from '../src/data/balance.js';
 import { EventBus } from '../src/core/event-bus.js';
-import { SAVE_KEY, combineItems, createRun, defaultProgress, enterHub, equipBestItems, equipItem, hatchEgg, loadProgress, saveProgress, sellAllUnequipped, sellItem, sellPet, startLevel, togglePet, upgradeAllItems } from '../src/state/run.js';
+import { SAVE_KEY, combineItems, createRun, defaultProgress, enterHub, equipBestItems, equipItem, hatchEgg, loadProgress, saveProgress, sellAllUnequipped, sellItem, sellPet, startLevel, toggleAutoCollectSet, togglePet, upgradeAllItems } from '../src/state/run.js';
 import { World } from '../src/world/world.js';
 import { stepRun, canHit, attackStage } from '../src/systems/simulation.js';
 import { usesTouchControls } from '../src/input/input.js';
@@ -69,6 +69,13 @@ test('loot pickup, equipment, duplicate combining, and save reload preserve gear
   const run = activeRun(); run.drops = [{ id: 10, key: 'stone:chestplate', level: 1, x: run.player.x, z: run.player.z, spin: 0 }]; tick(run, { pickup: true }, Math.ceil(B.pickup.hold / B.step) + 1); assert.equal(run.inventory.length, 1);
   run.inventory.push({ id: 11, key: 'stone:chestplate', level: 1 }); run.nextItemId = 12; assert.ok(equipItem(run, 10)); const before = { health: run.player.maxHealth, defense: run.player.defense }; assert.ok(combineItems(run, 'stone:chestplate', 1)); assert.equal(run.inventory.length, 1); assert.equal(run.inventory[0].level, 2); assert.ok(run.player.maxHealth > before.health); assert.ok(run.player.defense >= before.defense);
   const memory = new Map(); const storage = { getItem: key => memory.get(key) ?? null, setItem: (key, value) => memory.set(key, value) }; saveProgress(run, storage); assert.ok(memory.has(SAVE_KEY)); const restored = createRun(loadProgress(storage)); assert.equal(restored.inventory[0].level, 2); assert.equal(restored.equipped.chestplate, 10); assert.equal(restored.player.maxHealth, 113); assert.equal(itemDefinition('stone:chestplate', 2).health, 13);
+});
+
+test('auto collect filters every set and immediately inventories only selected drops', () => {
+  const redRun = activeRun(50); const redBoss = redRun.enemies[0]; Object.assign(redBoss, { x: 0, z: 4.5, health: 1, mode: 'idle' }); tick(redRun, { attack: true }, 12); assert.equal(redRun.inventory.length, 0); assert.equal(redRun.drops.length, 4);
+  const greenRun = activeRun(50); SETS.forEach(set => toggleAutoCollectSet(greenRun, set.key)); const collected = []; const bus = new EventBus(); bus.on('pickupCollected', event => collected.push(event)); const greenBoss = greenRun.enemies[0]; Object.assign(greenBoss, { x: 0, z: 4.5, health: 1, mode: 'idle' }); tick(greenRun, { attack: true }, 12, bus); assert.equal(greenRun.drops.length, 0); assert.equal(greenRun.inventory.length, 4); assert.equal(collected.filter(event => event.automatic).length, 4);
+  assert.equal(toggleAutoCollectSet(greenRun, 'not-a-set'), false);
+  const memory = new Map(); const storage = { getItem: key => memory.get(key) ?? null, setItem: (key, value) => memory.set(key, value) }; saveProgress(greenRun, storage); const restored = createRun(loadProgress(storage)); assert.deepEqual([...restored.autoCollectSets], SETS.map(set => set.key));
 });
 
 test('upgrade all performs every available chain merge and keeps equipped gear equipped', () => {

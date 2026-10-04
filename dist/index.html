@@ -28,6 +28,7 @@
       <button class="side-button bag-button" id="open-inventory" aria-label="Open inventory"><span>🎒</span><b>Inventory</b><i id="loot-badge" hidden>0</i></button>
       <button class="side-button index-button" id="open-index" aria-label="Open index"><span>📖</span><b>Index</b></button>
       <button class="side-button pets-button" id="open-pets" aria-label="Open pets"><span>🐾</span><b>Pets</b><i id="pet-badge" hidden>0</i></button>
+      <button class="side-button collect-button" id="open-collect" aria-label="Choose sets to collect automatically"><span>✨</span><b>Collect</b></button>
       <button class="side-button home-button" id="return-hub" aria-label="Return to the safe haven" hidden><span>🏰</span><b>Spawn</b></button>
     </nav>
 
@@ -92,6 +93,12 @@
       <header><div class="menu-title"><span class="menu-icon">🐾</span><div><small>YOUR COMPANIONS</small><h2>Pets</h2></div></div><button class="close-menu" aria-label="Close menu">×</button></header>
       <div class="pet-summary"><span id="pet-count">0 pets</span><strong id="equipped-pet-count">0 / 3 EQUIPPED</strong></div>
       <div class="pet-layout"><div id="pet-grid" class="pet-grid"></div><aside id="pet-detail" class="pet-detail"></aside></div>
+    </article>
+
+    <article id="collect-menu" class="game-menu collect-menu" hidden aria-label="Automatic loot collection">
+      <header><div class="menu-title"><span class="menu-icon">✨</span><div><small>AUTO LOOT FILTER</small><h2>Collect</h2></div></div><button class="close-menu" aria-label="Close menu">×</button></header>
+      <div class="collect-summary"><p>Choose which sets go straight to your inventory when they drop, from anywhere in the arena.</p><strong id="collect-count">0 / 27 ACTIVE</strong></div>
+      <div id="collect-grid" class="collect-grid"></div>
     </article>
   </section>
 

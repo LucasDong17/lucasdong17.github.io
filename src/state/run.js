@@ -1,21 +1,21 @@
-import { BALANCE, PETS, SPAWNS, eggDefinition, enemyCountForWave, enemyForWave, itemDefinition, itemSellValue, petDefinition, petSellValue } from '../data/balance.js';
+import { BALANCE, PETS, SETS, SPAWNS, eggDefinition, enemyCountForWave, enemyForWave, itemDefinition, itemSellValue, petDefinition, petSellValue } from '../data/balance.js';
 
 export const SAVE_KEY = 'mossvale-save-v2';
 
 export function defaultProgress() {
-  return { version: 5, inventory: [], equipped: {}, nextItemId: 1, coins: 0, pets: [], equippedPetIds: [], nextPetId: 1, discovered: [], unlocked: { meadow: 1, frost: 0, jungle: 0, ember: 0, tower: 1 }, highest: { meadow: 1, frost: 0, jungle: 0, ember: 0, tower: 1 }, completed: { meadow: false, frost: false, jungle: false, ember: false, tower: false } };
+  return { version: 6, inventory: [], equipped: {}, autoCollectSets: [], nextItemId: 1, coins: 0, pets: [], equippedPetIds: [], nextPetId: 1, discovered: [], unlocked: { meadow: 1, frost: 0, jungle: 0, ember: 0, tower: 1 }, highest: { meadow: 1, frost: 0, jungle: 0, ember: 0, tower: 1 }, completed: { meadow: false, frost: false, jungle: false, ember: false, tower: false } };
 }
 
 export function loadProgress(storage = globalThis.localStorage) {
   try {
     const data = JSON.parse(storage?.getItem(SAVE_KEY));
-    if (![2, 3, 4, 5].includes(data?.version) || !Array.isArray(data.inventory)) return defaultProgress();
-    return { ...defaultProgress(), ...data, version: 5, pets: Array.isArray(data.pets) ? data.pets : [], equippedPetIds: Array.isArray(data.equippedPetIds) ? data.equippedPetIds.slice(0, 3) : [], discovered: Array.isArray(data.discovered) ? data.discovered : [], unlocked: { meadow: 1, frost: 0, jungle: 0, ember: 0, tower: 1, ...data.unlocked }, highest: { meadow: 1, frost: 0, jungle: 0, ember: 0, tower: 1, ...(data.highest || data.unlocked) }, completed: { meadow: false, frost: false, jungle: false, ember: false, tower: false, ...data.completed } };
+    if (![2, 3, 4, 5, 6].includes(data?.version) || !Array.isArray(data.inventory)) return defaultProgress();
+    return { ...defaultProgress(), ...data, version: 6, autoCollectSets: Array.isArray(data.autoCollectSets) ? data.autoCollectSets.filter(key => SETS.some(set => set.key === key)) : [], pets: Array.isArray(data.pets) ? data.pets : [], equippedPetIds: Array.isArray(data.equippedPetIds) ? data.equippedPetIds.slice(0, 3) : [], discovered: Array.isArray(data.discovered) ? data.discovered : [], unlocked: { meadow: 1, frost: 0, jungle: 0, ember: 0, tower: 1, ...data.unlocked }, highest: { meadow: 1, frost: 0, jungle: 0, ember: 0, tower: 1, ...(data.highest || data.unlocked) }, completed: { meadow: false, frost: false, jungle: false, ember: false, tower: false, ...data.completed } };
   } catch { return defaultProgress(); }
 }
 
 export function saveProgress(run, storage = globalThis.localStorage) {
-  const progress = { version: 5, inventory: run.inventory, equipped: run.equipped, nextItemId: run.nextItemId, coins: run.coins, pets: run.pets.map(({ id, key }) => ({ id, key })), equippedPetIds: run.equippedPetIds, nextPetId: run.nextPetId, discovered: [...run.discovered], unlocked: run.progress.unlocked, highest: run.progress.highest, completed: run.progress.completed };
+  const progress = { version: 6, inventory: run.inventory, equipped: run.equipped, autoCollectSets: [...run.autoCollectSets], nextItemId: run.nextItemId, coins: run.coins, pets: run.pets.map(({ id, key }) => ({ id, key })), equippedPetIds: run.equippedPetIds, nextPetId: run.nextPetId, discovered: [...run.discovered], unlocked: run.progress.unlocked, highest: run.progress.highest, completed: run.progress.completed };
   try { storage?.setItem(SAVE_KEY, JSON.stringify(progress)); } catch { /* Storage can be unavailable in private contexts. */ }
   return progress;
 }
@@ -37,7 +37,7 @@ export function createRun(saved = defaultProgress()) {
   const run = {
     status: 'hub', time: 0, spawnIndex: 0, biome: 'meadow', wave: 1, phase: 'hub', intermission: 0, portalLatch: false,
     player: { x: 0, z: 8.5, radius: BALANCE.player.radius, health: BALANCE.player.health, maxHealth: BALANCE.player.health, damage: BALANCE.player.damage, defense: 0, facing: Math.PI, attack: null, flash: 0, moving: false },
-    enemies: [], projectiles: [], drops: [], inventory, equipped: { ...saved.equipped }, coins: Math.max(0, saved.coins || 0), pets, equippedPetIds: (saved.equippedPetIds || []).filter(id => pets.some(pet => pet.id === id)).slice(0, 3), nextPetId: saved.nextPetId || 1, discovered: new Set(saved.discovered || []), pickup: { id: null, progress: 0 }, nextItemId: saved.nextItemId || 1, nextProjectileId: 1,
+    enemies: [], projectiles: [], drops: [], inventory, equipped: { ...saved.equipped }, autoCollectSets: new Set(saved.autoCollectSets || []), coins: Math.max(0, saved.coins || 0), pets, equippedPetIds: (saved.equippedPetIds || []).filter(id => pets.some(pet => pet.id === id)).slice(0, 3), nextPetId: saved.nextPetId || 1, discovered: new Set(saved.discovered || []), pickup: { id: null, progress: 0 }, nextItemId: saved.nextItemId || 1, nextProjectileId: 1,
     progress: { unlocked: { meadow: 1, frost: 0, jungle: 0, ember: 0, tower: 1, ...saved.unlocked }, highest: { meadow: 1, frost: 0, jungle: 0, ember: 0, tower: 1, ...(saved.highest || saved.unlocked) }, completed: { meadow: false, frost: false, jungle: false, ember: false, tower: false, ...saved.completed } },
   };
   recalculateStats(run, false);
@@ -62,6 +62,13 @@ export function togglePet(run, petId) {
   if (run.equippedPetIds.includes(petId)) { run.equippedPetIds = run.equippedPetIds.filter(id => id !== petId); return true; }
   if (run.equippedPetIds.length >= 3) return false;
   run.equippedPetIds.push(petId); return true;
+}
+
+export function toggleAutoCollectSet(run, setKey) {
+  if (!SETS.some(set => set.key === setKey)) return false;
+  if (run.autoCollectSets.has(setKey)) run.autoCollectSets.delete(setKey);
+  else run.autoCollectSets.add(setKey);
+  return run.autoCollectSets.has(setKey);
 }
 
 export function recalculateStats(run, healGain = true) {

@@ -1,5 +1,14 @@
 # Project Plan
 
+## Set Auto-Collect Filter — 2026-10-02
+
+The side menu now includes a **Collect** button that shows every biome and Endless Tower equipment set in ascending power order. Each set is an opt-in saved filter: red sets remain as normal world drops, while green sets are transferred directly to inventory the instant they drop, regardless of the player's position.
+
+Acceptance checks: all 27 sets appear worst-to-best; selection state is visibly red/green and persists in save schema version 6; selected boss drops enter inventory without movement or pickup input; unselected drops remain on the ground for manual collection.
+
+- **Logic: 24/24 passing.** Coverage verifies immediate global collection, red-filter world drops, saved selection migration, and every prior gameplay system.
+- **Browser: 20/20 passing.** The live WebGL fixture confirmed all 27 ordered filters, red-to-green toggling, persistence, the new side button, and a clean console.
+
 ## Forge Upgrade-All and Endless Egg — 2026-10-02
 
 The Forge now includes an **Upgrade All** action that performs every currently possible duplicate merge, including newly enabled chain merges, while preserving equipped item references. “Max” means the highest level producible from the gear currently owned; gear levels remain uncapped.
