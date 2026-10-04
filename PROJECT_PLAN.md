@@ -1,5 +1,14 @@
 # Project Plan
 
+## Whole-Map Enemy Aggro and Tower Egg Price — 2026-10-03
+
+Enemies now aggro as soon as combat begins and continue pursuing the player from anywhere in the arena. Their individual melee and ranged attack distances are unchanged, so movement and spacing still prevent damage. The Endless Tower's Endless Egg now costs 500,000 coins.
+
+Acceptance checks: an idle enemy across the arena immediately enters chase and moves toward the player; enemies cannot deal damage outside their existing attack range; the Endless Egg displays and deducts exactly 500,000 coins.
+
+- **Logic: 25/25 passing.** New coverage verifies whole-map pursuit, preserved hit distance, and exact Endless Egg pricing alongside all prior systems.
+- **Browser: 21/21 passing.** The live WebGL fixture confirms across-arena pursuit, no out-of-range damage, the 500,000-coin hatchery price, and a clean console.
+
 ## Safe-Haven Market Stands — 2026-10-03
 
 The Play, Upgrade, Pet Hatchery, Sell Weapons, Sell Armor, and Sell Pets floor circles are now original low-poly market stands with striped awnings, wooden counters, permanent labels, category-specific colors, and distinct 3D symbols. The three sell stands share one evenly spaced row against the courtyard's back wall. The Endless Tower keeps its separate arcane circle so its special mode remains visually distinct.
@@ -22,9 +31,9 @@ Acceptance checks: all 27 sets appear worst-to-best; selection state is visibly 
 
 The Forge now includes an **Upgrade All** action that performs every currently possible duplicate merge, including newly enabled chain merges, while preserving equipped item references. “Max” means the highest level producible from the gear currently owned; gear levels remain uncapped.
 
-The Hatchery now permanently offers a 1,000,000-coin Endless Egg as a long-term coin sink. Its pool contains five original endgame companions across Mythical, Divine, Secret, Cosmic, and Glitched rarities. Their damage ranges from 450 to 1,200 per one-second attack, making them substantially stronger than prior pets without trivializing the 36,000-health final tower boss.
+The Hatchery now permanently offers an Endless Egg as a long-term coin sink. Its pool contains five original endgame companions across Mythical, Divine, Secret, Cosmic, and Glitched rarities. Their damage ranges from 450 to 1,200 per one-second attack, making them substantially stronger than prior pets without trivializing the 36,000-health final tower boss. Its original 1,000,000-coin price was later reduced to 500,000 coins.
 
-Acceptance checks: recursive bulk merges produce the correct highest levels; equipped gear remains equipped; the Endless Egg is always unlocked, charges exactly 1,000,000 coins, its odds total 100%, and every result belongs to the requested endgame rarity pool.
+Acceptance checks: recursive bulk merges produce the correct highest levels; equipped gear remains equipped; the Endless Egg is always unlocked, charges its configured price, its odds total 100%, and every result belongs to the requested endgame rarity pool.
 
 - **Logic: 23/23 passing.** Coverage includes chain merges, equipped-ID preservation, exact price deduction, endgame rarity rolls, damage ordering, and all prior systems.
 - **Browser: 19/19 passing.** The live WebGL fixture confirmed the five-card hatchery, Endless Egg artwork and odds, one-action forge merging, and a clean console. A separate responsive visual check confirmed the new egg remains readable and scrollable in the compact menu layout.

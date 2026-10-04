@@ -1,7 +1,7 @@
 export const BALANCE = Object.freeze({
   step: 1 / 60, maxFrame: 0.1, arenaHalf: 13,
   player: { health: 100, speed: 4.6, radius: 0.42, damage: 25, range: 2.05, arc: Math.PI * 0.78, windup: 0.16, active: 0.14, recovery: 0.42 },
-  enemy: { radius: 0.58, detection: 10, reach: 1.22, windup: 0.5, cooldown: 1.25 },
+  enemy: { radius: 0.58, reach: 1.22, windup: 0.5, cooldown: 1.25 },
   pickup: { radius: 1.35, hold: 0.45 }, portal: {
     radius: 1.22,
     playX: 0, playZ: 2.4,
@@ -176,7 +176,7 @@ export const EGGS = Object.freeze([
   { key: 'frost', name: 'Frostfang Egg', biome: 'frost', cost: 1500, icon: '❄️', description: 'A difficult icy hatch containing stronger tundra companions.', odds: { common: 67, rare: 22, epic: 8, legendary: 2, mythical: 1 } },
   { key: 'jungle', name: 'Sunspire Egg', biome: 'jungle', cost: 4000, icon: '🌿', description: 'A vine-wrapped relic egg hiding a powerful jungle companion.', odds: { common: 69, rare: 20, epic: 8, legendary: 2, mythical: 1 } },
   { key: 'ember', name: 'Embercrag Egg', biome: 'ember', cost: 9000, icon: '🔥', description: 'A warm obsidian egg containing a fearless volcanic companion.', odds: { common: 69, rare: 20, epic: 8, legendary: 2, mythical: 1 } },
-  { key: 'endless', name: 'Endless Egg', biome: 'tower', cost: 1000000, icon: '♾️', description: 'A reality-bending prize for dedicated adventurers, filled only with endgame companions.', odds: { mythical: 50, divine: 27, secret: 14, cosmic: 7, glitched: 2 } },
+  { key: 'endless', name: 'Endless Egg', biome: 'tower', cost: 500000, icon: '♾️', description: 'A reality-bending prize for dedicated adventurers, filled only with endgame companions.', odds: { mythical: 50, divine: 27, secret: 14, cosmic: 7, glitched: 2 } },
 ]);
 export function petDefinition(key) { return PETS.find(pet => pet.key === key) || null; }
 export function eggDefinition(key) { return EGGS.find(egg => egg.key === key) || null; }

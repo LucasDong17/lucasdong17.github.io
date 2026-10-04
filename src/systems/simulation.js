@@ -112,7 +112,7 @@ function updateEnemy(run, enemy, world, bus, dt) {
   if (enemy.health <= 0 || run.status !== 'playing') return;
   const p = run.player; enemy.flash = Math.max(0, enemy.flash - dt); enemy.cooldown = Math.max(0, enemy.cooldown - dt);
   const dx = p.x - enemy.x; const dz = p.z - enemy.z; const distance = Math.hypot(dx, dz);
-  if (enemy.mode === 'idle' && distance < B.enemy.detection) enemy.mode = 'chase';
+  if (enemy.mode === 'idle') enemy.mode = 'chase';
   if (enemy.mode === 'windup') { enemy.timer -= dt; if (enemy.timer <= 0) {
     if (enemy.attackType === 'ranged' && distance <= enemy.range + 0.5) {
       const length = Math.max(distance, 0.001);

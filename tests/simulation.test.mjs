@@ -181,9 +181,9 @@ test('every biome egg has a one-percent Mythical animal with top-tier power and 
   assert.ok(petSellValue(mythicalPets[0]) > petSellValue({ key: 'crown-griffin' }));
 });
 
-test('the million-coin Endless Egg contains only powerful endgame rarities', () => {
+test('the 500,000-coin Endless Egg contains only powerful endgame rarities', () => {
   const egg = EGGS.find(entry => entry.key === 'endless');
-  assert.equal(egg.cost, 1000000);
+  assert.equal(egg.cost, 500000);
   assert.deepEqual(Object.keys(egg.odds), ['mythical', 'divine', 'secret', 'cosmic', 'glitched']);
   assert.equal(Object.values(egg.odds).reduce((sum, chance) => sum + chance, 0), 100);
   const run = createRun(); run.coins = egg.cost;
@@ -191,6 +191,17 @@ test('the million-coin Endless Egg contains only powerful endgame rarities', () 
   assert.equal(petDefinition(glitched.key).rarity, 'glitched');
   assert.ok(petDefinition(glitched.key).damage > petDefinition('solar-manticore').damage);
   assert.equal(run.coins, 0);
+});
+
+test('enemies aggro across the whole map but still need their attack range to hit', () => {
+  const run = activeRun(); const enemy = run.enemies[0];
+  Object.assign(run.player, { x: -11, z: 0, health: 100, maxHealth: 100 });
+  Object.assign(enemy, { x: 11, z: 0, mode: 'idle', cooldown: 0 });
+  const startingX = enemy.x;
+  tick(run);
+  assert.equal(enemy.mode, 'chase');
+  assert.ok(enemy.x < startingX, 'enemy did not pursue from across the map');
+  assert.equal(run.player.health, 100, 'enemy dealt damage outside its attack range');
 });
 
 test('only three pets equip and equipped pets attack once per second', () => {
