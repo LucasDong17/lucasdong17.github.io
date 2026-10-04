@@ -18,7 +18,7 @@ test('control mode distinguishes touch-first devices from pointer PCs', () => {
   assert.equal(usesTouchControls(view(false), { maxTouchPoints: 1, userAgent: 'iPhone' }), true);
 });
 
-test('hub movement opens all labeled service and sell circles', () => {
+test('hub movement opens all labeled service and sell stations', () => {
   const run = createRun(); const bus = new EventBus(); const opened = []; bus.on('portalEntered', event => opened.push(event.portal));
   Object.assign(run.player, { x: B.portal.playX, z: B.portal.playZ + B.portal.radius + 0.05 }); tick(run, { moveZ: -1 }, 2, bus); assert.deepEqual(opened, ['play']);
   Object.assign(run.player, { x: B.portal.upgradeX + B.portal.radius + 0.05, z: B.portal.upgradeZ }); run.portalLatch = false; tick(run, { moveX: -1 }, 2, bus); assert.deepEqual(opened, ['play', 'upgrade']);

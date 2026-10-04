@@ -71,6 +71,73 @@ export class SceneView {
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: true })); sprite.scale.set(3.2, 0.8, 1); sprite.position.y = 1.25; return sprite;
   }
+  buildMarketStand(x, z, { awning, accent, label, symbol }) {
+    const stand = new THREE.Group();
+    const wood = material('#59402f');
+    const darkWood = material('#38291f');
+    const canvas = material('#f6e6bd');
+    const awningMaterial = material(awning);
+    const accentMaterial = material(accent);
+
+    // The interaction point stays in the open space before the counter.
+    stand.position.set(x, 0, z - 0.82);
+    this.mesh(stand, new THREE.BoxGeometry(3.35, 0.75, 1.25), wood, 0, 0.4, 0);
+    this.mesh(stand, new THREE.BoxGeometry(3.6, 0.24, 1.5), darkWood, 0, 0.86, 0.08);
+    for (const postX of [-1.48, 1.48]) {
+      this.mesh(stand, new THREE.BoxGeometry(0.18, 2.65, 0.18), darkWood, postX, 2.05, -0.42);
+    }
+    this.mesh(stand, new THREE.BoxGeometry(3.55, 0.16, 1.72), darkWood, 0, 3.22, -0.02);
+    for (let stripe = 0; stripe < 7; stripe++) {
+      const stripeMaterial = stripe % 2 ? canvas : awningMaterial;
+      this.mesh(stand, new THREE.BoxGeometry(0.5, 0.16, 1.6), stripeMaterial, -1.5 + stripe * 0.5, 3.34, -0.02);
+      this.mesh(stand, new THREE.BoxGeometry(0.5, 0.52, 0.12), stripeMaterial, -1.5 + stripe * 0.5, 3.03, 0.77);
+    }
+
+    const plaque = this.mesh(stand, new THREE.BoxGeometry(1.42, 1.25, 0.16), darkWood, 0, 1.88, 0.7);
+    plaque.castShadow = false;
+    const icon = new THREE.Group();
+    icon.position.set(0, 1.88, 0.82);
+    stand.add(icon);
+    if (symbol === 'play') {
+      const blade = this.mesh(icon, new THREE.BoxGeometry(0.18, 0.92, 0.12), accentMaterial, 0, 0.08, 0);
+      blade.rotation.z = -0.62;
+      const hilt = this.mesh(icon, new THREE.BoxGeometry(0.58, 0.13, 0.16), canvas, -0.2, -0.18, 0.02);
+      hilt.rotation.z = -0.62;
+    } else if (symbol === 'upgrade') {
+      this.mesh(icon, new THREE.BoxGeometry(0.86, 0.22, 0.16), accentMaterial, 0, -0.08, 0);
+      this.mesh(icon, new THREE.BoxGeometry(0.48, 0.34, 0.16), accentMaterial, 0, -0.34, 0);
+      const hammer = this.mesh(icon, new THREE.BoxGeometry(0.15, 0.8, 0.12), canvas, 0.2, 0.28, 0.03);
+      hammer.rotation.z = -0.66;
+      const head = this.mesh(icon, new THREE.BoxGeometry(0.56, 0.22, 0.16), canvas, -0.05, 0.55, 0.03);
+      head.rotation.z = -0.66;
+    } else if (symbol === 'egg') {
+      const egg = this.mesh(icon, new THREE.SphereGeometry(0.43, 12, 8), accentMaterial, 0, 0, 0);
+      egg.scale.set(0.78, 1.12, 0.45);
+      for (const [spotX, spotY] of [[-0.15, 0.14], [0.18, -0.12], [0.12, 0.3]]) this.mesh(icon, new THREE.SphereGeometry(0.065, 6, 4), wood, spotX, spotY, 0.22);
+    } else if (symbol === 'pets') {
+      this.mesh(icon, new THREE.SphereGeometry(0.29, 9, 6), accentMaterial, 0, -0.16, 0);
+      for (const [toeX, toeY] of [[-0.34, 0.22], [-0.12, 0.38], [0.14, 0.38], [0.36, 0.2]]) this.mesh(icon, new THREE.SphereGeometry(0.13, 7, 5), accentMaterial, toeX, toeY, 0);
+    } else if (symbol === 'armor') {
+      const shield = this.mesh(icon, new THREE.CylinderGeometry(0.44, 0.34, 0.14, 5), accentMaterial, 0, 0, 0);
+      shield.rotation.x = Math.PI / 2;
+      this.mesh(icon, new THREE.BoxGeometry(0.1, 0.72, 0.14), canvas, 0, 0.03, 0.1);
+    } else {
+      for (const direction of [-1, 1]) {
+        const blade = this.mesh(icon, new THREE.BoxGeometry(0.13, 0.92, 0.12), accentMaterial, direction * 0.16, 0.08, 0);
+        blade.rotation.z = direction * 0.65;
+        const hilt = this.mesh(icon, new THREE.BoxGeometry(0.45, 0.11, 0.15), canvas, direction * 0.35, -0.2, 0.02);
+        hilt.rotation.z = direction * 0.65;
+      }
+    }
+
+    const nameplate = this.label(label, accent);
+    nameplate.position.set(0, 4.05, 0.3);
+    nameplate.scale.set(3.35, 0.84, 1);
+    stand.add(nameplate);
+    stand.userData.marketStand = true;
+    this.portals.add(stand);
+    return stand;
+  }
   buildWorld(world) {
     this.groundMaterial = material('#83ad62');
     this.arenaMaterial = material('#95b968');
@@ -125,13 +192,12 @@ export class SceneView {
       ring.renderOrder = 3;
       group.add(this.label(label, labelColor)); group.position.set(x, 0, z); this.portals.add(group); return group;
     };
-    this.playPortal = makePortal(B.portal.playX, B.portal.playZ, '#63dbeb', '#e7ffff', 'Play');
-    this.upgradePortal = makePortal(B.portal.upgradeX, B.portal.upgradeZ, '#df80f2', '#ffeaff', 'Upgrade');
-    this.petPortal = makePortal(B.portal.petsX, B.portal.petsZ, '#f2b84b', '#fff0a6', 'Pet Hatchery');
-    this.mesh(this.petPortal, new THREE.OctahedronGeometry(0.42, 1), material('#fff0a6'), 0, 0.62, 0).scale.set(0.8, 1.12, 0.8);
-    this.sellPetPortal = makePortal(B.portal.sellPetsX, B.portal.sellPetsZ, '#e2a755', '#fff0b0', 'Sell Pets');
-    this.sellArmorPortal = makePortal(B.portal.sellArmorX, B.portal.sellArmorZ, '#65a9dd', '#dff4ff', 'Sell Armor');
-    this.sellWeaponPortal = makePortal(B.portal.sellWeaponsX, B.portal.sellWeaponsZ, '#df6c6c', '#ffe1cf', 'Sell Weapons');
+    this.playPortal = this.buildMarketStand(B.portal.playX, B.portal.playZ, { awning: '#26a9c7', accent: '#8df4ff', label: 'Play', symbol: 'play' });
+    this.upgradePortal = this.buildMarketStand(B.portal.upgradeX, B.portal.upgradeZ, { awning: '#9b58c7', accent: '#efabff', label: 'Upgrade', symbol: 'upgrade' });
+    this.petPortal = this.buildMarketStand(B.portal.petsX, B.portal.petsZ, { awning: '#e9a72f', accent: '#ffe28a', label: 'Pet Hatchery', symbol: 'egg' });
+    this.sellPetPortal = this.buildMarketStand(B.portal.sellPetsX, B.portal.sellPetsZ, { awning: '#db8e36', accent: '#ffc96b', label: 'Sell Pets', symbol: 'pets' });
+    this.sellArmorPortal = this.buildMarketStand(B.portal.sellArmorX, B.portal.sellArmorZ, { awning: '#3988c4', accent: '#9ddcff', label: 'Sell Armor', symbol: 'armor' });
+    this.sellWeaponPortal = this.buildMarketStand(B.portal.sellWeaponsX, B.portal.sellWeaponsZ, { awning: '#bd4d4d', accent: '#ff9b83', label: 'Sell Weapons', symbol: 'weapons' });
     this.towerPortal = makePortal(B.portal.towerX, B.portal.towerZ, '#725ee8', '#91fff0', 'Endless Tower');
     this.mesh(this.towerPortal, new THREE.OctahedronGeometry(0.38, 0), new THREE.MeshStandardMaterial({ color: '#9bfff0', emissive: '#56d9dc', emissiveIntensity: 1.2 }), 0, 0.7, 0);
     this.scene.add(this.portals);
@@ -557,7 +623,7 @@ export class SceneView {
     this.jungleDecor.visible = run.status === 'playing' && run.biome === 'jungle';
     this.emberDecor.visible = run.status === 'playing' && run.biome === 'ember';
     this.towerDecor.visible = run.status === 'playing' && run.biome === 'tower';
-    for (const portal of [this.playPortal, this.upgradePortal, this.petPortal, this.sellPetPortal, this.sellArmorPortal, this.sellWeaponPortal, this.towerPortal]) portal.children.slice(0, 3).forEach((child, index) => { if (index < 2) child.rotation.y += dt * (index ? -0.35 : 0.35); });
+    this.towerPortal.children.slice(0, 2).forEach((child, index) => { child.rotation.y += dt * (index ? -0.35 : 0.35); });
     const target = new THREE.Vector3(p.x, 0, p.z - 0.8);
     if (snap) this.focus.copy(target);
     else this.focus.lerp(target, 1 - Math.exp(-6 * dt));

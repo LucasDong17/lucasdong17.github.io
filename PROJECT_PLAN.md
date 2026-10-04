@@ -1,5 +1,14 @@
 # Project Plan
 
+## Safe-Haven Market Stands — 2026-10-03
+
+The Play, Upgrade, Pet Hatchery, Sell Weapons, Sell Armor, and Sell Pets floor circles are now original low-poly market stands with striped awnings, wooden counters, permanent labels, category-specific colors, and distinct 3D symbols. The three sell stands share one evenly spaced row against the courtyard's back wall. The Endless Tower keeps its separate arcane circle so its special mode remains visually distinct.
+
+Acceptance checks: all six service interactions retain their existing menus and trigger behavior; each stand has a readable label and unique symbol; the sell stands are aligned along one rear-wall row; the safe haven remains playable with no WebGL or console errors.
+
+- **Logic: 24/24 passing.** All service triggers still open the correct menus after the layout change, alongside every prior gameplay system.
+- **Browser: 20/20 passing.** The live WebGL fixture confirmed six labeled market stands, aligned sell stations, working protected selling, and a clean console. A manual courtyard check confirmed the striped canopies, distinct colors, and category symbols render from the spawn approach.
+
 ## Set Auto-Collect Filter — 2026-10-02
 
 The side menu now includes a **Collect** button that shows every biome and Endless Tower equipment set in ascending power order. Each set is an opt-in saved filter: red sets remain as normal world drops, while green sets are transferred directly to inventory the instant they drop, regardless of the player's position.
@@ -24,7 +33,7 @@ Acceptance checks: recursive bulk merges produce the correct highest levels; equ
 
 Create an original, lightweight browser action RPG with a colorful low-poly grassland, an angled follow camera, melee combat, enemy drops, and character growth. The supplied screenshots show the likely long-term inspiration: chickens, sheep, pigs, cows, wolves, bears, and a king-chicken boss; health and XP bars; coins; equipment and item inventories; quests and achievements; stat choices; crafting/dismantling; gear upgrades; an enemy index; pickups; and waypoint markers.
 
-`raw_game_ideas.md` contained no text when this plan was created, so the screenshots are the only available design evidence. Names, numbers, layouts, and art shown in them are reference material rather than requirements. This roadmap deliberately converts that broad inspiration into small, testable increments.
+`raw_game_ideas.md` now supplies additional long-term reference for progression, quests, crafting, abilities, and a Roblox-like low-poly presentation. Those notes are inspiration rather than immediate acceptance criteria: the active safe-haven market-stand change advances the requested readable 3D hub presentation without pulling later combat, quest, mining, crafting, rune, or leveling systems into the current scope. Names, numbers, layouts, and art from all references remain reference material rather than assets or requirements. This roadmap deliberately converts that broad inspiration into small, testable increments.
 
 ## Design Pillars
 
