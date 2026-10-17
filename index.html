@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Orbit Lab is a playful, hands-on space learning website for curious kids.">
+  <title>Orbit Lab — Learn Space by Doing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to the missions</a>
+
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Orbit Lab home">
+      <span class="brand-planet" aria-hidden="true"></span>
+      <span>ORBIT LAB</span>
+    </a>
+    <div class="mission-status" aria-live="polite">
+      <span class="status-dot"></span>
+      <span id="missionCount">0 / 6 missions complete</span>
+      <span class="star-score"><b id="starCount">0</b> ★</span>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="stars stars-a" aria-hidden="true"></div>
+      <div class="stars stars-b" aria-hidden="true"></div>
+      <div class="hero-copy">
+        <p class="eyebrow">MISSION CONTROL • OPEN FOR EXPLORERS</p>
+        <h1>Space is weird.<br><span>Let’s play with it.</span></h1>
+        <p class="hero-text">Six quick missions. Zero boring lectures. Build planets, launch rockets, write wild stories, and save a space crew.</p>
+        <a class="primary-button" href="#missions">Choose a mission <span aria-hidden="true">↓</span></a>
+      </div>
+      <div class="hero-system" aria-label="Animated solar system illustration">
+        <div class="orbit orbit-one"><span class="orbit-planet planet-pink"></span></div>
+        <div class="orbit orbit-two"><span class="orbit-planet planet-blue"></span></div>
+        <div class="orbit orbit-three"><span class="orbit-planet planet-yellow"></span></div>
+        <div class="hero-sun"><span>HEY!</span></div>
+        <div class="tiny-rocket" aria-hidden="true">▲<span></span></div>
+      </div>
+      <div class="scroll-note" aria-hidden="true">SCROLL TO LAUNCH</div>
+    </section>
+
+    <section class="mission-picker" id="missions">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow dark">PICK YOUR PATH</p>
+          <h2>What will you explore?</h2>
+        </div>
+        <p>Every mission takes about <strong>5 minutes</strong>. Start anywhere.</p>
+      </div>
+
+      <div class="subject-tabs" role="tablist" aria-label="Space school subjects">
+        <button class="subject-tab active" id="tab-math" role="tab" aria-selected="true" aria-controls="panel-math" data-subject="math">
+          <span class="tab-icon">↗</span><span><b>Math</b><small>Planet Sizer</small></span><i>01</i>
+        </button>
+        <button class="subject-tab" id="tab-science" role="tab" aria-selected="false" aria-controls="panel-science" data-subject="science">
+          <span class="tab-icon">⌁</span><span><b>Science</b><small>Matter Mixer</small></span><i>02</i>
+        </button>
+        <button class="subject-tab" id="tab-reading" role="tab" aria-selected="false" aria-controls="panel-reading" data-subject="reading">
+          <span class="tab-icon">✎</span><span><b>Reading</b><small>Story Signal</small></span><i>03</i>
+        </button>
+        <button class="subject-tab" id="tab-art" role="tab" aria-selected="false" aria-controls="panel-art" data-subject="art">
+          <span class="tab-icon">✦</span><span><b>Art</b><small>World Builder</small></span><i>04</i>
+        </button>
+        <button class="subject-tab" id="tab-engineering" role="tab" aria-selected="false" aria-controls="panel-engineering" data-subject="engineering">
+          <span class="tab-icon">⚙</span><span><b>Engineering</b><small>Rocket Works</small></span><i>05</i>
+        </button>
+        <button class="subject-tab" id="tab-history" role="tab" aria-selected="false" aria-controls="panel-history" data-subject="history">
+          <span class="tab-icon">⌛</span><span><b>History</b><small>Crew Rescue</small></span><i>06</i>
+        </button>
+      </div>
+    </section>
+
+    <section class="lesson-shell">
+      <article class="lesson-panel active" id="panel-math" role="tabpanel" aria-labelledby="tab-math" data-panel="math">
+        <div class="lesson-top">
+          <div class="lesson-copy">
+            <p class="mission-label">MISSION 01 • MATH</p>
+            <h2>Make a planet.<br>Mess with gravity.</h2>
+            <p>Planets come in wildly different sizes. Jupiter is about <strong>11 times wider than Earth</strong>. More size usually means more mass—and stronger gravity pulling you down.</p>
+            <div class="mission-steps" aria-label="Math mission briefing">
+              <div><b>01</b><p><strong>Compare:</strong> Earth is almost four times wider than the Moon.</p></div>
+              <div><b>02</b><p><strong>Predict:</strong> Bigger worlds usually pull objects down harder.</p></div>
+              <div><b>03</b><p><strong>Test:</strong> Slide the size control and watch your weight change.</p></div>
+            </div>
+            <div class="quick-fact"><span>QUICK FACT</span><p>You would weigh about 2.4× more on Jupiter than on Earth.</p></div>
+          </div>
+          <div class="activity-card math-card">
+            <div class="activity-head"><span>LIVE EXPERIMENT</span><b id="sizeLabel">1.0× EARTH</b></div>
+            <div class="planet-stage"><div class="grid-floor"></div><div id="mathPlanet" class="math-planet"><span></span></div></div>
+            <label for="planetSize">Planet size</label>
+            <input id="planetSize" type="range" min="50" max="190" value="100">
+            <div class="range-labels"><span>TINY</span><span>HUGE</span></div>
+            <div class="data-strip">
+              <div><small>YOUR WEIGHT</small><b id="weightResult">40 kg</b></div>
+              <div><small>GRAVITY</small><b id="gravityResult">Earth-like</b></div>
+            </div>
+            <button class="complete-button" data-complete="math">Lock in this world <span>✓</span></button>
+          </div>
+        </div>
+      </article>
+
+      <article class="lesson-panel" id="panel-science" role="tabpanel" aria-labelledby="tab-science" data-panel="science" hidden>
+        <div class="lesson-top">
+          <div class="lesson-copy">
+            <p class="mission-label">MISSION 02 • SCIENCE</p>
+            <h2>Mix matter.<br>Keep space safe.</h2>
+            <p>Rocky worlds are dense and tough. Gas giants are huge but have no solid ground. Ice worlds are cold and slippery. A planet’s material changes how it moves and behaves.</p>
+            <div class="mission-steps" aria-label="Science mission briefing">
+              <div><b>01</b><p><strong>Rock:</strong> Strong, heavy material like Earth’s crust.</p></div>
+              <div><b>02</b><p><strong>Gas:</strong> Light layers that spread into enormous worlds.</p></div>
+              <div><b>03</b><p><strong>Ice:</strong> Frozen water and gases found far from the Sun.</p></div>
+            </div>
+            <div class="quick-fact"><span>QUICK FACT</span><p>Saturn is so light for its size that it would float in a gigantic ocean.</p></div>
+          </div>
+          <div class="activity-card science-card">
+            <div class="activity-head"><span>MATTER MIXER</span><b id="safetyBadge">STABLE</b></div>
+            <div class="science-space"><div id="sciencePlanet" class="science-planet rock"></div><div class="danger-orbit"></div><span class="passing-rock">◆</span></div>
+            <p class="activity-prompt">Choose a core and an outer layer.</p>
+            <div class="choice-row" aria-label="Choose planet material">
+              <button class="material active" data-material="rock">Rock</button>
+              <button class="material" data-material="gas">Gas</button>
+              <button class="material" data-material="ice">Ice</button>
+            </div>
+            <div class="data-strip"><div><small>DENSITY</small><b id="densityResult">High</b></div><div><small>SPACE CHECK</small><b id="scienceResult">Safe orbit!</b></div></div>
+            <button class="complete-button" data-complete="science">Approve planet <span>✓</span></button>
+          </div>
+        </div>
+      </article>
+
+      <article class="lesson-panel" id="panel-reading" role="tabpanel" aria-labelledby="tab-reading" data-panel="reading" hidden>
+        <div class="lesson-top">
+          <div class="lesson-copy">
+            <p class="mission-label">MISSION 03 • READING + WRITING</p>
+            <h2>Catch a signal.<br>Finish the story.</h2>
+            <p>Great space stories need a <strong>hero, a strange place, and a problem</strong>. Specific details help readers see, hear, and feel a world they have never visited.</p>
+            <div class="mission-steps" aria-label="Writing mission briefing">
+              <div><b>01</b><p><strong>Build:</strong> Give your hero a goal and a memorable sidekick.</p></div>
+              <div><b>02</b><p><strong>Disrupt:</strong> Drop in a problem that changes the mission.</p></div>
+              <div><b>03</b><p><strong>Choose:</strong> Let the hero make a brave or funny decision.</p></div>
+            </div>
+            <div class="quick-fact"><span>WRITER TIP</span><p>Use a surprising verb. A comet doesn’t just “move”—it streaks, slices, or blazes.</p></div>
+          </div>
+          <div class="activity-card writing-card">
+            <div class="activity-head"><span>STORY SIGNAL</span><b id="storySignal">SIGNAL READY</b></div>
+            <div class="story-console">
+              <label>Hero name<input id="heroName" maxlength="18" placeholder="Nova" autocomplete="off"></label>
+              <label>Hero type<select id="heroType"><option>rookie astronaut</option><option>kid inventor</option><option>alien detective</option><option>space pirate</option></select></label>
+              <label>Destination<select id="storyPlace"><option>the singing moon</option><option>a jelly planet</option><option>an upside-down asteroid</option><option>the library at the edge of space</option></select></label>
+              <label>Sidekick<select id="storySidekick"><option>a nervous robot</option><option>a moon cat</option><option>a tiny talking comet</option><option>their best friend</option></select></label>
+              <label class="wide">Mission problem<select id="storyProblem"><option>the stars suddenly went dark</option><option>their rocket began speaking in riddles</option><option>a baby alien stole the map home</option><option>gravity started working sideways</option></select></label>
+            </div>
+            <fieldset class="tone-picker"><legend>Pick the story mood</legend><label><input type="radio" name="storyTone" value="funny" checked><span>😂 Funny</span></label><label><input type="radio" name="storyTone" value="mysterious"><span>🔎 Mysterious</span></label><label><input type="radio" name="storyTone" value="epic"><span>⚡ Epic</span></label></fieldset>
+            <div class="story-actions">
+              <button id="surpriseStory" class="secondary-button">↻ Surprise me</button>
+              <button id="generateStory" class="action-button">Beam my story</button>
+            </div>
+            <div id="storyOutput" class="story-output" aria-live="polite"><span class="story-placeholder">Your adventure will appear here. Make your choices, then beam it in!</span></div>
+            <div id="endingChoices" class="ending-choices" hidden>
+              <p>What should the hero do next?</p>
+              <button data-ending="brave">Take the brave route</button><button data-ending="clever">Try a clever trick</button><button data-ending="kind">Ask for help</button>
+            </div>
+            <button class="complete-button" data-complete="reading">Save transmission <span>✓</span></button>
+          </div>
+        </div>
+      </article>
+
+      <article class="lesson-panel" id="panel-art" role="tabpanel" aria-labelledby="tab-art" data-panel="art" hidden>
+        <div class="lesson-top">
+          <div class="lesson-copy">
+            <p class="mission-label">MISSION 04 • ART + DESIGN</p>
+            <h2>Invent a system.<br>Break the rules.</h2>
+            <p>Designers use <strong>shape, color, scale, and pattern</strong> to make each world feel unique. A good solar system can be scientifically inspired and completely original.</p>
+            <div class="mission-steps" aria-label="Art mission briefing">
+              <div><b>01</b><p><strong>Contrast:</strong> Bright colors stand out against dark space.</p></div>
+              <div><b>02</b><p><strong>Scale:</strong> Mix tiny moons with giant planets.</p></div>
+              <div><b>03</b><p><strong>Compose:</strong> Drag worlds around until the system feels balanced.</p></div>
+            </div>
+            <div class="quick-fact"><span>DESIGN TIP</span><p>Mix one warm color and one cool color to make your system pop.</p></div>
+          </div>
+          <div class="activity-card art-card">
+            <div class="activity-head"><span>WORLD BUILDER</span><b id="worldCount">1 / 5 WORLDS</b></div>
+            <p class="drag-hint">✦ Grab and drag every planet</p>
+            <div id="artSystem" class="art-system" aria-label="Draggable solar system canvas"><div class="art-sun"></div><div class="art-orbit o1"></div><div class="art-orbit o2"></div><div class="art-orbit o3"></div><button class="made-planet" type="button" aria-label="Drag pink planet" style="left:18%;top:34%;width:30px;height:30px"></button></div>
+            <div class="design-controls">
+              <label>Color <input id="planetColor" type="color" value="#ff5c8a"></label>
+              <label>Size <input id="artSize" type="range" min="18" max="52" value="30"></label>
+              <button id="addPlanet" class="action-button">+ Add planet</button>
+            </div>
+            <button id="resetSystem" class="text-button">Clear my system</button>
+            <button class="complete-button" data-complete="art">Name this system <span>✓</span></button>
+          </div>
+        </div>
+      </article>
+
+      <article class="lesson-panel" id="panel-engineering" role="tabpanel" aria-labelledby="tab-engineering" data-panel="engineering" hidden>
+        <div class="lesson-top">
+          <div class="lesson-copy">
+            <p class="mission-label">MISSION 05 • ENGINEERING + TECH</p>
+            <h2>Build a rocket.<br>Beat gravity.</h2>
+            <p>Every rocket needs <strong>thrust</strong> to push upward, a body to carry supplies, and fins to keep it steady. Too much weight without enough power means a very short trip.</p>
+            <div class="mission-steps" aria-label="Engineering mission briefing">
+              <div><b>01</b><p><strong>Thrust:</strong> Engines push hot gas down and the rocket goes up.</p></div>
+              <div><b>02</b><p><strong>Weight:</strong> Bigger cargo needs more fuel and power.</p></div>
+              <div><b>03</b><p><strong>Test:</strong> Engineers learn from every failed launch.</p></div>
+            </div>
+            <div class="quick-fact"><span>ENGINEER TIP</span><p>A wide rocket needs extra thrust. Balance power with weight.</p></div>
+          </div>
+          <div class="activity-card engineering-card">
+            <div class="activity-head"><span>ROCKET WORKS</span><b id="launchBadge">READY?</b></div>
+            <div class="launch-stage"><div id="rocket" class="rocket"><div class="rocket-nose"></div><div class="rocket-body"><span></span></div><div class="rocket-fins"></div><div class="rocket-flame"></div></div><div class="launch-clouds">☁ ☁</div></div>
+            <div class="rocket-controls">
+              <label>Engine<select id="engineChoice"><option value="1">Mini booster</option><option value="2">Twin booster</option><option value="3">Mega booster</option></select></label>
+              <label>Cargo<select id="cargoChoice"><option value="1">Snacks</option><option value="2">Moon buggy</option><option value="3">Space lab</option></select></label>
+            </div>
+            <button id="launchRocket" class="action-button launch-button">3… 2… 1… Launch!</button>
+            <p id="launchResult" class="result-line" aria-live="polite">Choose your parts, then test the launch.</p>
+            <button class="complete-button" data-complete="engineering">Finish blueprint <span>✓</span></button>
+          </div>
+        </div>
+      </article>
+
+      <article class="lesson-panel" id="panel-history" role="tabpanel" aria-labelledby="tab-history" data-panel="history" hidden>
+        <div class="lesson-top">
+          <div class="lesson-copy">
+            <p class="mission-label">MISSION 06 • HISTORY + TEAMWORK</p>
+            <h2>History needs<br>a whole crew.</h2>
+            <p>Spaceflight has always been a team effort. Astronauts, engineers, mathematicians, doctors, and mission controllers solve problems together—often under huge pressure.</p>
+            <div class="mission-steps" aria-label="History and teamwork mission briefing">
+              <div><b>01</b><p><strong>1961:</strong> Yuri Gagarin became the first human in space.</p></div>
+              <div><b>02</b><p><strong>1969:</strong> Apollo 11 carried the first people to the Moon.</p></div>
+              <div><b>03</b><p><strong>Today:</strong> International crews live and work together in orbit.</p></div>
+            </div>
+            <div class="quick-fact"><span>CREW FACT</span><p>Thousands of people worked together to send the first humans to the Moon.</p></div>
+          </div>
+          <div class="activity-card history-card">
+            <div class="activity-head"><span>CREW RESCUE</span><b id="repairBadge">0 / 3 FIXED</b></div>
+            <div class="cabin"><div class="alarm">!</div><div class="cabin-window"><span></span></div><div class="console-lights"><i></i><i></i><i></i><i></i></div></div>
+            <p class="activity-prompt">The cabin is failing! Fix the systems in the right order.</p>
+            <div class="repair-list">
+              <button data-step="2"><span>◆</span> Patch the air leak</button>
+              <button data-step="1"><span>⚡</span> Switch to backup power</button>
+              <button data-step="3"><span>⌁</span> Call mission control</button>
+            </div>
+            <p id="repairResult" class="result-line" aria-live="polite">Hint: lights first, air second, call home last.</p>
+            <button class="complete-button" data-complete="history" disabled>Complete rescue <span>✓</span></button>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="mission-complete" id="finale">
+      <div class="finale-planet" aria-hidden="true"><span></span></div>
+      <div><p class="eyebrow dark">YOUR FLIGHT LOG</p><h2 id="finalTitle">Six missions.<br>One giant brain.</h2><p id="finaleText">Complete missions to fill your flight log.</p><div id="commanderReward" class="commander-reward"><span>★</span><div><small>FINAL REWARD LOCKED</small><b>ORBIT COMMANDER</b></div></div></div>
+      <div>
+        <div class="badge-grid" aria-label="Mission badges">
+          <span data-badge="math">01</span><span data-badge="science">02</span><span data-badge="reading">03</span><span data-badge="art">04</span><span data-badge="engineering">05</span><span data-badge="history">06</span>
+        </div>
+        <p class="badge-caption">Each finished mission unlocks one badge.</p>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="rewardDialog" class="reward-dialog" aria-labelledby="rewardTitle">
+    <div class="reward-burst" aria-hidden="true"><i>★</i><i>✦</i><i>★</i><i>✦</i><i>★</i></div>
+    <button id="closeReward" class="dialog-close" aria-label="Close reward">×</button>
+    <p class="reward-kicker" id="rewardKicker">MISSION COMPLETE</p>
+    <div class="reward-medal" id="rewardMedal" aria-hidden="true">★</div>
+    <h2 id="rewardTitle">Badge unlocked!</h2>
+    <p id="rewardMessage">You earned a new mission badge and 100 star points.</p>
+    <div class="reward-total"><span>YOUR STAR SCORE</span><b id="rewardStars">100 ★</b></div>
+    <button id="nextMission" class="action-button reward-next">Try the next mission <span>→</span></button>
+    <button id="stayHere" class="text-button">Stay on this mission</button>
+  </dialog>
+
+  <footer>
+    <a class="brand footer-brand" href="#top"><span class="brand-planet"></span><span>ORBIT LAB</span></a>
+    <p>Made for curious minds on planet Earth.</p>
+    <button id="resetProgress" class="text-button">Reset flight log</button>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
