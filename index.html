@@ -33,7 +33,7 @@
         <p class="eyebrow">MISSION CONTROL • OPEN FOR EXPLORERS</p>
         <h1>Space is weird.<br><span>Let’s play with it.</span></h1>
         <p class="hero-text">Six quick missions. Zero boring lectures. Build planets, launch rockets, write wild stories, and save a space crew.</p>
-        <a class="primary-button" href="#missions">Choose a mission <span aria-hidden="true">↓</span></a>
+        <a class="primary-button" id="heroAction" href="#missions">Choose a mission <span aria-hidden="true">↓</span></a>
       </div>
       <div class="hero-system" aria-label="Animated solar system illustration">
         <div class="orbit orbit-one"><span class="orbit-planet planet-pink"></span></div>
@@ -52,6 +52,17 @@
           <h2>What will you explore?</h2>
         </div>
         <p>Every mission takes about <strong>5 minutes</strong>. Start anywhere.</p>
+      </div>
+
+      <div class="orbit-log" aria-label="Your six-world flight path">
+        <div class="orbit-log-copy">
+          <span>YOUR ORBIT LOG</span>
+          <strong id="worldsRecorded">0 of 6 worlds recorded</strong>
+        </div>
+        <div class="orbit-route" aria-hidden="true">
+          <i data-orbit="math">01</i><b></b><i data-orbit="science">02</i><b></b><i data-orbit="reading">03</i><b></b><i data-orbit="art">04</i><b></b><i data-orbit="engineering">05</i><b></b><i data-orbit="history">06</i>
+        </div>
+        <p id="orbitHint">Pick any world to begin. Each completed world lights up your route.</p>
       </div>
 
       <div class="subject-tabs" role="tablist" aria-label="Space school subjects">
@@ -256,12 +267,26 @@
 
     <section class="mission-complete" id="finale">
       <div class="finale-planet" aria-hidden="true"><span></span></div>
-      <div><p class="eyebrow dark">YOUR FLIGHT LOG</p><h2 id="finalTitle">Six missions.<br>One giant brain.</h2><p id="finaleText">Complete missions to fill your flight log.</p><div id="commanderReward" class="commander-reward"><span>★</span><div><small>FINAL REWARD LOCKED</small><b>ORBIT COMMANDER</b></div></div></div>
+      <div><p class="eyebrow dark">YOUR FLIGHT LOG</p><h2 id="finalTitle">Six missions.<br>One giant brain.</h2><p id="finaleText">Complete missions to fill your flight log.</p><button id="commanderReward" class="commander-reward" type="button" disabled><span>★</span><span><small>FINAL REWARD LOCKED</small><b>SPACE EXPLORER CERTIFICATE</b></span></button></div>
       <div>
         <div class="badge-grid" aria-label="Mission badges">
           <span data-badge="math">01</span><span data-badge="science">02</span><span data-badge="reading">03</span><span data-badge="art">04</span><span data-badge="engineering">05</span><span data-badge="history">06</span>
         </div>
         <p class="badge-caption">Each finished mission unlocks one badge.</p>
+      </div>
+    </section>
+
+    <section class="certificate" id="certificate" aria-labelledby="certificateTitle">
+      <div class="certificate-inner">
+        <p class="certificate-kicker">ORBIT LAB • OFFICIAL FLIGHT RECORD</p>
+        <div class="certificate-seal" aria-hidden="true">★</div>
+        <p>This certifies that</p>
+        <label class="name-label" for="explorerName">Explorer name</label>
+        <input id="explorerName" maxlength="28" placeholder="Type your name">
+        <h2 id="certificateTitle">is a Space Explorer!</h2>
+        <p class="certificate-copy">You connected math, science, reading, art, engineering, and history to the wonder of space.</p>
+        <div class="certificate-meta"><span>6 WORLDS RECORDED</span><span id="certificateDate"></span><span>600 STAR POINTS</span></div>
+        <button id="printCertificate" class="action-button" type="button">Print my certificate <span aria-hidden="true">↗</span></button>
       </div>
     </section>
   </main>
@@ -274,6 +299,7 @@
     <h2 id="rewardTitle">Badge unlocked!</h2>
     <p id="rewardMessage">You earned a new mission badge and 100 star points.</p>
     <div class="reward-total"><span>YOUR STAR SCORE</span><b id="rewardStars">100 ★</b></div>
+    <div class="next-preview" id="nextPreview"><span>NEXT STOP</span><b id="nextPreviewTitle">Science • Matter Mixer</b><small id="nextPreviewReason">See what planets are made of.</small></div>
     <button id="nextMission" class="action-button reward-next">Try the next mission <span>→</span></button>
     <button id="stayHere" class="text-button">Stay on this mission</button>
   </dialog>

@@ -8,7 +8,10 @@ A colorful, hands-on space learning website for kids. It includes six bite-sized
 - A choose-your-own space story builder includes random prompts, moods, sidekicks, and multiple endings.
 - The solar-system art canvas supports draggable planets with mouse, touch, or keyboard controls.
 - Interactive experiments cover planet size, materials, rocket engineering, and crew problem-solving.
-- Every completed subject awards a badge and 100 stars, recommends a new mission, and builds toward the final Orbit Commander reward.
+- A six-world orbit log shows overall progress and highlights the next suggested mission.
+- Hands-on tasks must be attempted before a subject can be recorded.
+- Every completed subject awards a badge and 100 stars, celebrates the win, and points to a specific unfinished world.
+- Completing all six unlocks a personalized, printable Space Explorer Certificate.
 - Mission progress is saved in the browser.
 
 ## Run locally

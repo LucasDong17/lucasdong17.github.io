@@ -1,10 +1,21 @@
 const subjects = ["math", "science", "reading", "art", "engineering", "history"];
-const completed = new Set(JSON.parse(localStorage.getItem("orbitLabProgress") || "[]"));
+let savedProgress = [];
+try { savedProgress = JSON.parse(localStorage.getItem("orbitLabProgress") || "[]"); } catch { savedProgress = []; }
+const completed = new Set(Array.isArray(savedProgress) ? savedProgress.filter((item) => subjects.includes(item)) : []);
+const challengeReady = new Set();
 const subjectNames = {
   math: "Math", science: "Science", reading: "Reading + Writing",
   art: "Art + Design", engineering: "Engineering + Tech", history: "History + Teamwork"
 };
 const subjectIcons = { math: "↗", science: "⌁", reading: "✎", art: "✦", engineering: "⚙", history: "⌛" };
+const subjectDetails = {
+  math: { title: "Math • Planet Sizer", reason: "Change a planet and feel its gravity." },
+  science: { title: "Science • Matter Mixer", reason: "Discover what different worlds are made of." },
+  reading: { title: "Reading • Story Signal", reason: "Turn a strange space signal into a story." },
+  art: { title: "Art • World Builder", reason: "Design a solar system nobody has seen before." },
+  engineering: { title: "Engineering • Rocket Works", reason: "Balance thrust and cargo for a safe launch." },
+  history: { title: "History • Crew Rescue", reason: "Use teamwork to bring a space crew home." }
+};
 const completionLabels = {
   math: "Lock in this world", science: "Approve planet", reading: "Save transmission",
   art: "Name this system", engineering: "Finish blueprint", history: "Complete rescue"
@@ -12,6 +23,19 @@ const completionLabels = {
 
 const tabs = [...document.querySelectorAll(".subject-tab")];
 const panels = [...document.querySelectorAll(".lesson-panel")];
+
+function syncCompletionButton(subject) {
+  const button = document.querySelector(`[data-complete="${subject}"]`);
+  if (!button) return;
+  const done = completed.has(subject);
+  button.disabled = !done && !challengeReady.has(subject);
+  button.title = !done && !challengeReady.has(subject) ? "Try the hands-on activity first" : "";
+}
+
+function markChallengeReady(subject) {
+  challengeReady.add(subject);
+  syncCompletionButton(subject);
+}
 
 function selectSubject(subject, moveFocus = false) {
   tabs.forEach((tab) => {
@@ -81,6 +105,7 @@ function setupLessonSteps() {
       activity.classList.toggle("activity-unlocked", unlocked);
       activity.setAttribute("aria-disabled", String(!unlocked));
       activity.inert = !unlocked;
+      if (unlocked) syncCompletionButton(subject);
     }
 
     back.addEventListener("click", () => { if (currentStep > 0) { currentStep -= 1; renderStep(); } });
@@ -101,25 +126,42 @@ function updateProgress() {
   localStorage.setItem("orbitLabProgress", JSON.stringify([...completed]));
   document.querySelector("#missionCount").textContent = `${completed.size} / 6 missions complete`;
   document.querySelector("#starCount").textContent = completed.size * 100;
+  document.querySelector("#worldsRecorded").textContent = `${completed.size} of 6 worlds recorded`;
+  const nextRecommended = subjects.find((subject) => !completed.has(subject));
   subjects.forEach((subject) => {
     const isDone = completed.has(subject);
-    document.querySelector(`[data-subject="${subject}"]`).classList.toggle("complete", isDone);
+    const tab = document.querySelector(`[data-subject="${subject}"]`);
+    tab.classList.toggle("complete", isDone);
+    tab.classList.toggle("recommended", subject === nextRecommended && completed.size > 0);
     document.querySelector(`[data-badge="${subject}"]`).classList.toggle("earned", isDone);
+    document.querySelector(`[data-orbit="${subject}"]`).classList.toggle("earned", isDone);
     const button = document.querySelector(`[data-complete="${subject}"]`);
     button.classList.toggle("done", isDone);
     button.firstChild.textContent = isDone ? "Mission complete " : `${completionLabels[subject]} `;
+    syncCompletionButton(subject);
     if (isDone) document.querySelector(`[data-panel="${subject}"]`).setLessonStep(3);
   });
+  [...document.querySelectorAll(".orbit-route b")].forEach((line, index) => line.classList.toggle("earned", completed.has(subjects[index]) && completed.has(subjects[index + 1])));
   const finale = document.querySelector("#finaleText");
   const allDone = completed.size === 6;
   finale.textContent = allDone
     ? "Flight log complete! You explored space with the mind of a scientist, artist, writer, engineer, mathematician, and teammate."
     : `${completed.size} badge${completed.size === 1 ? "" : "s"} earned. Complete ${6 - completed.size} more to become an Orbit Lab commander.`;
   document.querySelector("#finale").classList.toggle("all-done", allDone);
-  document.querySelector("#finalTitle").innerHTML = allDone ? "You did it!<br>Orbit Commander." : "Six missions.<br>One giant brain.";
+  document.querySelector("#finalTitle").innerHTML = allDone ? "You did it!<br>Space Explorer." : "Six missions.<br>One giant brain.";
   const commanderReward = document.querySelector("#commanderReward");
   commanderReward.classList.toggle("unlocked", allDone);
-  commanderReward.querySelector("small").textContent = allDone ? "FINAL REWARD UNLOCKED" : "FINAL REWARD LOCKED";
+  commanderReward.disabled = !allDone;
+  commanderReward.querySelector("small").textContent = allDone ? "FINAL REWARD UNLOCKED — OPEN IT" : "FINAL REWARD LOCKED";
+  document.querySelector("#certificate").classList.toggle("unlocked", allDone);
+  document.querySelector("#orbitHint").textContent = allDone
+    ? "Route complete! Open your Space Explorer Certificate below."
+    : completed.size === 0
+      ? "Pick any world to begin. Each completed world lights up your route."
+      : `Next suggested stop: ${subjectDetails[nextRecommended].title}. You can still choose any unfinished world.`;
+  const heroAction = document.querySelector("#heroAction");
+  heroAction.firstChild.textContent = allDone ? "Open my certificate " : completed.size ? `Continue: ${subjectNames[nextRecommended]} ` : "Choose a mission ";
+  heroAction.href = allDone ? "#certificate" : completed.size ? `#${nextRecommended}` : "#missions";
 }
 
 const rewardDialog = document.querySelector("#rewardDialog");
@@ -137,11 +179,15 @@ function showReward(subject) {
   const next = nextUnfinishedSubject(subject);
   document.querySelector("#rewardKicker").textContent = allDone ? "ALL SIX MISSIONS COMPLETE" : `${subjectNames[subject].toUpperCase()} COMPLETE`;
   document.querySelector("#rewardMedal").textContent = allDone ? "♛" : subjectIcons[subject];
-  document.querySelector("#rewardTitle").textContent = allDone ? "Orbit Commander unlocked!" : `${subjectNames[subject]} badge unlocked!`;
+  document.querySelector("#rewardTitle").textContent = allDone ? "Space Explorer unlocked!" : `${subjectNames[subject]} badge unlocked!`;
   document.querySelector("#rewardMessage").textContent = allDone
-    ? "You connected all six school subjects to space. Your final commander reward is ready!"
-    : `Great work! You finished the ${subjectNames[subject]} mission and earned 100 star points.`;
+    ? "You connected all six school subjects to space. Your Space Explorer Certificate is ready!"
+    : `Orbit passed! You recorded the ${subjectNames[subject]} world and earned 100 star points.`;
   document.querySelector("#rewardStars").textContent = `${completed.size * 100} ★`;
+  const preview = document.querySelector("#nextPreview");
+  preview.classList.toggle("final", allDone);
+  document.querySelector("#nextPreviewTitle").textContent = allDone ? "Final reward • Space Explorer Certificate" : subjectDetails[next].title;
+  document.querySelector("#nextPreviewReason").textContent = allDone ? "Add your name and print your official flight record." : subjectDetails[next].reason;
   const nextButton = document.querySelector("#nextMission");
   nextButton.dataset.next = next || "finale";
   nextButton.firstChild.textContent = allDone ? "See my final reward " : `Try ${subjectNames[next]} next `;
@@ -169,7 +215,7 @@ document.querySelector("#nextMission").addEventListener("click", (event) => {
   const destination = event.currentTarget.dataset.next;
   closeReward();
   if (destination === "finale") {
-    document.querySelector("#finale").scrollIntoView({ behavior: "smooth" });
+    document.querySelector("#certificate").scrollIntoView({ behavior: "smooth" });
     return;
   }
   selectSubject(destination);
@@ -185,7 +231,7 @@ function updatePlanetSize() {
   document.querySelector("#weightResult").textContent = `${Math.round(40 * Math.pow(scale, 1.15))} kg`;
   document.querySelector("#gravityResult").textContent = scale < .8 ? "Bouncy" : scale > 1.35 ? "Super strong" : "Earth-like";
 }
-sizeSlider.addEventListener("input", updatePlanetSize);
+sizeSlider.addEventListener("input", () => { updatePlanetSize(); markChallengeReady("math"); });
 
 const materialFacts = {
   rock: { density: "High", result: "Safe orbit!", badge: "STABLE" },
@@ -200,6 +246,7 @@ document.querySelectorAll(".material").forEach((button) => button.addEventListen
   document.querySelector("#densityResult").textContent = materialFacts[material].density;
   document.querySelector("#scienceResult").textContent = materialFacts[material].result;
   document.querySelector("#safetyBadge").textContent = materialFacts[material].badge;
+  markChallengeReady("science");
 }));
 
 const storyFields = ["heroType", "storyPlace", "storySidekick", "storyProblem"];
@@ -260,6 +307,7 @@ document.querySelectorAll("[data-ending]").forEach((button) => button.addEventLi
   document.querySelector("#storyOutput").textContent = `${currentStory}\n\n${endings[button.dataset.ending]}\n\nTHE END… OR IS IT?`;
   document.querySelector("#endingChoices").hidden = true;
   document.querySelector("#storySignal").textContent = "STORY COMPLETE";
+  markChallengeReady("reading");
 }));
 
 let artPlanets = 1;
@@ -278,6 +326,7 @@ document.querySelector("#addPlanet").addEventListener("click", () => {
   document.querySelector("#artSystem").appendChild(planet);
   artPlanets += 1;
   document.querySelector("#worldCount").textContent = `${artPlanets} / 5 WORLDS`;
+  markChallengeReady("art");
 });
 document.querySelector("#resetSystem").addEventListener("click", () => {
   document.querySelectorAll(".made-planet").forEach((planet, index) => { if (index) planet.remove(); });
@@ -338,6 +387,7 @@ document.querySelector("#launchRocket").addEventListener("click", () => {
   rocket.classList.add(success ? "flying" : "shake");
   document.querySelector("#launchBadge").textContent = success ? "LIFTOFF!" : "TOO HEAVY";
   document.querySelector("#launchResult").textContent = success ? "Success! Your thrust can lift the cargo." : "Almost! Choose a stronger engine or lighter cargo.";
+  if (success) markChallengeReady("engineering");
   launchTimer = setTimeout(() => rocket.classList.remove("flying", "shake"), 1800);
 });
 
@@ -357,12 +407,30 @@ document.querySelectorAll(".repair-list button").forEach((button) => button.addE
   document.querySelector("#repairResult").textContent = fixed < 3 ? "Good teamwork! What comes next?" : "Cabin safe. Crew connected. Rescue complete!";
   if (fixed === 3) {
     document.querySelector(".cabin").classList.add("fixed");
-    document.querySelector('[data-complete="history"]').disabled = false;
+    markChallengeReady("history");
   }
 }));
 
+document.querySelector("#commanderReward").addEventListener("click", () => document.querySelector("#certificate").scrollIntoView({ behavior: "smooth" }));
+document.querySelector("#printCertificate").addEventListener("click", () => window.print());
+document.querySelector("#explorerName").addEventListener("input", (event) => localStorage.setItem("orbitLabExplorerName", event.target.value));
+document.querySelector("#explorerName").value = localStorage.getItem("orbitLabExplorerName") || "";
+document.querySelector("#certificateDate").textContent = new Intl.DateTimeFormat(undefined, { month: "long", day: "numeric", year: "numeric" }).format(new Date());
+document.querySelector("#heroAction").addEventListener("click", (event) => {
+  if (!completed.size) return;
+  event.preventDefault();
+  if (completed.size === subjects.length) {
+    document.querySelector("#certificate").scrollIntoView({ behavior: "smooth" });
+    return;
+  }
+  const next = subjects.find((subject) => !completed.has(subject));
+  selectSubject(next);
+  document.querySelector(".lesson-shell").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
 document.querySelector("#resetProgress").addEventListener("click", () => {
   completed.clear();
+  challengeReady.clear();
   panels.forEach((panel) => panel.setLessonStep(0));
   updateProgress();
   window.scrollTo({ top: 0, behavior: "smooth" });
