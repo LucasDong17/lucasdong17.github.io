@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#13132b">
+  <meta name="description" content="School's Helper turns school overwhelm into a plan, understanding, and confident communication.">
+  <title>School's Helper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <main class="game-shell" aria-live="polite">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="School's Helper home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>School's <strong>Helper</strong></span>
+      </a>
+      <button class="sound-button" id="soundButton" type="button" aria-pressed="true" title="Toggle sound">♪</button>
+    </header>
+
+    <section class="screen active" id="startScreen">
+      <div class="start-copy">
+        <span class="eyebrow">ONE PROJECT · THREE KINDS OF HELP</span>
+        <h1>Turn overwhelm<br>into a <span>game plan.</span></h1>
+        <p>Help Alex tackle a stressful science project—plan the work, learn the tricky part, and practice what to say.</p>
+        <button class="primary-button" id="startButton" type="button">Start the mission <span>→</span></button>
+        <p class="controls-hint"><kbd>Space</kbd> or <kbd>Enter</kbd> to choose · tap on phones</p>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="orbit orbit-one"><span>PLAN</span></div>
+        <div class="orbit orbit-two"><span>LEARN</span></div>
+        <div class="orbit orbit-three"><span>SAY IT</span></div>
+        <div class="helper-core">
+          <div class="core-face"><i></i><i></i></div>
+          <b>AI</b>
+        </div>
+        <div class="spark s1"></div><div class="spark s2"></div><div class="spark s3"></div>
+      </div>
+    </section>
+
+    <section class="screen" id="gameScreen">
+      <div class="hud">
+        <div class="hud-block"><span>Score</span><strong id="scoreValue">000</strong></div>
+        <div class="mission-progress" aria-label="Mission progress">
+          <div class="progress-step current" data-step="0"><i>1</i><span>Plan it</span></div>
+          <div class="progress-line"><b></b></div>
+          <div class="progress-step" data-step="1"><i>2</i><span>Learn it</span></div>
+          <div class="progress-line"><b></b></div>
+          <div class="progress-step" data-step="2"><i>3</i><span>Say it</span></div>
+        </div>
+        <div class="hud-right">
+          <div class="lives" id="livesValue" aria-label="3 lives">● ● ●</div>
+          <div class="timer" id="timerValue">1:15</div>
+        </div>
+      </div>
+
+      <div class="mission-card">
+        <div class="student-card">
+          <div class="avatar"><span>A</span></div>
+          <div><span class="tag">ALEX'S MISSION</span><h2>Science group project</h2></div>
+          <div class="stress-meter"><span>Stress</span><div><i id="stressFill"></i></div></div>
+        </div>
+        <div id="stageContent"></div>
+      </div>
+    </section>
+
+    <section class="screen result-screen" id="resultScreen">
+      <div class="result-burst" aria-hidden="true"><span>✓</span></div>
+      <span class="eyebrow" id="resultEyebrow">MISSION COMPLETE</span>
+      <h1 id="resultTitle">Overwhelm defeated.</h1>
+      <p id="resultMessage">Alex now has a plan, understands the key idea, and knows what to say.</p>
+      <div class="final-score"><span>Final score</span><strong id="finalScore">000</strong></div>
+      <button class="primary-button" id="playAgainButton" type="button">Play again <span>↻</span></button>
+    </section>
+  </main>
+
+  <div class="thinking-overlay" id="thinkingOverlay" role="status" aria-hidden="true">
+    <div class="thinking-card"><div class="thinking-orb"><i></i><i></i><i></i></div><h2>Thinking…</h2><p>The game is paused while your AI coach makes this simple.</p></div>
+  </div>
+
+  <dialog id="safetyDialog" class="safety-dialog">
+    <div class="safety-icon">♥</div>
+    <h2>Your safety comes first.</h2>
+    <p>Tell a trusted adult who can stay with you. In the U.S., call or text <strong>988</strong> for free, confidential support. If anyone is in immediate danger, call 911.</p>
+    <div class="safety-actions"><a class="primary-button" href="tel:988">Call 988</a><button id="closeSafety" type="button">Back to the game</button></div>
+    <small>School's Helper is not an emergency service or a replacement for a counselor.</small>
+  </dialog>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
