@@ -90,6 +90,10 @@ function getBuiltInReply(message, history = []) {
   if (/\b(how (?:do|can) i|help me|tell me how to|i (?:want|plan|need) to)\b.{0,50}\b(hurt|kill|attack|bully|harass|poison|threaten)\b/.test(message.toLowerCase())) {
     return 'I can’t help hurt, threaten, or target someone. Step away from the situation and tell a trusted adult what is happening. If there is immediate danger, call emergency services.';
   }
+  const mathAnswer = solveMathQuestion(message);
+  if (mathAnswer) return mathAnswer;
+  const conceptAnswer = answerKnownConcept(message);
+  if (conceptAnswer) return conceptAnswer;
 
   const subject = findFirst(text, [
     ['math', /\b(math|algebra|geometry|fraction|equation|calculus)\b/],
@@ -188,6 +192,96 @@ function redactPrivateDetails(text) {
   return text
     .replace(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi, '[private email]')
     .replace(/\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, '[private number]');
+}
+
+function solveMathQuestion(message) {
+  const pieces = message.match(/[0-9xX+\-*/().=×÷−\s]+/g) || [];
+  const candidate = pieces.map(part => part.trim()).filter(part => /[0-9xX]/.test(part)).sort((a, b) => b.length - a.length)[0];
+  if (!candidate) return '';
+  const problem = candidate.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-').replace(/\s+/g, '').toLowerCase();
+  if (!/^[0-9x+\-*/().=]+$/.test(problem) || problem.length > 100) return '';
+
+  if (problem.includes('=')) {
+    const sides = problem.split('=');
+    if (sides.length !== 2 || !sides[0] || !sides[1]) return '';
+    if (!problem.includes('x')) {
+      const leftValue = evaluateArithmetic(sides[0]);
+      const rightValue = evaluateArithmetic(sides[1]);
+      if (leftValue === null || rightValue === null) return '';
+      const trueOrFalse = nearlyEqual(leftValue, rightValue) ? 'true' : 'not true';
+      return `The statement is ${trueOrFalse}. The left side equals ${formatNumber(leftValue)}, and the right side equals ${formatNumber(rightValue)}. Work each side separately using the order of operations, then compare them.`;
+    }
+    const left = parseLinearExpression(sides[0]);
+    const right = parseLinearExpression(sides[1]);
+    if (!left || !right) return 'I can see this is an equation, but built-in mode only handles basic one-variable linear equations right now. Check the symbols, or connect the live AI for more advanced algebra. I can still help you identify the first step.';
+    const xCoefficient = left.x - right.x;
+    const constant = right.constant - left.constant;
+    if (nearlyEqual(xCoefficient, 0) && nearlyEqual(constant, 0)) {
+      return `Both sides are the same expression. Subtract the entire expression from both sides and you get 0 = 0, which is always true. So this equation has infinitely many solutions—every value of x works. Quick check: try x = 2; both sides have the same value.`;
+    }
+    if (nearlyEqual(xCoefficient, 0)) {
+      return `The x-terms cancel, but the constants leave a false statement. That means the equation has no solution—there is no value of x that can make both sides equal.`;
+    }
+    const solution = constant / xCoefficient;
+    return `The solution is x = ${formatNumber(solution)}. Move the x-terms to one side and the constants to the other: ${formatNumber(xCoefficient)}x = ${formatNumber(constant)}. Then divide both sides by ${formatNumber(xCoefficient)}. Check it by replacing x with ${formatNumber(solution)} in the original equation.`;
+  }
+
+  if (!problem.includes('x') && /[+\-*/]/.test(problem)) {
+    const value = evaluateArithmetic(problem);
+    if (value === null) return '';
+    return `The answer is ${formatNumber(value)}. Use the order of operations: parentheses first, then multiplication or division, then addition or subtraction. Try working one operation at a time and compare your result with ${formatNumber(value)}.`;
+  }
+  return '';
+}
+
+function parseLinearExpression(expression) {
+  if (/[()]/.test(expression) || !expression) return null;
+  const normalized = expression.replace(/-/g, '+-').replace(/^\+/, '');
+  const terms = normalized.split('+').filter(Boolean);
+  let x = 0;
+  let constant = 0;
+  for (const term of terms) {
+    const xCount = (term.match(/x/g) || []).length;
+    if (xCount > 1) return null;
+    if (xCount === 1) {
+      let coefficient = term.replace('x', '').replace(/\*/g, '');
+      if (coefficient === '' || coefficient === '+') coefficient = '1';
+      if (coefficient === '-') coefficient = '-1';
+      if (coefficient.startsWith('/')) coefficient = `1${coefficient}`;
+      if (coefficient.startsWith('-/')) coefficient = coefficient.replace('-/', '-1/');
+      const value = evaluateArithmetic(coefficient);
+      if (value === null) return null;
+      x += value;
+    } else {
+      const value = evaluateArithmetic(term);
+      if (value === null) return null;
+      constant += value;
+    }
+  }
+  return { x, constant };
+}
+
+function evaluateArithmetic(expression) {
+  if (!expression || !/^[0-9+\-*/().]+$/.test(expression) || /\*\*|\/\//.test(expression)) return null;
+  try {
+    const value = Function(`"use strict"; return (${expression});`)();
+    return Number.isFinite(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function nearlyEqual(a, b) { return Math.abs(a - b) < 1e-10; }
+function formatNumber(value) { return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(6))); }
+
+function answerKnownConcept(message) {
+  const text = message.toLowerCase();
+  if (/\b(what is|explain|how does)\b.*\bphotosynthesis\b/.test(text)) return 'Photosynthesis is how plants use light energy to make sugar from carbon dioxide and water. Oxygen is released as a byproduct. A simple model is: light + water + carbon dioxide → glucose + oxygen. Which part—the ingredients, the energy change, or the products—should we unpack?';
+  if (/\b(what is|explain|how does)\b.*\bevaporation\b/.test(text)) return 'Evaporation happens when faster-moving molecules at the surface of a liquid escape into the air as gas. Heat usually speeds it up, which is why a puddle disappears faster on a warm day. How would you explain that using a wet shirt drying?';
+  if (/\b(what is|explain|how does)\b.*\bgravity\b/.test(text)) return 'Gravity is the attraction between objects with mass. Earth’s large mass pulls objects toward its center, giving them weight and making dropped objects fall. More mass creates stronger gravity, while more distance weakens it.';
+  if (/\b(what is|explain|define)\b.*\bmetaphor\b/.test(text)) return 'A metaphor describes one thing as if it were another to create a comparison, without using “like” or “as.” Example: “The classroom was a zoo.” It is not literally a zoo; the comparison suggests noise or chaos. Can you make one about a difficult test?';
+  if (/\b(what is|explain|define)\b.*\bthesis\b/.test(text)) return 'A thesis is the main claim an essay will explain or defend. A useful thesis names the topic, states your position, and hints at the main reasons. Think: “I believe ___ because ___ and ___.”';
+  return '';
 }
 
 function resizeInput() { const input = $('#coachInput'); input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 120)}px`; }
