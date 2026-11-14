@@ -1,4 +1,30 @@
-import { askCoach, isCrisisMessage } from './ai-client.js?v=2';
+const CRISIS_PATTERN = /\b(kill myself|suicide|suicidal|hurt myself|self[- ]?harm|don['’]?t want to live|do not want to live|end my life)\b/i;
+
+function isCrisisMessage(message) { return CRISIS_PATTERN.test(message); }
+
+async function askCoach(message, history = []) {
+  const controller = typeof AbortController === 'undefined' ? null : new AbortController();
+  const timeout = controller ? setTimeout(() => controller.abort(), 12000) : null;
+  let response;
+  try {
+    const options = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, history: history.slice(-8) })
+    };
+    if (controller) options.signal = controller.signal;
+    response = await fetch(new URL('api/coach', document.baseURI), options);
+  } catch (error) {
+    if (error.name === 'AbortError') throw new Error('The live coach took too long to answer.');
+    throw new Error('The live coach is not connected right now.');
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message || 'I could not connect right now.');
+  if (typeof data.answer !== 'string' || !data.answer.trim()) throw new Error('The live coach returned an empty answer.');
+  return data.answer;
+}
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -108,6 +134,7 @@ $$('.tab').forEach(tab => tab.addEventListener('click', () => switchView(tab.dat
 $$('[data-open-game]').forEach(button => button.addEventListener('click', () => switchView('calm')));
 $$('.prompt-chip').forEach(chip => chip.addEventListener('click', () => sendMessage(chip.dataset.prompt)));
 $('#coachForm').addEventListener('submit', event => { event.preventDefault(); sendMessage($('#coachInput').value); });
+$('.send-button').addEventListener('click', () => sendMessage($('#coachInput').value));
 $('#coachInput').addEventListener('input', resizeInput);
 $('#coachInput').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(event.currentTarget.value); } });
 $('#newChatButton').addEventListener('click', newChat);

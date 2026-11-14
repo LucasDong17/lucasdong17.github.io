@@ -38,7 +38,7 @@
           <button class="prompt-chip" type="button" data-prompt="Can you explain something from class in a simple way?">Explain a class topic</button>
           <button class="prompt-chip" type="button" data-prompt="Help me plan what to say in a difficult conversation at school.">Practice what to say</button>
         </div>
-        <form class="chat-form" id="coachForm"><label class="sr-only" for="coachInput">Message your coach</label><textarea id="coachInput" maxlength="500" rows="1" placeholder="What’s on your mind?" autocomplete="off"></textarea><button class="send-button" type="submit" aria-label="Send message"><span>Send</span><b aria-hidden="true">↑</b></button></form>
+        <form class="chat-form" id="coachForm"><label class="sr-only" for="coachInput">Message your coach</label><textarea id="coachInput" maxlength="500" rows="1" placeholder="What’s on your mind?" autocomplete="off"></textarea><button class="send-button" type="button" aria-label="Send message"><span>Send</span><b aria-hidden="true">↑</b></button></form>
         <p class="privacy-note">Please don’t share names, school names, addresses, or other private details. AI can make mistakes, so check important facts.</p>
       </div>
       <aside class="support-card"><span class="support-icon" aria-hidden="true">🧩</span><h2>Need a brain break?</h2><p>Play an easy matching puzzle with no timer, no score, and no way to lose. Come back to the chat whenever you feel ready.</p><button type="button" id="calmShortcut">Play relaxing puzzle <span>→</span></button></aside>
@@ -54,6 +54,6 @@
     <div class="safety-actions"><a class="primary-button" href="tel:988">Call 988</a><button id="closeSafety" type="button">Close</button></div><small>School's Helper is not an emergency service or a replacement for a counselor.</small>
   </dialog>
   <div class="toast" id="toast" role="status"></div>
-  <script type="module" src="app.js?v=2"></script>
+  <script defer src="app.js?v=3"></script>
 </body>
 </html>
