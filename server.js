@@ -32,11 +32,16 @@ const server = http.createServer(async (request, response) => {
 async function handleCoach(request, response) {
   const body = await readJson(request);
   const message = typeof body.message === 'string' ? body.message.trim().slice(0, 500) : '';
+  const history = Array.isArray(body.history) ? body.history.slice(-8).flatMap(item => {
+    const role = item?.role === 'assistant' ? 'assistant' : item?.role === 'user' ? 'user' : null;
+    const content = typeof item?.content === 'string' ? item.content.trim().slice(0, 1000) : '';
+    return role && content ? [{ role, content }] : [];
+  }) : [];
   if (!message) return json(response, 400, { message: 'Ask the coach a short question.' });
-  if (!env.OPENAI_API_KEY) return json(response, 503, { message: 'Please check the API key in .env, then restart the game.' });
+  if (!env.OPENAI_API_KEY) return json(response, 503, { message: 'The coach is not connected yet. Please check the API key in .env and restart.' });
 
   try {
-    const answer = await getCoachAnswer({ apiKey: env.OPENAI_API_KEY, model: MODEL, brief: BRIEF, message });
+    const answer = await getCoachAnswer({ apiKey: env.OPENAI_API_KEY, model: MODEL, brief: BRIEF, message, history });
     json(response, 200, { answer });
   } catch {
     json(response, 502, { message: 'Please check the API key and internet connection, then try again.' });

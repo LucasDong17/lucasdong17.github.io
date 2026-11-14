@@ -20,7 +20,7 @@ The project should help students reduce stress, get academic support, organize w
 
 ## My solution
 
-School's Helper combines dynamic academic tutoring, task organization, and social-skills practice in one personalized hub. Unlike a single-purpose planner or tutor, it treats academic confusion, overwhelm, and social stress as connected parts of the same school experience.
+School's Helper combines an open-ended supportive AI coach with academic tutoring, task organization, social-skills practice, breathing guidance, and a calm matching game. Unlike a single-purpose planner or tutor, it treats academic confusion, overwhelm, and social stress as connected parts of the same school experience. Students can talk naturally with the coach for as long as they need; they are not forced through a timed game.
 
 ## Safety plan
 
@@ -35,7 +35,7 @@ School's Helper combines dynamic academic tutoring, task organization, and socia
 
 ### When it answers
 
-Only answer after the student types and submits a message or chooses a prompt chip. In Version 1, the game uses a prompt chip or typed question at the tutoring station.
+Only answer after the student types and submits a message or chooses a prompt chip. Keep the recent conversation in mind so follow-up questions make sense.
 
 ### Its job
 
@@ -56,29 +56,17 @@ Talk to middle- and high-school students. Be empathetic, non-judgmental, clear, 
 ### Rules it must follow
 
 - Lead with the direct answer.
-- Keep game answers to 2–4 short bullets, approximately 50–120 words.
+- Usually keep answers to 2–4 short paragraphs or bullets, approximately 50–160 words.
 - Use plain language and one immediate next step.
 - Ask the student to think, choose, explain, or try; do not merely hand over an answer.
 - Refuse requests to cheat, bully, threaten, or hurt someone, and redirect to a safe learning action.
 - For a possible crisis, stop tutoring and give the safety response described above.
 - Never be mean or encourage anything harmful.
 
-## The game
+## The calming game
 
-### Core loop
+The optional calm break is a simple six-pair memory-matching activity. It has no timer, score, lives, or failure state. Its purpose is to give the student a gentle reset before returning to the coach.
 
-The player helps a fictional student transform one overwhelming science group project into three wins:
+## Current scope
 
-1. **Plan it:** choose the smallest useful first action.
-2. **Learn it:** ask the AI coach for a short explanation and answer an active-recall question.
-3. **Say it:** choose a respectful message to a group partner.
-
-### Win or lose
-
-- Win by completing all three connected stations before time runs out.
-- Lose after three mistakes or when the timer reaches zero.
-- Score points for good choices, speed, and finishing the whole support loop.
-
-## Version 1 scope
-
-One short level, designed for about one minute. It includes a start screen, score, lives, timer, a real AI tutoring moment, keyboard and touch controls, a win/Game Over screen, Play Again, and safety handling. It uses original colored shapes and no copyrighted characters.
+The main experience is a comfortable, multi-turn AI coach chat with suggested prompts, conversation reset, keyboard and touch controls, safety handling, privacy reminders, breathing guidance, and an optional no-pressure matching game. It uses original shapes and symbols and no copyrighted characters.
