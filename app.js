@@ -1,4 +1,4 @@
-import { askCoach, isCrisisMessage } from './ai-client.js';
+import { askCoach, isCrisisMessage } from './ai-client.js?v=2';
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
