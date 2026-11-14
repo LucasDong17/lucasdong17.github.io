@@ -16,7 +16,7 @@
   <div class="soft-shape shape-two" aria-hidden="true"></div>
   <header class="topbar">
     <a class="brand" href="#coach" aria-label="School's Helper home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>School's <strong>Helper</strong></span></a>
-    <p><span class="status-dot"></span> Your calm corner</p>
+    <button class="game-launch" type="button" data-open-game>🧩 Relaxing puzzle</button>
   </header>
   <main class="app-shell">
     <section class="welcome" aria-labelledby="welcome-title">
@@ -25,13 +25,13 @@
     </section>
     <nav class="view-tabs" aria-label="Choose an activity">
       <button class="tab active" type="button" data-view="coach" aria-selected="true">💬 Talk to my coach</button>
-      <button class="tab" type="button" data-view="calm" aria-selected="false">🌿 Take a calm break</button>
+      <button class="tab" type="button" data-view="calm" aria-selected="false">🧩 Relaxing puzzle</button>
     </nav>
     <section class="view active" id="coachView" data-view-panel="coach">
       <div class="chat-card" id="coach">
-        <div class="chat-heading"><div class="coach-avatar" aria-hidden="true"><span>AI</span></div><div><h2>Helper Coach</h2><p>Kind support, practical ideas, and honest answers</p></div><button class="quiet-button" id="newChatButton" type="button">New chat</button></div>
+        <div class="chat-heading"><div class="coach-avatar" aria-hidden="true"><span>AI</span></div><div><h2>Helper Coach</h2><p><span class="online-dot"></span> Online and ready to listen</p></div><button class="quiet-button" id="newChatButton" type="button">New chat</button></div>
         <div class="messages" id="messages" role="log" aria-live="polite" aria-label="Conversation with Helper Coach">
-          <article class="message coach-message"><div class="mini-avatar" aria-hidden="true">AI</div><div><strong>Helper Coach</strong><p>Hi! I’m glad you’re here. You can ask me a question, tell me what feels stressful, or just say what you need help starting. We can take it one small step at a time.</p></div></article>
+          <article class="message coach-message"><div class="mini-avatar" aria-hidden="true">AI</div><div><div class="message-label"><strong>Helper Coach</strong><time>Now</time></div><p>Hi! I’m glad you’re here. You can ask me a question, tell me what feels stressful, or just say what you need help starting. We can take it one small step at a time.</p></div></article>
         </div>
         <div class="prompt-row" aria-label="Question ideas">
           <button class="prompt-chip" type="button" data-prompt="I feel overwhelmed by my schoolwork. Can you help me choose one small first step?">I feel overwhelmed</button>
@@ -41,7 +41,7 @@
         <form class="chat-form" id="coachForm"><label class="sr-only" for="coachInput">Message your coach</label><textarea id="coachInput" maxlength="500" rows="1" placeholder="What’s on your mind?" autocomplete="off"></textarea><button class="send-button" type="submit" aria-label="Send message"><span>Send</span><b aria-hidden="true">↑</b></button></form>
         <p class="privacy-note">Please don’t share names, school names, addresses, or other private details. AI can make mistakes, so check important facts.</p>
       </div>
-      <aside class="support-card"><span class="support-icon" aria-hidden="true">♡</span><h2>A gentle reminder</h2><p>You do not need to solve everything at once. A useful next step can be tiny: open the directions, drink some water, or ask one clear question.</p><button type="button" id="calmShortcut">Take a two-minute break <span>→</span></button></aside>
+      <aside class="support-card"><span class="support-icon" aria-hidden="true">🧩</span><h2>Need a brain break?</h2><p>Play an easy matching puzzle with no timer, no score, and no way to lose. Come back to the chat whenever you feel ready.</p><button type="button" id="calmShortcut">Play relaxing puzzle <span>→</span></button></aside>
     </section>
     <section class="view" id="calmView" data-view-panel="calm" hidden>
       <div class="calm-intro"><span class="eyebrow">A QUIET RESET</span><h2>Match the soft shapes.</h2><p>There is no timer and no penalty. Turn over two cards at a time and find all six pairs. Take as long as you like.</p><div class="game-status"><span id="matchCount">0 of 6 pairs</span><button id="resetGame" type="button">Mix again</button></div></div>

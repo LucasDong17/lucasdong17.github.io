@@ -14,10 +14,22 @@ function switchView(view) {
 function addMessage(role, text, pending = false) {
   const article = document.createElement('article');
   article.className = `message ${role === 'assistant' ? 'coach-message' : 'user-message'}${pending ? ' pending' : ''}`;
-  if (role === 'assistant') { const avatar = document.createElement('div'); avatar.className = 'mini-avatar'; avatar.setAttribute('aria-hidden', 'true'); avatar.textContent = 'AI'; article.append(avatar); }
+  const avatar = document.createElement('div');
+  avatar.className = `mini-avatar ${role === 'user' ? 'user-avatar' : ''}`;
+  avatar.setAttribute('aria-hidden', 'true');
+  avatar.textContent = role === 'assistant' ? 'AI' : 'You';
+  if (role === 'assistant') article.append(avatar);
   const content = document.createElement('div');
-  if (role === 'assistant') { const name = document.createElement('strong'); name.textContent = 'Helper Coach'; content.append(name); }
+  const label = document.createElement('div');
+  label.className = 'message-label';
+  const name = document.createElement('strong');
+  name.textContent = role === 'assistant' ? 'Helper Coach' : 'You';
+  const time = document.createElement('time');
+  time.textContent = 'Now';
+  label.append(name, time);
+  content.append(label);
   const paragraph = document.createElement('p'); paragraph.textContent = text; content.append(paragraph); article.append(content);
+  if (role === 'user') article.append(avatar);
   $('#messages').append(article); $('#messages').scrollTop = $('#messages').scrollHeight;
   return article;
 }
@@ -34,10 +46,33 @@ async function sendMessage(text) {
     pending.remove(); addMessage('assistant', answer);
     messages.push({ role: 'user', content: message }, { role: 'assistant', content: answer });
   } catch (error) {
-    pending.remove(); addMessage('assistant', `${error.message} You can still take a calm break, or try asking again.`);
+    const answer = getBuiltInReply(message);
+    pending.remove();
+    addMessage('assistant', `I’m using built-in support mode because the live AI is not connected. ${answer}`);
+    messages.push({ role: 'user', content: message }, { role: 'assistant', content: answer });
   } finally {
     sending = false; $$('.prompt-chip').forEach(button => button.disabled = false); $('.send-button').disabled = false; $('#coachInput').focus();
   }
+}
+
+function getBuiltInReply(message) {
+  const text = message.toLowerCase();
+  if (/overwhelm|too much|stressed|stress|anxious|panic/.test(text)) {
+    return 'Let’s make things smaller. Put both feet on the floor and take one slow breath. Then choose just one task and spend two minutes opening it, reading the directions, or writing the first tiny step. You do not have to finish it yet.';
+  }
+  if (/homework|assignment|project|study|test|schoolwork/.test(text)) {
+    return 'Start by writing down what is due and when. Circle the closest deadline, then break that work into a step you can do in about ten minutes. If a class idea is confusing, tell me the subject and the exact part that feels unclear.';
+  }
+  if (/friend|teacher|parent|talk|conversation|say/.test(text)) {
+    return 'Try a calm “I” sentence: “I feel ___ when ___, and I would like ___.” Keep it short and respectful. You can type what happened without using anyone’s real name, and we can practice the words together.';
+  }
+  if (/sad|upset|angry|lonely|bad day/.test(text)) {
+    return 'That sounds like a lot to carry. Give yourself permission to pause, get some water, and tell a trusted person how you are feeling. For right now, what is one thing that would make the next ten minutes a little gentler?';
+  }
+  if (/hello|\bhi\b|hey/.test(text)) {
+    return 'Hi! I’m here with you. You can tell me what is on your mind, ask a school question, or ask me to help you choose one small next step.';
+  }
+  return 'I hear you. Let’s take it one piece at a time. What part feels hardest right now: understanding it, getting started, or knowing what to say?';
 }
 
 function resizeInput() { const input = $('#coachInput'); input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 120)}px`; }
@@ -70,6 +105,7 @@ function flipCard(card) {
 function toast(message) { $('#toast').textContent = message; $('#toast').classList.add('show'); setTimeout(() => $('#toast').classList.remove('show'), 1800); }
 
 $$('.tab').forEach(tab => tab.addEventListener('click', () => switchView(tab.dataset.view)));
+$$('[data-open-game]').forEach(button => button.addEventListener('click', () => switchView('calm')));
 $$('.prompt-chip').forEach(chip => chip.addEventListener('click', () => sendMessage(chip.dataset.prompt)));
 $('#coachForm').addEventListener('submit', event => { event.preventDefault(); sendMessage($('#coachInput').value); });
 $('#coachInput').addEventListener('input', resizeInput);
