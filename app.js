@@ -30,6 +30,7 @@ const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 const messages = [];
 let sending = false;
+let fallbackNoticeShown = false;
 
 function switchView(view) {
   $$('.tab').forEach(tab => { const active = tab.dataset.view === view; tab.classList.toggle('active', active); tab.setAttribute('aria-selected', String(active)); });
@@ -72,37 +73,106 @@ async function sendMessage(text) {
     pending.remove(); addMessage('assistant', answer);
     messages.push({ role: 'user', content: message }, { role: 'assistant', content: answer });
   } catch (error) {
-    const answer = getBuiltInReply(message);
+    const answer = getBuiltInReply(message, messages);
     pending.remove();
-    addMessage('assistant', `I’m using built-in support mode because the live AI is not connected. ${answer}`);
+    const notice = fallbackNoticeShown ? '' : 'I’m using built-in support mode because the live AI is not connected. ';
+    addMessage('assistant', `${notice}${answer}`);
+    fallbackNoticeShown = true;
     messages.push({ role: 'user', content: message }, { role: 'assistant', content: answer });
   } finally {
     sending = false; $$('.prompt-chip').forEach(button => button.disabled = false); $('.send-button').disabled = false; $('#coachInput').focus();
   }
 }
 
-function getBuiltInReply(message) {
-  const text = message.toLowerCase();
-  if (/overwhelm|too much|stressed|stress|anxious|panic/.test(text)) {
-    return 'Let’s make things smaller. Put both feet on the floor and take one slow breath. Then choose just one task and spend two minutes opening it, reading the directions, or writing the first tiny step. You do not have to finish it yet.';
+function getBuiltInReply(message, history = []) {
+  const recentUserText = history.filter(item => item.role === 'user').slice(-3).map(item => item.content).join(' ');
+  const text = redactPrivateDetails(`${recentUserText} ${message}`).toLowerCase();
+  if (/\b(how (?:do|can) i|help me|tell me how to|i (?:want|plan|need) to)\b.{0,50}\b(hurt|kill|attack|bully|harass|poison|threaten)\b/.test(message.toLowerCase())) {
+    return 'I can’t help hurt, threaten, or target someone. Step away from the situation and tell a trusted adult what is happening. If there is immediate danger, call emergency services.';
   }
-  if (/homework|assignment|project|study|test|schoolwork/.test(text)) {
-    return 'Start by writing down what is due and when. Circle the closest deadline, then break that work into a step you can do in about ten minutes. If a class idea is confusing, tell me the subject and the exact part that feels unclear.';
+
+  const subject = findFirst(text, [
+    ['math', /\b(math|algebra|geometry|fraction|equation|calculus)\b/],
+    ['science', /\b(science|biology|chemistry|physics|experiment)\b/],
+    ['English', /\b(english|essay|writing|reading|book report)\b/],
+    ['history', /\b(history|social studies|civics)\b/],
+    ['a presentation', /\b(presentation|speech|public speaking)\b/]
+  ]);
+  const task = findFirst(text, [
+    ['test', /\b(test|quiz|exam)\b/], ['project', /\bproject\b/], ['homework', /\b(homework|worksheet|assignment)\b/],
+    ['essay', /\b(essay|paper|book report)\b/], ['presentation', /\b(presentation|speech)\b/]
+  ]);
+  const feeling = findFirst(text, [
+    ['overwhelmed', /\b(overwhelm|too much|swamped)\b/], ['anxious', /\b(anxious|nervous|panic|worried|scared)\b/],
+    ['frustrated', /\b(frustrated|annoyed|angry|mad)\b/], ['confused', /\b(confused|don['’]?t understand|stuck|lost)\b/],
+    ['tired', /\b(tired|exhausted|no energy|burned out)\b/], ['sad', /\b(sad|upset|lonely|bad day)\b/],
+    ['stressed', /\b(stress|stressed)\b/]
+  ]);
+  const deadlineMatch = text.match(/\b(today|tonight|tomorrow|this (?:monday|tuesday|wednesday|thursday|friday|weekend|week)|next week|in \d+ days?)\b/);
+  const deadline = deadlineMatch ? deadlineMatch[1] : '';
+  const isSocial = /\b(friend|classmate|teacher|parent|group partner|conversation|argument|what (?:do|should) i say)\b/.test(text);
+  const isGreeting = /^(?:\s*)(?:hello|hi|hey|yo)[!.?\s]*$/i.test(message);
+
+  if (isGreeting) return 'Hi! I’m here with you. Tell me what is happening and what kind of help you want—understanding something, making a plan, calming down, or deciding what to say.';
+
+  const reflection = buildReflection({ feeling, subject, task, deadline, isSocial });
+  if (isSocial) {
+    return `${reflection} Try this three-part message: “I noticed ___.” “I feel ___.” “Could we ___?” Keep it about the situation, not the person. Before sending it, read it once and remove any blame words. What happened, and what outcome would feel fair to you?`;
   }
-  if (/friend|teacher|parent|talk|conversation|say/.test(text)) {
-    return 'Try a calm “I” sentence: “I feel ___ when ___, and I would like ___.” Keep it short and respectful. You can type what happened without using anyone’s real name, and we can practice the words together.';
+  if (task || subject) {
+    const plan = buildSchoolPlan({ subject, task, deadline, feeling });
+    return `${reflection} ${plan}`;
   }
-  if (/sad|upset|angry|lonely|bad day/.test(text)) {
-    return 'That sounds like a lot to carry. Give yourself permission to pause, get some water, and tell a trusted person how you are feeling. For right now, what is one thing that would make the next ten minutes a little gentler?';
+  if (feeling) {
+    return `${reflection} First, lower the pressure for sixty seconds: unclench your hands, breathe out slowly, and get a sip of water. Then write one sentence naming the problem and circle the part you can influence today. What would make the next ten minutes feel even 10% easier?`;
   }
-  if (/hello|\bhi\b|hey/.test(text)) {
-    return 'Hi! I’m here with you. You can tell me what is on your mind, ask a school question, or ask me to help you choose one small next step.';
-  }
-  return 'I hear you. Let’s take it one piece at a time. What part feels hardest right now: understanding it, getting started, or knowing what to say?';
+  return `I want to help with what you actually mean. I heard: “${shortQuote(message)}.” Tell me which kind of help would be most useful right now: a simple explanation, a step-by-step plan, ideas for what to say, or a quick way to calm down?`;
+}
+
+function findFirst(text, choices) {
+  const match = choices.find(choice => choice[1].test(text));
+  return match ? match[0] : '';
+}
+
+function buildReflection({ feeling, subject, task, deadline, isSocial }) {
+  const topic = [subject, task].filter(Boolean).filter((value, index, values) => values.indexOf(value) === index).join(' ');
+  if (isSocial && feeling) return `It makes sense that this situation feels ${feeling}.`;
+  if (topic && deadline && feeling) return `It makes sense to feel ${feeling} with your ${topic} due ${deadline}.`;
+  if (topic && deadline) return `Let’s make your ${topic} due ${deadline} feel more manageable.`;
+  if (topic && feeling) return `I hear that the ${topic} is leaving you feeling ${feeling}.`;
+  if (topic) return `Let’s work on your ${topic} one clear step at a time.`;
+  return `I hear that you’re feeling ${feeling || 'under pressure'}.`;
+}
+
+function buildSchoolPlan({ subject, task, deadline, feeling }) {
+  const urgent = /today|tonight|tomorrow/.test(deadline);
+  let action;
+  if (task === 'essay') action = 'Open the directions, write a one-sentence main idea, then list three points you could use. Do not edit yet.';
+  else if (task === 'presentation') action = 'Write the one idea you want people to remember, then make just three slide or speaking-point titles.';
+  else if (task === 'project') action = 'List the required parts, mark the smallest unfinished part, and work only on that part for ten minutes.';
+  else if (task === 'test' && subject === 'math') action = 'Choose one problem type, work one example without notes, and mark the exact step where you get stuck.';
+  else if (task === 'test') action = 'Close your notes and write five things you remember. Check them, then review only the gaps.';
+  else if (subject === 'math') action = 'Pick one example problem and write what you know, what you need to find, and the first operation you might try.';
+  else if (subject === 'science') action = 'Write the idea in your own words, draw a tiny diagram, and make one question about the part that is unclear.';
+  else action = 'Open the directions, underline the action words, and write the smallest step you can finish in ten minutes.';
+  const timing = urgent ? 'Since the deadline is close, use one focused 15-minute round, then ask a teacher, classmate, or trusted adult about the biggest blocker.' : 'Try one ten-minute round, pause, and decide the next small step.';
+  const energy = feeling === 'tired' ? ' Because your energy is low, aim for a useful draft—not perfect work.' : '';
+  return `${action} ${timing}${energy} Which exact part should we break down together?`;
+}
+
+function shortQuote(message) {
+  const cleaned = redactPrivateDetails(message).replace(/\s+/g, ' ').trim();
+  return cleaned.length > 90 ? `${cleaned.slice(0, 87)}…` : cleaned;
+}
+
+function redactPrivateDetails(text) {
+  return text
+    .replace(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi, '[private email]')
+    .replace(/\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, '[private number]');
 }
 
 function resizeInput() { const input = $('#coachInput'); input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 120)}px`; }
-function newChat() { messages.length = 0; $('#messages').innerHTML = ''; addMessage('assistant', 'Fresh start. What would feel helpful to talk through?'); toast('Started a new private chat.'); }
+function newChat() { messages.length = 0; fallbackNoticeShown = false; $('#messages').innerHTML = ''; addMessage('assistant', 'Fresh start. What would feel helpful to talk through?'); toast('Started a new private chat.'); }
 
 const symbols = ['leaf', 'moon', 'wave', 'sun', 'cloud', 'star'];
 const symbolArt = { leaf: '❧', moon: '☾', wave: '≈', sun: '☼', cloud: '☁', star: '✦' };
