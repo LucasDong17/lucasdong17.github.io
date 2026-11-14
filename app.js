@@ -102,6 +102,13 @@ function getBuiltInReply(message, history = []) {
     ['test', /\b(test|quiz|exam)\b/], ['project', /\bproject\b/], ['homework', /\b(homework|worksheet|assignment)\b/],
     ['essay', /\b(essay|paper|book report)\b/], ['presentation', /\b(presentation|speech)\b/]
   ]);
+  const concept = findFirst(text, [
+    ['fractions', /\b(fraction|fractions|denominator|numerator)\b/], ['equations', /\b(equation|equations|solve for x)\b/],
+    ['geometry', /\b(geometry|angles|area|perimeter|volume)\b/], ['cells', /\b(cell|cells|mitosis|organelles)\b/],
+    ['chemical reactions', /\b(chemical reaction|chemical reactions|balancing equations)\b/], ['the main idea', /\b(main idea|theme)\b/],
+    ['the thesis', /\b(thesis|claim|argument)\b/], ['grammar', /\b(grammar|punctuation|sentence structure)\b/],
+    ['vocabulary', /\b(vocabulary|definitions|terms)\b/], ['dates and events', /\b(dates|timeline|events)\b/]
+  ]);
   const feeling = findFirst(text, [
     ['overwhelmed', /\b(overwhelm|too much|swamped)\b/], ['anxious', /\b(anxious|nervous|panic|worried|scared)\b/],
     ['frustrated', /\b(frustrated|annoyed|angry|mad)\b/], ['confused', /\b(confused|don['’]?t understand|stuck|lost)\b/],
@@ -115,12 +122,12 @@ function getBuiltInReply(message, history = []) {
 
   if (isGreeting) return 'Hi! I’m here with you. Tell me what is happening and what kind of help you want—understanding something, making a plan, calming down, or deciding what to say.';
 
-  const reflection = buildReflection({ feeling, subject, task, deadline, isSocial });
+  const reflection = buildReflection({ feeling, subject, task, concept, deadline, isSocial });
   if (isSocial) {
     return `${reflection} Try this three-part message: “I noticed ___.” “I feel ___.” “Could we ___?” Keep it about the situation, not the person. Before sending it, read it once and remove any blame words. What happened, and what outcome would feel fair to you?`;
   }
   if (task || subject) {
-    const plan = buildSchoolPlan({ subject, task, deadline, feeling });
+    const plan = buildSchoolPlan({ subject, task, concept, deadline, feeling });
     return `${reflection} ${plan}`;
   }
   if (feeling) {
@@ -134,9 +141,12 @@ function findFirst(text, choices) {
   return match ? match[0] : '';
 }
 
-function buildReflection({ feeling, subject, task, deadline, isSocial }) {
+function buildReflection({ feeling, subject, task, concept, deadline, isSocial }) {
   const topic = [subject, task].filter(Boolean).filter((value, index, values) => values.indexOf(value) === index).join(' ');
+  const conceptVerb = ['fractions', 'equations', 'cells', 'chemical reactions', 'dates and events'].includes(concept) ? 'are' : 'is';
   if (isSocial && feeling) return `It makes sense that this situation feels ${feeling}.`;
+  if (concept && topic && deadline) return `I hear that ${concept} ${conceptVerb} the hardest part of your ${topic} due ${deadline}.`;
+  if (concept && topic) return `I hear that ${concept} ${conceptVerb} the part of your ${topic} that needs the most help.`;
   if (topic && deadline && feeling) return `It makes sense to feel ${feeling} with your ${topic} due ${deadline}.`;
   if (topic && deadline) return `Let’s make your ${topic} due ${deadline} feel more manageable.`;
   if (topic && feeling) return `I hear that the ${topic} is leaving you feeling ${feeling}.`;
@@ -144,10 +154,19 @@ function buildReflection({ feeling, subject, task, deadline, isSocial }) {
   return `I hear that you’re feeling ${feeling || 'under pressure'}.`;
 }
 
-function buildSchoolPlan({ subject, task, deadline, feeling }) {
+function buildSchoolPlan({ subject, task, concept, deadline, feeling }) {
   const urgent = /today|tonight|tomorrow/.test(deadline);
   let action;
-  if (task === 'essay') action = 'Open the directions, write a one-sentence main idea, then list three points you could use. Do not edit yet.';
+  if (concept === 'fractions') action = 'Try one fraction problem slowly: circle the operation, find a common denominator if you are adding or subtracting, then simplify at the end. Check the answer by estimating whether it should be smaller or larger than one.';
+  else if (concept === 'equations') action = 'Write one equation and undo one operation at a time on both sides. After finding the variable, plug it back in to check it.';
+  else if (concept === 'geometry') action = 'Draw and label the shape, write the formula beside it, then substitute the numbers with their units before calculating.';
+  else if (['cells', 'chemical reactions'].includes(concept)) action = `Explain ${concept} in one sentence, draw a tiny labeled diagram, then check your notes for the first detail you missed.`;
+  else if (concept === 'the thesis') action = 'Write one sentence that states your main claim and your strongest reason. Use it as a temporary thesis—you can improve the wording after the ideas are organized.';
+  else if (concept === 'the main idea') action = 'After each paragraph, write three to five words about what it mostly says. The idea that connects most of those notes is likely the main idea.';
+  else if (concept === 'grammar') action = 'Read one sentence aloud, find its subject and verb, then check only one issue at a time: punctuation, verb tense, or clarity.';
+  else if (concept === 'vocabulary') action = 'Choose five terms, cover the definitions, and explain each in your own words with a quick example.';
+  else if (concept === 'dates and events') action = 'Make a three-column timeline: date, event, and why it mattered. Practice the cause-and-effect links instead of memorizing isolated dates.';
+  else if (task === 'essay') action = 'Open the directions, write a one-sentence main idea, then list three points you could use. Do not edit yet.';
   else if (task === 'presentation') action = 'Write the one idea you want people to remember, then make just three slide or speaking-point titles.';
   else if (task === 'project') action = 'List the required parts, mark the smallest unfinished part, and work only on that part for ten minutes.';
   else if (task === 'test' && subject === 'math') action = 'Choose one problem type, work one example without notes, and mark the exact step where you get stuck.';
