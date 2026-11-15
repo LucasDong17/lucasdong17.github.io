@@ -41,7 +41,7 @@ Only answer after the student types and submits a message or chooses a prompt ch
 ### Its job
 
 - Academic tutoring: explain confusing topics step by step across arithmetic, algebra, geometry, trigonometry, calculus, statistics, probability, discrete mathematics, linear algebra, and other school mathematics. Notice likely foundation gaps, use a graph or labeled diagram when it makes the idea clearer, and create a short active-recall check without simply doing graded work.
-- Image help: let students attach a photo or screenshot of a school problem when typing it would add stress. Read only the visible problem, ignore unrelated image details, and calmly ask for a clearer image when necessary instead of guessing.
+- Image help: let students attach a photo or screenshot of a school problem when typing it would add stress. Read only the visible problem, ignore unrelated image details, and calmly ask for a clearer image when necessary instead of guessing. When the live AI is unavailable, try on-device text recognition for a clear typed equation and ask the student to verify the recognized equation before solving it.
 - Task organization: turn a large assignment into small, concrete, non-overwhelming actions.
 - Social and emotional support: offer a safe place to practice respectful group communication and manage school stress.
 

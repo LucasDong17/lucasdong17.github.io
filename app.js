@@ -32,6 +32,7 @@ const messages = [];
 let sending = false;
 let fallbackNoticeShown = false;
 let activeAttachment = null;
+let ocrLoaderPromise = null;
 const MATH_SOLUTION_PREFIX = '__MATH_SOLUTION__';
 
 function switchView(view) {
@@ -89,9 +90,20 @@ async function sendMessage(text) {
     pending.remove(); addMessage('assistant', answer);
     messages.push({ role: 'user', content: message }, { role: 'assistant', content: answer });
   } catch (error) {
-    const answer = image ? 'I can see that you attached a math image, but image reading needs the private live AI connection, and it is not connected right now. You did nothing wrong. Type the equation or the numbers you can see, and I’ll still work through it slowly with you—one step at a time.' : getBuiltInReply(message, messages);
+    let answer;
+    let imageNotice = '';
+    if (image) {
+      const pendingText = pending.querySelector('p');
+      if (pendingText) pendingText.textContent = 'Reading the problem gently…';
+      const extracted = await readMathFromImage(image, progress => {
+        if (pendingText && progress > 0.08) pendingText.textContent = `Reading the problem… ${Math.round(progress * 100)}%`;
+      });
+      answer = extracted ? getBuiltInReply(extracted, messages) : '';
+      if (answer && (readMathSolution(answer) || answerKnownConcept(extracted))) imageNotice = `I read the problem as “${extracted}.” Please check that I copied it correctly. `;
+      else answer = 'I could not read the math clearly enough to solve it without guessing. You did nothing wrong—screenshots can be tricky. Try cropping closer to the problem, use brighter lighting, or type the equation you can see. We’ll take it one step at a time.';
+    } else answer = getBuiltInReply(message, messages);
     pending.remove();
-    const notice = fallbackNoticeShown ? '' : 'I’m using built-in support mode because the live AI is not connected. ';
+    const notice = `${fallbackNoticeShown ? '' : 'I’m using built-in support mode because the live AI is not connected. '}${imageNotice}`;
     addMessage('assistant', answer, false, notice);
     fallbackNoticeShown = true;
     messages.push({ role: 'user', content: message }, { role: 'assistant', content: mathSolutionToText(answer) });
@@ -144,6 +156,59 @@ function clearAttachment() {
   $('#imageInput').value = '';
   $('#attachmentImage').removeAttribute('src');
   $('#attachmentPreview').hidden = true;
+}
+
+async function readMathFromImage(image, onProgress = () => {}) {
+  let worker;
+  try {
+    await loadOcrLibrary();
+    worker = await window.Tesseract.createWorker('eng', 1, {
+      logger: status => { if (status.status === 'recognizing text' && Number.isFinite(status.progress)) onProgress(status.progress); }
+    });
+    const result = await worker.recognize(image);
+    return findMathInRecognizedText(result?.data?.text || '');
+  } catch {
+    return '';
+  } finally {
+    if (worker) await worker.terminate().catch(() => {});
+  }
+}
+
+function loadOcrLibrary() {
+  if (window.Tesseract) return Promise.resolve();
+  if (ocrLoaderPromise) return ocrLoaderPromise;
+  ocrLoaderPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    script.crossOrigin = 'anonymous';
+    script.onload = () => window.Tesseract ? resolve() : reject(new Error('OCR did not load'));
+    script.onerror = reject;
+    document.head.append(script);
+  });
+  return ocrLoaderPromise;
+}
+
+function findMathInRecognizedText(text) {
+  const lines = text
+    .replace(/[−–—]/g, '-')
+    .replace(/[×·]/g, '*')
+    .replace(/÷/g, '/')
+    .replace(/²/g, '^2')
+    .replace(/³/g, '^3')
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+  const candidates = [];
+  lines.forEach(line => {
+    const pieces = line.match(/[0-9xXyYf()+\-*/^.=\s]+/g) || [];
+    pieces.forEach(piece => {
+      const compact = piece.replace(/\s+/g, ' ').trim().replace(/^\d+[.)]\s*/, '').replace(/^=\s*/, '');
+      const usefulCharacters = (compact.match(/[0-9xXyY=+\-*/^]/g) || []).length;
+      if (usefulCharacters >= 3 && /\d/.test(compact) && (/[=]/.test(compact) || /[+\-*/^]/.test(compact))) candidates.push(compact);
+    });
+  });
+  const equation = candidates.find(candidate => /=/.test(candidate) && /[xXyY]/.test(candidate));
+  return (equation || candidates.sort((a, b) => b.length - a.length)[0] || '').slice(0, 120);
 }
 
 function renderMathSolution(content, solution, notice) {
