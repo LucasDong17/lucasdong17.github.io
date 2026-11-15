@@ -97,6 +97,7 @@ function renderMathSolution(content, solution, notice) {
   card.setAttribute('aria-label', 'Worked math solution');
   if (notice) { const mode = document.createElement('p'); mode.className = 'mode-note'; mode.textContent = notice.trim(); card.append(mode); }
   const intro = document.createElement('p'); intro.className = 'math-intro'; intro.textContent = solution.intro; card.append(intro);
+  if (solution.visual) card.append(createMathVisual(solution.visual));
   const list = document.createElement('ol'); list.className = 'math-steps';
   solution.steps.forEach(step => {
     const item = document.createElement('li');
@@ -112,6 +113,91 @@ function renderMathSolution(content, solution, notice) {
   answer.append(answerLabel, answerValue); card.append(answer);
   if (solution.check) { const check = document.createElement('p'); check.className = 'math-check'; check.textContent = solution.check; card.append(check); }
   content.append(card);
+}
+
+function createMathVisual(visual) {
+  const wrap = document.createElement('figure');
+  wrap.className = 'math-visual-wrap';
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 520 300');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', visual.description || 'Math diagram');
+  svg.classList.add('math-visual');
+  const title = svgNode('title', {}, visual.description || 'Math diagram'); svg.append(title);
+  if (visual.type === 'graph') drawGraph(svg, visual);
+  else if (visual.type === 'rightTriangle') drawRightTriangle(svg, visual);
+  else if (visual.type === 'triangle') drawTriangle(svg, visual);
+  else if (visual.type === 'circle') drawCircle(svg, visual);
+  else if (visual.type === 'rectangle') drawRectangle(svg, visual);
+  else if (visual.type === 'coordinate') drawCoordinateGeometry(svg, visual);
+  wrap.append(svg);
+  if (visual.caption) { const caption = document.createElement('figcaption'); caption.textContent = visual.caption; wrap.append(caption); }
+  return wrap;
+}
+
+function svgNode(name, attributes = {}, text = '') {
+  const node = document.createElementNS('http://www.w3.org/2000/svg', name);
+  Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, String(value)));
+  if (text) node.textContent = text;
+  return node;
+}
+
+function drawGraph(svg, visual) {
+  const width = 520, height = 300, pad = 34;
+  const xMin = visual.xMin ?? -5, xMax = visual.xMax ?? 5, yMin = visual.yMin ?? -5, yMax = visual.yMax ?? 5;
+  const mapX = x => pad + (x - xMin) / (xMax - xMin) * (width - pad * 2);
+  const mapY = y => height - pad - (y - yMin) / (yMax - yMin) * (height - pad * 2);
+  for (let x = Math.ceil(xMin); x <= Math.floor(xMax); x++) {
+    svg.append(svgNode('line', { x1: mapX(x), y1: pad, x2: mapX(x), y2: height - pad, class: x === 0 ? 'axis' : 'grid-line' }));
+    if (x !== 0) svg.append(svgNode('text', { x: mapX(x), y: mapY(0) + 17, class: 'axis-label', 'text-anchor': 'middle' }, String(x)));
+  }
+  for (let y = Math.ceil(yMin); y <= Math.floor(yMax); y++) {
+    svg.append(svgNode('line', { x1: pad, y1: mapY(y), x2: width - pad, y2: mapY(y), class: y === 0 ? 'axis' : 'grid-line' }));
+    if (y !== 0) svg.append(svgNode('text', { x: mapX(0) - 9, y: mapY(y) + 4, class: 'axis-label', 'text-anchor': 'end' }, String(y)));
+  }
+  const visible = visual.points.filter(point => point[0] >= xMin && point[0] <= xMax && point[1] >= yMin && point[1] <= yMax);
+  if (visible.length > 1) svg.append(svgNode('polyline', { points: visible.map(point => `${mapX(point[0])},${mapY(point[1])}`).join(' '), class: 'graph-curve' }));
+  (visual.keyPoints || []).forEach(point => {
+    svg.append(svgNode('circle', { cx: mapX(point[0]), cy: mapY(point[1]), r: 5, class: 'graph-point' }));
+    svg.append(svgNode('text', { x: mapX(point[0]) + 8, y: mapY(point[1]) - 9, class: 'point-label' }, `(${formatNumber(point[0])}, ${formatNumber(point[1])})`));
+  });
+  svg.append(svgNode('text', { x: width - pad, y: 22, class: 'graph-title', 'text-anchor': 'end' }, visual.label));
+}
+
+function drawRightTriangle(svg, visual) {
+  svg.append(svgNode('polygon', { points: '95,245 95,65 410,245', class: 'shape-fill' }));
+  svg.append(svgNode('polyline', { points: '95,245 95,65 410,245 95,245', class: 'shape-line' }));
+  svg.append(svgNode('polyline', { points: '95,222 118,222 118,245', class: 'right-angle' }));
+  svg.append(svgNode('text', { x: 65, y: 158, class: 'shape-label', 'text-anchor': 'middle' }, visual.aLabel));
+  svg.append(svgNode('text', { x: 255, y: 274, class: 'shape-label', 'text-anchor': 'middle' }, visual.bLabel));
+  svg.append(svgNode('text', { x: 270, y: 135, class: 'shape-label', transform: 'rotate(30 270 135)', 'text-anchor': 'middle' }, visual.cLabel));
+}
+
+function drawTriangle(svg, visual) {
+  svg.append(svgNode('polygon', { points: '70,245 450,245 285,55', class: 'shape-fill' }));
+  svg.append(svgNode('polyline', { points: '70,245 450,245 285,55 70,245', class: 'shape-line' }));
+  svg.append(svgNode('line', { x1: 285, y1: 55, x2: 285, y2: 245, class: 'measure-line' }));
+  svg.append(svgNode('text', { x: 260, y: 155, class: 'shape-label', 'text-anchor': 'end' }, `h = ${visual.height}`));
+  svg.append(svgNode('text', { x: 260, y: 276, class: 'shape-label', 'text-anchor': 'middle' }, `b = ${visual.base}`));
+}
+
+function drawCircle(svg, visual) {
+  svg.append(svgNode('circle', { cx: 260, cy: 150, r: 105, class: 'shape-fill' }));
+  svg.append(svgNode('circle', { cx: 260, cy: 150, r: 105, class: 'shape-line' }));
+  svg.append(svgNode('line', { x1: 260, y1: 150, x2: 365, y2: 150, class: 'measure-line' }));
+  svg.append(svgNode('circle', { cx: 260, cy: 150, r: 4, class: 'graph-point' }));
+  svg.append(svgNode('text', { x: 315, y: 138, class: 'shape-label', 'text-anchor': 'middle' }, `r = ${visual.radius}`));
+}
+
+function drawRectangle(svg, visual) {
+  svg.append(svgNode('rect', { x: 90, y: 65, width: 340, height: 180, rx: 3, class: 'shape-fill' }));
+  svg.append(svgNode('rect', { x: 90, y: 65, width: 340, height: 180, rx: 3, class: 'shape-line' }));
+  svg.append(svgNode('text', { x: 260, y: 274, class: 'shape-label', 'text-anchor': 'middle' }, `length = ${visual.length}`));
+  svg.append(svgNode('text', { x: 55, y: 160, class: 'shape-label', 'text-anchor': 'middle', transform: 'rotate(-90 55 160)' }, `width = ${visual.width}`));
+}
+
+function drawCoordinateGeometry(svg, visual) {
+  drawGraph(svg, { type: 'graph', label: visual.label, points: [visual.a, visual.b], keyPoints: [visual.a, visual.b], xMin: visual.xMin, xMax: visual.xMax, yMin: visual.yMin, yMax: visual.yMax });
 }
 
 function createMathSolution(solution) { return `${MATH_SOLUTION_PREFIX}${JSON.stringify(solution)}`; }
@@ -135,6 +221,8 @@ function getBuiltInReply(message, history = []) {
   if (/\b(how (?:do|can) i|help me|tell me how to|i (?:want|plan|need) to)\b.{0,50}\b(hurt|kill|attack|bully|harass|poison|threaten)\b/.test(message.toLowerCase())) {
     return 'I can’t help hurt, threaten, or target someone. Step away from the situation and tell a trusted adult what is happening. If there is immediate danger, call emergency services.';
   }
+  const visualMathAnswer = solveGraphQuestion(message) || solveGeometryQuestion(message);
+  if (visualMathAnswer) return visualMathAnswer;
   const mathAnswer = solveMathQuestion(message);
   if (mathAnswer) return mathAnswer;
   const conceptAnswer = answerKnownConcept(message);
@@ -262,6 +350,187 @@ function redactPrivateDetails(text) {
     .replace(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi, '[private email]')
     .replace(/\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, '[private number]');
 }
+
+function solveGraphQuestion(message) {
+  const match = message.match(/(?:y|f\s*\(\s*x\s*\))\s*=\s*(.+)/i);
+  if (!match || !/\b(graph|plot|draw|sketch)|(?:y|f\s*\(\s*x\s*\))\s*=/i.test(message)) return '';
+  const prefix = match[1].match(/^((?:(?:sin|cos|sqrt|abs)|[0-9x+\-*/^().\s])+)/i);
+  const expression = prefix ? prefix[1].trim() : '';
+  const evaluator = compileGraphExpression(expression);
+  if (!evaluator) return '';
+  const points = [];
+  for (let x = -5; x <= 5.0001; x += 0.1) {
+    const y = evaluator(x);
+    if (Number.isFinite(y) && Math.abs(y) <= 20) points.push([Number(x.toFixed(3)), Number(y.toFixed(5))]);
+  }
+  if (points.length < 2) return '';
+  const compact = expression.replace(/\s+/g, '').replace(/\*/g, '');
+  const linear = !/[\^()]|sin|cos|sqrt|abs/i.test(compact) ? parseLinearExpression(compact) : null;
+  const keyPoints = [];
+  const steps = [];
+  if (linear) {
+    const y0 = linear.constant;
+    const y1 = linear.x + linear.constant;
+    keyPoints.push([0, y0], [1, y1]);
+    steps.push({ title: 'Identify the slope and y-intercept', equations: [`slope = ${formatNumber(linear.x)}`, `y-intercept = (0, ${formatNumber(y0)})`] });
+    steps.push({ title: 'Plot two points', equations: [`(0, ${formatNumber(y0)})`, `(1, ${formatNumber(y1)})`] });
+    steps.push({ title: 'Draw the line through the points', equations: [`y = ${prettyExpression(expression)}`] });
+  } else {
+    const tableXs = [-2, -1, 0, 1, 2];
+    const table = tableXs.map(x => [x, evaluator(x)]).filter(point => Number.isFinite(point[1]));
+    keyPoints.push(...table.filter(point => Math.abs(point[1]) <= 5));
+    steps.push({ title: 'Make a small table of values', equations: table.map(point => `x = ${point[0]}  →  y = ${formatNumber(point[1])}`) });
+    steps.push({ title: 'Plot the points and connect the pattern', equations: [`y = ${prettyExpression(expression)}`] });
+  }
+  return createMathSolution({
+    intro: `Let’s graph y = ${prettyExpression(expression)}.`,
+    visual: { type: 'graph', label: `y = ${prettyExpression(expression)}`, points, keyPoints, xMin: -5, xMax: 5, yMin: -5, yMax: 5, description: `Coordinate graph of y equals ${expression}`, caption: 'Use the labeled points to connect the equation to the graph.' },
+    steps,
+    answer: `Graph of y = ${prettyExpression(expression)}`,
+    check: 'Pick another x-value, calculate y, and check that the point lands on the curve.'
+  });
+}
+
+function compileGraphExpression(expression) {
+  if (!expression || expression.length > 100) return null;
+  const compact = expression.toLowerCase().replace(/\s+/g, '');
+  const residue = compact.replace(/sin|cos|sqrt|abs/g, '');
+  if (!/^[0-9x+\-*/^().]+$/.test(residue)) return null;
+  let javascript = compact
+    .replace(/(\d)(x)/g, '$1*$2')
+    .replace(/(\d|x|\))(?=(?:sin|cos|sqrt|abs)\()/g, '$1*')
+    .replace(/(\d|x|\))(?=\()/g, '$1*')
+    .replace(/\)(?=\d|x)/g, ')*')
+    .replace(/\^/g, '**')
+    .replace(/sin\(/g, 'Math.sin(').replace(/cos\(/g, 'Math.cos(').replace(/sqrt\(/g, 'Math.sqrt(').replace(/abs\(/g, 'Math.abs(');
+  try {
+    const fn = Function('x', `"use strict"; return (${javascript});`);
+    const test = fn(0);
+    if (typeof test !== 'number') return null;
+    return x => { try { return Number(fn(x)); } catch { return NaN; } };
+  } catch { return null; }
+}
+
+function solveGeometryQuestion(message) {
+  const text = message.toLowerCase().replace(/×/g, 'x');
+  const coordinate = solveCoordinateQuestion(text);
+  if (coordinate) return coordinate;
+
+  if (/\b(circle|circumference|radius|diameter)\b/.test(text)) {
+    let radius = namedNumber(text, 'radius|r');
+    const diameter = namedNumber(text, 'diameter|d');
+    if (radius === null && diameter !== null) radius = diameter / 2;
+    if (radius !== null && radius > 0) {
+      const wantsCircumference = /circumference|perimeter/.test(text);
+      const value = wantsCircumference ? 2 * Math.PI * radius : Math.PI * radius * radius;
+      const formula = wantsCircumference ? 'C = 2πr' : 'A = πr²';
+      return createMathSolution({
+        intro: `Let’s find the ${wantsCircumference ? 'circumference' : 'area'} of a circle with radius ${formatNumber(radius)}.`,
+        visual: { type: 'circle', radius: formatNumber(radius), description: `Circle with radius ${formatNumber(radius)}`, caption: 'The radius goes from the center to the edge.' },
+        steps: [
+          { title: 'Write the formula', equations: [formula] },
+          { title: 'Substitute the radius', equations: [wantsCircumference ? `C = 2π(${formatNumber(radius)})` : `A = π(${formatNumber(radius)})²`] },
+          { title: 'Calculate', equations: [`${wantsCircumference ? 'C' : 'A'} ≈ ${formatNumber(value)}`] }
+        ],
+        answer: `${formatNumber(value)} ${wantsCircumference ? 'units' : 'square units'}`,
+        check: wantsCircumference ? 'The circumference should be a little more than six times the radius.' : 'Area uses square units because it measures the space inside the circle.'
+      });
+    }
+  }
+
+  if (/\b(rectangle|rectangular)\b/.test(text)) {
+    const length = namedNumber(text, 'length|long');
+    const width = namedNumber(text, 'width|wide');
+    if (length !== null && width !== null && length > 0 && width > 0) {
+      const wantsPerimeter = /perimeter/.test(text);
+      const value = wantsPerimeter ? 2 * (length + width) : length * width;
+      return createMathSolution({
+        intro: `Let’s find the ${wantsPerimeter ? 'perimeter' : 'area'} of a rectangle that is ${formatNumber(length)} by ${formatNumber(width)}.`,
+        visual: { type: 'rectangle', length: formatNumber(length), width: formatNumber(width), description: `Rectangle with length ${length} and width ${width}` },
+        steps: [
+          { title: 'Write the formula', equations: [wantsPerimeter ? 'P = 2(l + w)' : 'A = l × w'] },
+          { title: 'Substitute the measurements', equations: [wantsPerimeter ? `P = 2(${formatNumber(length)} + ${formatNumber(width)})` : `A = ${formatNumber(length)} × ${formatNumber(width)}`] },
+          { title: 'Calculate', equations: [`${wantsPerimeter ? 'P' : 'A'} = ${formatNumber(value)}`] }
+        ],
+        answer: `${formatNumber(value)} ${wantsPerimeter ? 'units' : 'square units'}`,
+        check: wantsPerimeter ? 'Add all four sides to verify the perimeter.' : 'Area uses square units.'
+      });
+    }
+  }
+
+  if (/\b(right triangle|hypotenuse|pythagorean)\b/.test(text)) {
+    const numbers = extractNumbers(text);
+    const hypotenuse = namedNumber(text, 'hypotenuse|c');
+    if (numbers.length >= 2) {
+      let a = numbers[0], b = numbers[1], c, finding = 'hypotenuse';
+      if (hypotenuse !== null && /(?:other|missing) (?:leg|side)|find (?:a|b|leg)/.test(text)) {
+        c = hypotenuse;
+        a = numbers.find(number => !nearlyEqual(number, c));
+        if (a === undefined || c <= a) return '';
+        b = Math.sqrt(c * c - a * a);
+        finding = 'leg';
+      } else c = Math.sqrt(a * a + b * b);
+      const equations = finding === 'hypotenuse' ? [`c² = ${formatNumber(a)}² + ${formatNumber(b)}²`, `c² = ${formatNumber(a * a + b * b)}`, `c = √${formatNumber(a * a + b * b)} = ${formatNumber(c)}`] : [`b² = ${formatNumber(c)}² − ${formatNumber(a)}²`, `b² = ${formatNumber(c * c - a * a)}`, `b = √${formatNumber(c * c - a * a)} = ${formatNumber(b)}`];
+      return createMathSolution({
+        intro: `Let’s use the Pythagorean theorem to find the missing ${finding}.`,
+        visual: { type: 'rightTriangle', aLabel: formatNumber(a), bLabel: finding === 'leg' ? '?' : formatNumber(b), cLabel: finding === 'hypotenuse' ? '?' : formatNumber(c), description: 'Right triangle with labeled sides', caption: 'The side opposite the right angle is the hypotenuse.' },
+        steps: [
+          { title: 'Write the Pythagorean theorem', equations: ['a² + b² = c²'] },
+          { title: 'Substitute and solve', equations }
+        ],
+        answer: `${finding === 'hypotenuse' ? 'c' : 'b'} = ${formatNumber(finding === 'hypotenuse' ? c : b)}`,
+        check: finding === 'hypotenuse' ? 'The hypotenuse should be longer than either leg.' : 'Square all three sides and confirm that a² + b² = c².'
+      });
+    }
+  }
+
+  if (/\btriangle\b/.test(text) && /\barea\b/.test(text)) {
+    const base = namedNumber(text, 'base|b');
+    const height = namedNumber(text, 'height|h');
+    if (base !== null && height !== null && base > 0 && height > 0) {
+      const area = base * height / 2;
+      return createMathSolution({
+        intro: `Let’s find the area of a triangle with base ${formatNumber(base)} and height ${formatNumber(height)}.`,
+        visual: { type: 'triangle', base: formatNumber(base), height: formatNumber(height), description: `Triangle with base ${base} and perpendicular height ${height}` },
+        steps: [
+          { title: 'Write the formula', equations: ['A = ½bh'] },
+          { title: 'Substitute the measurements', equations: [`A = ½(${formatNumber(base)})(${formatNumber(height)})`] },
+          { title: 'Calculate', equations: [`A = ${formatNumber(area)}`] }
+        ],
+        answer: `${formatNumber(area)} square units`,
+        check: 'A triangle with the same base and height has half the area of a rectangle.'
+      });
+    }
+  }
+  return '';
+}
+
+function solveCoordinateQuestion(text) {
+  const pointMatches = [...text.matchAll(/\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g)];
+  if (pointMatches.length < 2 || !/\b(slope|distance|midpoint|coordinate)\b/.test(text)) return '';
+  const a = [Number(pointMatches[0][1]), Number(pointMatches[0][2])];
+  const b = [Number(pointMatches[1][1]), Number(pointMatches[1][2])];
+  const dx = b[0] - a[0], dy = b[1] - a[1];
+  const centerX = (a[0] + b[0]) / 2, centerY = (a[1] + b[1]) / 2;
+  const span = Math.max(5, Math.abs(dx), Math.abs(dy)) + 2;
+  const visual = { type: 'coordinate', a, b, label: 'Line through the two points', xMin: Math.floor(centerX - span / 2), xMax: Math.ceil(centerX + span / 2), yMin: Math.floor(centerY - span / 2), yMax: Math.ceil(centerY + span / 2), description: `Coordinate plane showing points (${a.join(', ')}) and (${b.join(', ')})` };
+  if (/\bmidpoint\b/.test(text)) {
+    return createMathSolution({ intro: `Let’s find the midpoint of (${a.join(', ')}) and (${b.join(', ')}).`, visual, steps: [{ title: 'Average the x-coordinates and y-coordinates', equations: [`M = ((${a[0]} + ${b[0]}) ÷ 2, (${a[1]} + ${b[1]}) ÷ 2)`, `M = (${formatNumber(centerX)}, ${formatNumber(centerY)})`] }], answer: `(${formatNumber(centerX)}, ${formatNumber(centerY)})`, check: 'The midpoint should sit halfway between the two plotted points.' });
+  }
+  if (/\bdistance\b/.test(text)) {
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    return createMathSolution({ intro: `Let’s find the distance between (${a.join(', ')}) and (${b.join(', ')}).`, visual, steps: [{ title: 'Use the distance formula', equations: ['d = √((x₂ − x₁)² + (y₂ − y₁)²)', `d = √((${formatNumber(dx)})² + (${formatNumber(dy)})²)`, `d = ${formatNumber(distance)}`] }], answer: `${formatNumber(distance)} units`, check: 'The distance is the hypotenuse of the horizontal and vertical changes.' });
+  }
+  const slope = nearlyEqual(dx, 0) ? null : dy / dx;
+  return createMathSolution({ intro: `Let’s find the slope through (${a.join(', ')}) and (${b.join(', ')}).`, visual, steps: [{ title: 'Use rise over run', equations: ['m = (y₂ − y₁) ÷ (x₂ − x₁)', `m = (${b[1]} − ${a[1]}) ÷ (${b[0]} − ${a[0]})`, slope === null ? 'The run is 0, so the slope is undefined.' : `m = ${formatNumber(slope)}`] }], answer: slope === null ? 'Undefined slope' : `m = ${formatNumber(slope)}`, check: slope === null ? 'A vertical line has an undefined slope.' : 'Count the rise and run between the plotted points.' });
+}
+
+function namedNumber(text, names) {
+  const match = text.match(new RegExp(`\\b(?:${names})\\b\\s*(?:=|is|of|measures?|:)?\\s*(-?\\d+(?:\\.\\d+)?)`, 'i'));
+  return match ? Number(match[1]) : null;
+}
+
+function extractNumbers(text) { return [...text.matchAll(/-?\d+(?:\.\d+)?/g)].map(match => Number(match[0])); }
 
 function solveMathQuestion(message) {
   const pieces = message.match(/[0-9xX+\-*/().=×÷−\s]+/g) || [];
