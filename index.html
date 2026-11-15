@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=12">
+  <link rel="stylesheet" href="styles.css?v=14">
 </head>
 <body>
   <div class="soft-shape shape-one" aria-hidden="true"></div>
@@ -39,8 +39,9 @@
           <button class="prompt-chip" type="button" data-prompt="Differentiate 3x^2 + 2x - 5 and show every step.">Try advanced math</button>
           <button class="prompt-chip" type="button" data-prompt="Help me plan what to say in a difficult conversation at school.">Practice what to say</button>
         </div>
-        <form class="chat-form" id="coachForm"><label class="sr-only" for="coachInput">Message your coach</label><textarea id="coachInput" maxlength="500" rows="1" placeholder="What’s on your mind?" autocomplete="off"></textarea><button class="send-button" type="button" aria-label="Send message"><span>Send</span><b aria-hidden="true">↑</b></button></form>
-        <p class="privacy-note">Please don’t share names, school names, addresses, or other private details. AI can make mistakes, so check important facts.</p>
+        <div class="attachment-preview" id="attachmentPreview" hidden><img id="attachmentImage" alt="Selected math problem"><div><strong id="attachmentName">Screenshot ready</strong><span>Add a question, or just press Send for step-by-step help.</span></div><button id="removeAttachment" type="button" aria-label="Remove attached image">×</button></div>
+        <form class="chat-form" id="coachForm"><button class="attach-button" id="attachButton" type="button" title="Attach a photo or screenshot" aria-label="Attach a photo or screenshot">＋</button><input class="sr-only" id="imageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif"><label class="sr-only" for="coachInput">Message your coach</label><textarea id="coachInput" maxlength="500" rows="1" placeholder="Ask a question or attach a math screenshot…" autocomplete="off"></textarea><button class="send-button" type="button" aria-label="Send message"><span>Send</span><b aria-hidden="true">↑</b></button></form>
+        <p class="privacy-note">Photos should show only the problem—no faces, names, school names, addresses, or other private details. AI can make mistakes, so check important facts.</p>
       </div>
       <aside class="support-card"><span class="support-icon" aria-hidden="true">🧩</span><h2>Need a brain break?</h2><p>Play an easy matching puzzle with no timer, no score, and no way to lose. Come back to the chat whenever you feel ready.</p><button type="button" id="calmShortcut">Play relaxing puzzle <span>→</span></button></aside>
     </section>
@@ -55,6 +56,6 @@
     <div class="safety-actions"><a class="primary-button" href="tel:988">Call 988</a><button id="closeSafety" type="button">Close</button></div><small>School's Helper is not an emergency service or a replacement for a counselor.</small>
   </dialog>
   <div class="toast" id="toast" role="status"></div>
-  <script defer src="app.js?v=13"></script>
+  <script defer src="app.js?v=14"></script>
 </body>
 </html>

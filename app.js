@@ -2,7 +2,7 @@ const CRISIS_PATTERN = /\b(kill myself|suicide|suicidal|hurt myself|self[- ]?har
 
 function isCrisisMessage(message) { return CRISIS_PATTERN.test(message); }
 
-async function askCoach(message, history = []) {
+async function askCoach(message, history = [], image = '') {
   const controller = typeof AbortController === 'undefined' ? null : new AbortController();
   const timeout = controller ? setTimeout(() => controller.abort(), 12000) : null;
   let response;
@@ -10,7 +10,7 @@ async function askCoach(message, history = []) {
     const options = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, history: history.slice(-8) })
+      body: JSON.stringify({ message, history: history.slice(-8), image })
     };
     if (controller) options.signal = controller.signal;
     response = await fetch(new URL('api/coach', document.baseURI), options);
@@ -31,6 +31,7 @@ const $$ = selector => [...document.querySelectorAll(selector)];
 const messages = [];
 let sending = false;
 let fallbackNoticeShown = false;
+let activeAttachment = null;
 const MATH_SOLUTION_PREFIX = '__MATH_SOLUTION__';
 
 function switchView(view) {
@@ -39,7 +40,7 @@ function switchView(view) {
   if (view === 'calm') $('#calmView').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function addMessage(role, text, pending = false, notice = '') {
+function addMessage(role, text, pending = false, notice = '', image = '') {
   const mathSolution = role === 'assistant' ? readMathSolution(text) : null;
   const article = document.createElement('article');
   article.className = `message ${role === 'assistant' ? 'coach-message' : 'user-message'}${pending ? ' pending' : ''}${mathSolution ? ' math-message' : ''}`;
@@ -57,6 +58,13 @@ function addMessage(role, text, pending = false, notice = '') {
   time.textContent = 'Now';
   label.append(name, time);
   content.append(label);
+  if (image) {
+    const preview = document.createElement('img');
+    preview.className = 'message-attachment';
+    preview.src = image;
+    preview.alt = role === 'user' ? 'Attached math problem' : 'Math problem image';
+    content.append(preview);
+  }
   if (mathSolution) renderMathSolution(content, mathSolution, notice);
   else { const paragraph = document.createElement('p'); paragraph.textContent = `${notice}${text}`; content.append(paragraph); }
   article.append(content);
@@ -69,26 +77,73 @@ function addMessage(role, text, pending = false, notice = '') {
 }
 
 async function sendMessage(text) {
-  const message = text.trim();
+  const image = activeAttachment?.dataUrl || '';
+  const message = text.trim() || (image ? 'Please help me understand this math problem step by step.' : '');
   if (!message || sending) return;
-  if (isCrisisMessage(message)) { addMessage('user', message); $('#safetyDialog').showModal(); return; }
-  sending = true; $('#coachInput').value = ''; resizeInput(); addMessage('user', message);
+  if (isCrisisMessage(message)) { addMessage('user', message, false, '', image); clearAttachment(); $('#safetyDialog').showModal(); return; }
+  sending = true; $('#coachInput').value = ''; resizeInput(); addMessage('user', message, false, '', image); clearAttachment();
   const pending = addMessage('assistant', 'Thinking with you…', true);
-  $$('.prompt-chip').forEach(button => button.disabled = true); $('.send-button').disabled = true;
+  $$('.prompt-chip').forEach(button => button.disabled = true); $('.send-button').disabled = true; $('#attachButton').disabled = true; $('#imageInput').disabled = true;
   try {
-    const answer = await askCoach(message, messages);
+    const answer = await askCoach(message, messages, image);
     pending.remove(); addMessage('assistant', answer);
     messages.push({ role: 'user', content: message }, { role: 'assistant', content: answer });
   } catch (error) {
-    const answer = getBuiltInReply(message, messages);
+    const answer = image ? 'I can see that you attached a math image, but image reading needs the private live AI connection, and it is not connected right now. You did nothing wrong. Type the equation or the numbers you can see, and I’ll still work through it slowly with you—one step at a time.' : getBuiltInReply(message, messages);
     pending.remove();
     const notice = fallbackNoticeShown ? '' : 'I’m using built-in support mode because the live AI is not connected. ';
     addMessage('assistant', answer, false, notice);
     fallbackNoticeShown = true;
     messages.push({ role: 'user', content: message }, { role: 'assistant', content: mathSolutionToText(answer) });
   } finally {
-    sending = false; $$('.prompt-chip').forEach(button => button.disabled = false); $('.send-button').disabled = false; $('#coachInput').focus();
+    sending = false; $$('.prompt-chip').forEach(button => button.disabled = false); $('.send-button').disabled = false; $('#attachButton').disabled = false; $('#imageInput').disabled = false; $('#coachInput').focus();
   }
+}
+
+async function selectAttachment(file) {
+  if (!file) return;
+  if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type)) { toast('Choose a PNG, JPG, WEBP, or GIF image.'); return; }
+  if (file.size > 8 * 1024 * 1024) { toast('That image is too large. Please choose one under 8 MB.'); return; }
+  try {
+    const dataUrl = await resizeImage(file, 1600, 1600);
+    activeAttachment = { dataUrl, name: file.name || 'Math screenshot' };
+    $('#attachmentImage').src = dataUrl;
+    $('#attachmentName').textContent = activeAttachment.name;
+    $('#attachmentPreview').hidden = false;
+    $('#coachInput').focus();
+    toast('Image ready. Add a question or press Send.');
+  } catch {
+    toast('I could not open that image. Please try another one.');
+  }
+}
+
+function resizeImage(file, maxWidth, maxHeight) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = reject;
+      image.onload = () => {
+        const scale = Math.min(1, maxWidth / image.width, maxHeight / image.height);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        const context = canvas.getContext('2d');
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.86));
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function clearAttachment() {
+  activeAttachment = null;
+  $('#imageInput').value = '';
+  $('#attachmentImage').removeAttribute('src');
+  $('#attachmentPreview').hidden = true;
 }
 
 function renderMathSolution(content, solution, notice) {
@@ -1005,7 +1060,7 @@ function answerKnownConcept(message) {
 }
 
 function resizeInput() { const input = $('#coachInput'); input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 120)}px`; }
-function newChat() { messages.length = 0; fallbackNoticeShown = false; $('#messages').innerHTML = ''; addMessage('assistant', 'Fresh start. What would feel helpful to talk through?'); toast('Started a new private chat.'); }
+function newChat() { messages.length = 0; fallbackNoticeShown = false; clearAttachment(); $('#messages').innerHTML = ''; addMessage('assistant', 'Fresh start. What would feel helpful to talk through?'); toast('Started a new private chat.'); }
 
 const symbols = ['leaf', 'moon', 'wave', 'sun', 'cloud', 'star'];
 const symbolArt = { leaf: '❧', moon: '☾', wave: '≈', sun: '☼', cloud: '☁', star: '✦' };
@@ -1040,6 +1095,9 @@ $('#coachForm').addEventListener('submit', event => { event.preventDefault(); se
 $('.send-button').addEventListener('click', () => sendMessage($('#coachInput').value));
 $('#coachInput').addEventListener('input', resizeInput);
 $('#coachInput').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(event.currentTarget.value); } });
+$('#attachButton').addEventListener('click', () => $('#imageInput').click());
+$('#imageInput').addEventListener('change', event => selectAttachment(event.currentTarget.files?.[0]));
+$('#removeAttachment').addEventListener('click', clearAttachment);
 $('#newChatButton').addEventListener('click', newChat);
 $('#calmShortcut').addEventListener('click', () => switchView('calm'));
 $('#resetGame').addEventListener('click', startCalmGame);

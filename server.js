@@ -32,6 +32,7 @@ const server = http.createServer(async (request, response) => {
 async function handleCoach(request, response) {
   const body = await readJson(request);
   const message = typeof body.message === 'string' ? body.message.trim().slice(0, 500) : '';
+  const image = typeof body.image === 'string' && /^data:image\/(?:png|jpeg|webp|gif);base64,[a-z0-9+/=]+$/i.test(body.image) && body.image.length <= 6_000_000 ? body.image : '';
   const history = Array.isArray(body.history) ? body.history.slice(-8).flatMap(item => {
     const role = item?.role === 'assistant' ? 'assistant' : item?.role === 'user' ? 'user' : null;
     const content = typeof item?.content === 'string' ? item.content.trim().slice(0, 1000) : '';
@@ -41,7 +42,7 @@ async function handleCoach(request, response) {
   if (!env.OPENAI_API_KEY) return json(response, 503, { message: 'The coach is not connected yet. Please check the API key in .env and restart.' });
 
   try {
-    const answer = await getCoachAnswer({ apiKey: env.OPENAI_API_KEY, model: MODEL, brief: BRIEF, message, history });
+    const answer = await getCoachAnswer({ apiKey: env.OPENAI_API_KEY, model: MODEL, brief: BRIEF, message, history, image });
     json(response, 200, { answer });
   } catch {
     json(response, 502, { message: 'Please check the API key and internet connection, then try again.' });
@@ -52,7 +53,7 @@ async function readJson(request) {
   let raw = '';
   for await (const chunk of request) {
     raw += chunk;
-    if (raw.length > 10_000) throw new Error('Request too large');
+    if (raw.length > 6_500_000) throw new Error('Request too large');
   }
   try { return JSON.parse(raw || '{}'); } catch { return {}; }
 }

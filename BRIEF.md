@@ -28,6 +28,7 @@ School's Helper combines an open-ended supportive AI coach with academic tutorin
 - Never encourage harm, bullying, harassment, cheating, or dangerous behavior.
 - Do not diagnose mental-health conditions or pretend to replace a counselor, teacher, parent, or emergency service.
 - Avoid collecting names, school names, addresses, or other identifying information.
+- Ask students to crop images to the problem and avoid faces, names, school information, or other private details.
 - Remind students to check important academic facts against class materials.
 - Be honest when AI is uncertain.
 
@@ -40,6 +41,7 @@ Only answer after the student types and submits a message or chooses a prompt ch
 ### Its job
 
 - Academic tutoring: explain confusing topics step by step across arithmetic, algebra, geometry, trigonometry, calculus, statistics, probability, discrete mathematics, linear algebra, and other school mathematics. Notice likely foundation gaps, use a graph or labeled diagram when it makes the idea clearer, and create a short active-recall check without simply doing graded work.
+- Image help: let students attach a photo or screenshot of a school problem when typing it would add stress. Read only the visible problem, ignore unrelated image details, and calmly ask for a clearer image when necessary instead of guessing.
 - Task organization: turn a large assignment into small, concrete, non-overwhelming actions.
 - Social and emotional support: offer a safe place to practice respectful group communication and manage school stress.
 
@@ -78,4 +80,4 @@ The optional calm break is a simple six-pair memory-matching activity. It has no
 
 ## Current scope
 
-The main experience is a comfortable, multi-turn AI coach chat with suggested prompts, conversation reset, keyboard and touch controls, safety handling, privacy reminders, breathing guidance, broad step-by-step math support, visual worked solutions for graphing and geometry questions, and an optional no-pressure matching game. Built-in math includes arithmetic, fractions, percentages, algebra, quadratics, geometry, trigonometry, polynomial calculus, descriptive statistics, probability, combinations, permutations, number theory, sequences, and introductory linear algebra. The connected AI can discuss other mathematics and should be honest when a specialized calculator, diagram, or teacher check is needed. It uses original shapes and symbols and no copyrighted characters.
+The main experience is a comfortable, multi-turn AI coach chat with suggested prompts, conversation reset, keyboard and touch controls, optional photo and screenshot attachments, safety handling, privacy reminders, breathing guidance, broad step-by-step math support, visual worked solutions for graphing and geometry questions, and an optional no-pressure matching game. Built-in math includes arithmetic, fractions, percentages, algebra, quadratics, geometry, trigonometry, polynomial calculus, descriptive statistics, probability, combinations, permutations, number theory, sequences, and introductory linear algebra. The connected AI can examine an attached problem image and discuss other mathematics; it should be honest when a specialized calculator, clearer image, diagram, or teacher check is needed. It uses original shapes and symbols and no copyrighted characters.
