@@ -61,7 +61,10 @@ function addMessage(role, text, pending = false, notice = '') {
   else { const paragraph = document.createElement('p'); paragraph.textContent = `${notice}${text}`; content.append(paragraph); }
   article.append(content);
   if (role === 'user') article.append(avatar);
-  $('#messages').append(article); $('#messages').scrollTop = $('#messages').scrollHeight;
+  const messageHost = $('#messages');
+  messageHost.append(article);
+  if (mathSolution) setTimeout(() => { messageHost.scrollTop = Math.max(0, article.offsetTop - messageHost.offsetTop - 12); }, 0);
+  else messageHost.scrollTop = messageHost.scrollHeight;
   return article;
 }
 
