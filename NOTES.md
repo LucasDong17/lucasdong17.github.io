@@ -11,7 +11,7 @@ The AI model is `gpt-5-mini` by default. You can change it with `OPENAI_MODEL` i
 ## Current version
 
 - Open-ended, multi-turn coach chat for school questions, planning, social practice, and emotional support.
-- Visual, step-by-step math help for linear equations, function graphs, circle and polygon measurements, right triangles, slope, distance, and midpoint questions.
+- Visual, step-by-step math help across arithmetic, fractions, percentages, linear and quadratic algebra, function graphs, plane and solid geometry, trigonometry, polynomial calculus, descriptive statistics, probability, discrete math, sequences, and introductory linear algebra.
 - Warm suggested prompts, clear privacy reminders, and a breathing guide.
 - Optional six-pair calm matching game with no timer, score, or failure state.
 - Keyboard, mouse, and touch controls.
@@ -25,7 +25,7 @@ The AI model is `gpt-5-mini` by default. You can change it with `OPENAI_MODEL` i
 
 - Let a student paste a real assignment and generate the three stations from it.
 - Add text-to-speech, dyslexia-friendly type, and more accessibility settings.
-- Add more symbolic algebra and advanced geometry tools through the connected AI service.
+- Add a dedicated computer-algebra service for advanced symbolic proofs, multi-variable calculus, and specialist university mathematics.
 - Add a teacher/parent demo view with privacy explanations.
 - Add optional voice input only after privacy and parental-consent review.
 - Save progress locally without collecting identifying information.

@@ -223,6 +223,8 @@ function getBuiltInReply(message, history = []) {
   }
   const visualMathAnswer = solveGraphQuestion(message) || solveGeometryQuestion(message);
   if (visualMathAnswer) return visualMathAnswer;
+  const extendedMathAnswer = solveExtendedMathQuestion(message);
+  if (extendedMathAnswer) return extendedMathAnswer;
   const mathAnswer = solveMathQuestion(message);
   if (mathAnswer) return mathAnswer;
   const conceptAnswer = answerKnownConcept(message);
@@ -416,6 +418,39 @@ function solveGeometryQuestion(message) {
   const coordinate = solveCoordinateQuestion(text);
   if (coordinate) return coordinate;
 
+  if (/\b(sphere|cylinder|cone|cube|rectangular prism)\b/.test(text) && /\b(volume|surface area)\b/.test(text)) {
+    const radius = namedNumber(text, 'radius|r');
+    const height = namedNumber(text, 'height|h');
+    const side = namedNumber(text, 'side|s');
+    const length = namedNumber(text, 'length|l');
+    const width = namedNumber(text, 'width|w');
+    let shape = '', formula = '', substitution = '', value = null, units = '';
+    const surface = /surface area/.test(text);
+    if (/\bsphere\b/.test(text) && radius !== null && radius > 0) {
+      shape = 'sphere'; formula = surface ? 'SA = 4πr²' : 'V = ⁴⁄₃πr³';
+      value = surface ? 4 * Math.PI * radius ** 2 : 4 / 3 * Math.PI * radius ** 3;
+      substitution = surface ? `SA = 4π(${formatNumber(radius)})²` : `V = ⁴⁄₃π(${formatNumber(radius)})³`;
+      units = surface ? 'square units' : 'cubic units';
+    } else if (/\bcylinder\b/.test(text) && radius !== null && height !== null && radius > 0 && height > 0) {
+      shape = 'cylinder'; formula = surface ? 'SA = 2πr² + 2πrh' : 'V = πr²h';
+      value = surface ? 2 * Math.PI * radius ** 2 + 2 * Math.PI * radius * height : Math.PI * radius ** 2 * height;
+      substitution = surface ? `SA = 2π(${formatNumber(radius)})² + 2π(${formatNumber(radius)})(${formatNumber(height)})` : `V = π(${formatNumber(radius)})²(${formatNumber(height)})`;
+      units = surface ? 'square units' : 'cubic units';
+    } else if (/\bcone\b/.test(text) && !surface && radius !== null && height !== null && radius > 0 && height > 0) {
+      shape = 'cone'; formula = 'V = ⅓πr²h'; value = Math.PI * radius ** 2 * height / 3;
+      substitution = `V = ⅓π(${formatNumber(radius)})²(${formatNumber(height)})`; units = 'cubic units';
+    } else if (/\bcube\b/.test(text) && side !== null && side > 0) {
+      shape = 'cube'; formula = surface ? 'SA = 6s²' : 'V = s³'; value = surface ? 6 * side ** 2 : side ** 3;
+      substitution = surface ? `SA = 6(${formatNumber(side)})²` : `V = (${formatNumber(side)})³`; units = surface ? 'square units' : 'cubic units';
+    } else if (/\brectangular prism\b/.test(text) && length !== null && width !== null && height !== null && length > 0 && width > 0 && height > 0) {
+      shape = 'rectangular prism'; formula = surface ? 'SA = 2(lw + lh + wh)' : 'V = lwh';
+      value = surface ? 2 * (length * width + length * height + width * height) : length * width * height;
+      substitution = surface ? `SA = 2((${length})(${width}) + (${length})(${height}) + (${width})(${height}))` : `V = (${length})(${width})(${height})`;
+      units = surface ? 'square units' : 'cubic units';
+    }
+    if (value !== null) return createMathSolution({ intro: `Let’s find the ${surface ? 'surface area' : 'volume'} of the ${shape}.`, steps: [{ title: 'Write the formula', equations: [formula] }, { title: 'Substitute the measurements', equations: [substitution] }, { title: 'Calculate', equations: [`${surface ? 'SA' : 'V'} ≈ ${formatNumber(value)}`] }], answer: `${formatNumber(value)} ${units}`, check: `A ${surface ? 'surface-area' : 'volume'} answer uses ${units}.` });
+  }
+
   if (/\b(circle|circumference|radius|diameter)\b/.test(text)) {
     let radius = namedNumber(text, 'radius|r');
     const diameter = namedNumber(text, 'diameter|d');
@@ -531,6 +566,249 @@ function namedNumber(text, names) {
 }
 
 function extractNumbers(text) { return [...text.matchAll(/-?\d+(?:\.\d+)?/g)].map(match => Number(match[0])); }
+
+function solveExtendedMathQuestion(message) {
+  const text = message.toLowerCase().replace(/[−–]/g, '-').replace(/×/g, '*').replace(/÷/g, '/');
+  return solveFractionQuestion(text)
+    || solvePercentQuestion(text)
+    || solveStatisticsQuestion(text)
+    || solveProbabilityQuestion(text)
+    || solveDiscreteQuestion(text)
+    || solveCalculusQuestion(text)
+    || solveQuadraticQuestion(text)
+    || solveTrigonometryQuestion(text)
+    || solveSequenceQuestion(text)
+    || solveLinearAlgebraQuestion(text);
+}
+
+function solveFractionQuestion(text) {
+  const match = text.match(/(-?\d+)\s*\/\s*(-?\d+)\s*([+\-*/])\s*(-?\d+)\s*\/\s*(-?\d+)/);
+  if (!match) return '';
+  const a = Number(match[1]), b = Number(match[2]), operation = match[3], c = Number(match[4]), d = Number(match[5]);
+  if (b === 0 || d === 0 || (operation === '/' && c === 0)) return '';
+  let numerator, denominator, setup, method;
+  if (operation === '+' || operation === '-') {
+    numerator = operation === '+' ? a * d + c * b : a * d - c * b;
+    denominator = b * d;
+    setup = `${a}/${b} ${operation} ${c}/${d} = (${a} × ${d} ${operation} ${c} × ${b}) / (${b} × ${d})`;
+    method = 'Use a common denominator';
+  } else if (operation === '*') {
+    numerator = a * c; denominator = b * d;
+    setup = `${a}/${b} × ${c}/${d} = (${a} × ${c}) / (${b} × ${d})`;
+    method = 'Multiply the numerators and denominators';
+  } else {
+    numerator = a * d; denominator = b * c;
+    setup = `${a}/${b} ÷ ${c}/${d} = ${a}/${b} × ${d}/${c}`;
+    method = 'Multiply by the reciprocal';
+  }
+  if (denominator < 0) { numerator *= -1; denominator *= -1; }
+  const divisor = greatestCommonDivisor(Math.abs(numerator), Math.abs(denominator));
+  const simpleNumerator = numerator / divisor, simpleDenominator = denominator / divisor;
+  const answer = simpleDenominator === 1 ? String(simpleNumerator) : `${simpleNumerator}/${simpleDenominator}`;
+  return createMathSolution({
+    intro: `Let’s work with the fractions in ${match[0]}.`,
+    steps: [
+      { title: method, equations: [setup, `${numerator}/${denominator}`] },
+      { title: `Simplify by dividing by ${divisor}`, equations: [`${numerator} ÷ ${divisor}  /  ${denominator} ÷ ${divisor}`, answer] }
+    ],
+    answer,
+    check: `The decimal value is ${formatNumber(simpleNumerator / simpleDenominator)}.`
+  });
+}
+
+function solvePercentQuestion(text) {
+  let match = text.match(/(?:what\s+is\s+|find\s+)?(-?\d+(?:\.\d+)?)\s*%\s+of\s+(-?\d+(?:\.\d+)?)/);
+  if (match) {
+    const percent = Number(match[1]), whole = Number(match[2]), value = percent / 100 * whole;
+    return createMathSolution({ intro: `Let’s find ${formatNumber(percent)}% of ${formatNumber(whole)}.`, steps: [{ title: 'Change the percent to a decimal', equations: [`${formatNumber(percent)}% = ${formatNumber(percent / 100)}`] }, { title: 'Multiply by the whole', equations: [`${formatNumber(percent / 100)} × ${formatNumber(whole)} = ${formatNumber(value)}`] }], answer: formatNumber(value), check: percent >= 0 && percent <= 100 ? 'The answer should be between 0 and the whole amount.' : 'A percent above 100% can be larger than the whole amount.' });
+  }
+  match = text.match(/(increase|decrease)\s+(-?\d+(?:\.\d+)?)\s+by\s+(-?\d+(?:\.\d+)?)\s*%/);
+  if (!match) return '';
+  const direction = match[1], original = Number(match[2]), percent = Number(match[3]);
+  const change = original * percent / 100;
+  const result = direction === 'increase' ? original + change : original - change;
+  return createMathSolution({ intro: `Let’s ${direction} ${formatNumber(original)} by ${formatNumber(percent)}%.`, steps: [{ title: 'Find the amount of change', equations: [`${formatNumber(original)} × ${formatNumber(percent / 100)} = ${formatNumber(change)}`] }, { title: `${direction === 'increase' ? 'Add' : 'Subtract'} the change`, equations: [`${formatNumber(original)} ${direction === 'increase' ? '+' : '−'} ${formatNumber(change)} = ${formatNumber(result)}`] }], answer: formatNumber(result), check: `The result should be ${direction === 'increase' ? 'greater' : 'less'} than ${formatNumber(original)}.` });
+}
+
+function solveStatisticsQuestion(text) {
+  const requested = ['mean', 'median', 'mode', 'range'].filter(word => new RegExp(`\\b${word}\\b`).test(text));
+  if (!requested.length || !/\d/.test(text)) return '';
+  const listText = text.includes(':') ? text.slice(text.indexOf(':') + 1) : text.replace(/.*?\b(?:mean|median|mode|range)\b(?:\s+of)?/i, '');
+  const values = extractNumbers(listText);
+  if (values.length < 2) return '';
+  const sorted = [...values].sort((a, b) => a - b);
+  const sum = values.reduce((total, value) => total + value, 0);
+  const mean = sum / values.length;
+  const middle = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  const counts = new Map(); values.forEach(value => counts.set(value, (counts.get(value) || 0) + 1));
+  const maxCount = Math.max(...counts.values());
+  const modes = maxCount === 1 ? [] : [...counts].filter(([, count]) => count === maxCount).map(([value]) => value);
+  const results = { mean: formatNumber(mean), median: formatNumber(median), mode: modes.length ? modes.join(', ') : 'no mode', range: formatNumber(sorted.at(-1) - sorted[0]) };
+  const targets = requested.length === 1 ? requested : ['mean', 'median', 'mode', 'range'];
+  const steps = [];
+  if (targets.includes('mean')) steps.push({ title: 'Mean: add, then divide by how many values', equations: [`(${values.join(' + ')}) ÷ ${values.length} = ${formatNumber(sum)} ÷ ${values.length}`, `mean = ${results.mean}`] });
+  if (targets.includes('median')) steps.push({ title: 'Median: order the values and find the middle', equations: [sorted.join(', '), `median = ${results.median}`] });
+  if (targets.includes('mode')) steps.push({ title: 'Mode: find the value that appears most', equations: [`mode = ${results.mode}`] });
+  if (targets.includes('range')) steps.push({ title: 'Range: subtract the smallest from the largest', equations: [`${formatNumber(sorted.at(-1))} − ${formatNumber(sorted[0])} = ${results.range}`] });
+  return createMathSolution({ intro: `Let’s analyze the data: ${values.join(', ')}.`, steps, answer: targets.map(target => `${target} = ${results[target]}`).join('; '), check: 'Recount the data values and make sure they are in order before checking the median and range.' });
+}
+
+function solveProbabilityQuestion(text) {
+  if (!/\b(probability|chance|likelihood)\b/.test(text)) return '';
+  const pairs = [...text.matchAll(/(\d+)\s+([a-z]+)(?:\s+(?:items?|balls?|marbles?|cards?))?/g)].map(match => ({ count: Number(match[1]), label: match[2] }));
+  if (pairs.length < 2) return '';
+  const wantedMatch = text.match(/(?:probability|chance|likelihood)(?:\s+of)?(?:\s+(?:choosing|picking|drawing|getting))?\s+(?:a\s+)?([a-z]+)/);
+  const wanted = wantedMatch ? wantedMatch[1] : pairs[0].label;
+  const favorable = pairs.find(pair => pair.label === wanted) || pairs[0];
+  const total = pairs.reduce((sum, pair) => sum + pair.count, 0);
+  const divisor = greatestCommonDivisor(favorable.count, total);
+  const fraction = `${favorable.count / divisor}/${total / divisor}`;
+  return createMathSolution({ intro: `Let’s find the probability of choosing ${favorable.label}.`, steps: [{ title: 'Count favorable outcomes and total outcomes', equations: [`favorable = ${favorable.count}`, `total = ${pairs.map(pair => pair.count).join(' + ')} = ${total}`] }, { title: 'Divide favorable outcomes by total outcomes', equations: [`P(${favorable.label}) = ${favorable.count}/${total}`, `P(${favorable.label}) = ${fraction} = ${formatNumber(favorable.count / total * 100)}%`] }], answer: `${fraction} or ${formatNumber(favorable.count / total * 100)}%`, check: 'A probability must be between 0% and 100%.' });
+}
+
+function solveDiscreteQuestion(text) {
+  let match = text.match(/(?:factorial\s+(?:of\s+)?|\b)(\d+)\s*!/);
+  if (match) {
+    const n = Number(match[1]); if (n > 170) return '';
+    const value = factorial(n);
+    return createMathSolution({ intro: `Let’s calculate ${n} factorial.`, steps: [{ title: 'Multiply every positive integer down to 1', equations: [`${n}! = ${Array.from({ length: Math.min(n, 10) }, (_, index) => n - index).join(' × ')}${n > 10 ? ' × … × 1' : ''}`, `${n}! = ${formatLargeNumber(value)}`] }], answer: formatLargeNumber(value), check: `${n}! = ${n} × ${Math.max(0, n - 1)}!` });
+  }
+  match = text.match(/(\d+)\s*(?:choose|c)\s*(\d+)|combination\w*\D+(\d+)\D+(\d+)/);
+  if (match) {
+    const n = Number(match[1] || match[3]), r = Number(match[2] || match[4]);
+    if (r > n || n > 170) return '';
+    const value = factorial(n) / (factorial(r) * factorial(n - r));
+    return createMathSolution({ intro: `Let’s find how many groups of ${r} can be chosen from ${n} when order does not matter.`, steps: [{ title: 'Use the combinations formula', equations: ['nCr = n! / (r!(n − r)!)', `${n}C${r} = ${n}! / (${r}!(${n - r})!)`, `${n}C${r} = ${formatLargeNumber(value)}`] }], answer: formatLargeNumber(value), check: `${n}C${r} should equal ${n}C${n - r}.` });
+  }
+  match = text.match(/(\d+)\s*p\s*(\d+)|permutation\w*\D+(\d+)\D+(\d+)/);
+  if (match) {
+    const n = Number(match[1] || match[3]), r = Number(match[2] || match[4]);
+    if (r > n || n > 170) return '';
+    const value = factorial(n) / factorial(n - r);
+    return createMathSolution({ intro: `Let’s arrange ${r} choices from ${n} when order matters.`, steps: [{ title: 'Use the permutations formula', equations: ['nPr = n! / (n − r)!', `${n}P${r} = ${n}! / ${n - r}!`, `${n}P${r} = ${formatLargeNumber(value)}`] }], answer: formatLargeNumber(value), check: 'Permutations are at least as large as combinations because order creates more outcomes.' });
+  }
+  match = text.match(/\b(gcd|greatest common (?:factor|divisor)|lcm|least common multiple)\b[^\d]*(\d+)[^\d]+(\d+)/);
+  if (!match) return '';
+  const a = Number(match[2]), b = Number(match[3]);
+  const isLcm = /lcm|least/.test(match[1]);
+  const gcd = greatestCommonDivisor(a, b), value = isLcm ? Math.abs(a * b) / gcd : gcd;
+  return createMathSolution({ intro: `Let’s find the ${isLcm ? 'least common multiple' : 'greatest common divisor'} of ${a} and ${b}.`, steps: [{ title: isLcm ? 'Use the GCD to find the LCM' : 'Use repeated division', equations: isLcm ? [`GCD(${a}, ${b}) = ${gcd}`, `LCM = |${a} × ${b}| ÷ ${gcd} = ${value}`] : [`GCD(${a}, ${b}) = ${value}`] }], answer: String(value), check: isLcm ? `The answer is divisible by both ${a} and ${b}.` : `The answer divides both ${a} and ${b} evenly.` });
+}
+
+function solveCalculusQuestion(text) {
+  const derivativeMatch = text.match(/(?:derivative|differentiate|d\/dx)(?:\s+of)?\s*[:=]?\s*([^?]+)/);
+  const integralMatch = text.match(/(?:integral|integrate)(?:\s+of)?\s*[:=]?\s*([^?]+)/);
+  const match = derivativeMatch || integralMatch;
+  if (!match) return '';
+  const expression = match[1].replace(/\s+with respect to x.*/i, '').trim();
+  const polynomial = parsePolynomial(expression);
+  if (!polynomial) return '';
+  const isDerivative = Boolean(derivativeMatch);
+  const transformed = new Map();
+  polynomial.forEach((coefficient, power) => {
+    if (isDerivative) { if (power > 0) transformed.set(power - 1, coefficient * power); }
+    else transformed.set(power + 1, coefficient / (power + 1));
+  });
+  const result = formatPolynomial(transformed) + (isDerivative ? '' : ' + C');
+  const rule = isDerivative ? 'd/dx(axⁿ) = anxⁿ⁻¹' : '∫axⁿ dx = a/(n + 1)xⁿ⁺¹';
+  const action = isDerivative ? 'Multiply each coefficient by its exponent, then lower the exponent by 1.' : 'Raise each exponent by 1, then divide by the new exponent.';
+  return createMathSolution({ intro: `Let’s ${isDerivative ? 'differentiate' : 'integrate'} ${formatPolynomial(polynomial)}.`, steps: [{ title: 'Use the power rule', equations: [rule], note: action }, { title: 'Apply the rule to each term', equations: [`${isDerivative ? 'd/dx' : '∫'}(${formatPolynomial(polynomial)}) = ${result}`] }], answer: result, check: isDerivative ? 'Differentiate each original term separately to verify the powers and coefficients.' : 'Differentiate the answer; it should return the original expression.' });
+}
+
+function solveQuadraticQuestion(text) {
+  const equationMatch = text.match(/([0-9x^+\-*.\s]+)=\s*([0-9x^+\-*.\s]+)/);
+  if (!equationMatch || !/x\s*\^\s*2/.test(equationMatch[0])) return '';
+  const left = parsePolynomial(equationMatch[1]), right = parsePolynomial(equationMatch[2]);
+  if (!left || !right || [...left.keys(), ...right.keys()].some(power => power > 2)) return '';
+  const combined = new Map();
+  for (let power = 0; power <= 2; power++) combined.set(power, (left.get(power) || 0) - (right.get(power) || 0));
+  const a = combined.get(2), b = combined.get(1), c = combined.get(0);
+  if (nearlyEqual(a, 0)) return '';
+  const discriminant = b * b - 4 * a * c;
+  if (discriminant < 0) {
+    const real = -b / (2 * a), imaginary = Math.sqrt(-discriminant) / Math.abs(2 * a);
+    return createMathSolution({ intro: `Let’s solve ${formatPolynomial(combined)} = 0 with the quadratic formula.`, steps: [{ title: 'Identify a, b, and c', equations: [`a = ${formatNumber(a)}, b = ${formatNumber(b)}, c = ${formatNumber(c)}`] }, { title: 'Calculate the discriminant', equations: [`b² − 4ac = ${formatNumber(discriminant)}`, 'A negative discriminant gives two complex solutions.'] }, { title: 'Use the quadratic formula', equations: [`x = ${formatNumber(real)} ± ${formatNumber(imaginary)}i`] }], answer: `x = ${formatNumber(real)} ± ${formatNumber(imaginary)}i`, check: 'Substitute each complex solution into the original equation.' });
+  }
+  const root = Math.sqrt(discriminant);
+  const x1 = (-b + root) / (2 * a), x2 = (-b - root) / (2 * a);
+  const answer = nearlyEqual(x1, x2) ? `x = ${formatNumber(x1)}` : `x = ${formatNumber(x1)} or x = ${formatNumber(x2)}`;
+  return createMathSolution({ intro: `Let’s solve ${formatPolynomial(combined)} = 0 with the quadratic formula.`, steps: [{ title: 'Identify a, b, and c', equations: [`a = ${formatNumber(a)}, b = ${formatNumber(b)}, c = ${formatNumber(c)}`] }, { title: 'Calculate the discriminant', equations: [`b² − 4ac = (${formatNumber(b)})² − 4(${formatNumber(a)})(${formatNumber(c)})`, `b² − 4ac = ${formatNumber(discriminant)}`] }, { title: 'Use x = (−b ± √(b² − 4ac)) / 2a', equations: [`x = (${-b} ± √${formatNumber(discriminant)}) / ${formatNumber(2 * a)}`, answer] }], answer, check: 'Substitute each answer into the original equation; both sides should match.' });
+}
+
+function solveTrigonometryQuestion(text) {
+  const match = text.match(/\b(sin|cos|tan)\s*\(?\s*(-?\d+(?:\.\d+)?)\s*(?:°|degrees?)?\s*\)?/);
+  if (!match) return '';
+  const operation = match[1], degrees = Number(match[2]), radians = degrees * Math.PI / 180;
+  const value = operation === 'sin' ? Math.sin(radians) : operation === 'cos' ? Math.cos(radians) : Math.tan(radians);
+  if (!Number.isFinite(value) || (operation === 'tan' && Math.abs(Math.cos(radians)) < 1e-10)) return createMathSolution({ intro: `Let’s evaluate ${operation}(${formatNumber(degrees)}°).`, steps: [{ title: 'Check the unit circle', equations: [`${operation}(${formatNumber(degrees)}°) is undefined`] }], answer: 'Undefined', check: 'Tangent is undefined where cosine equals 0.' });
+  return createMathSolution({ intro: `Let’s evaluate ${operation}(${formatNumber(degrees)}°).`, steps: [{ title: 'Convert degrees to radians', equations: [`${formatNumber(degrees)}° × π/180 = ${formatNumber(radians)} radians`] }, { title: `Use the ${operation} ratio`, equations: [`${operation}(${formatNumber(degrees)}°) ≈ ${formatNumber(value)}`] }], answer: formatNumber(value), check: `${operation} values should agree with the unit circle and the angle’s quadrant.` });
+}
+
+function solveSequenceQuestion(text) {
+  const match = text.match(/(?:find\s+)?(?:the\s+)?(\d+)(?:st|nd|rd|th)\s+term[^\d-]*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+  if (!match) return '';
+  const n = Number(match[1]), first = Number(match[2]), second = Number(match[3]), third = Number(match[4]);
+  const difference = second - first;
+  if (!nearlyEqual(third - second, difference) || n < 1) return '';
+  const value = first + (n - 1) * difference;
+  return createMathSolution({ intro: `Let’s find term ${n} of the arithmetic sequence ${first}, ${second}, ${third}, …`, steps: [{ title: 'Find the common difference', equations: [`${formatNumber(second)} − ${formatNumber(first)} = ${formatNumber(difference)}`] }, { title: 'Use the arithmetic-sequence formula', equations: ['aₙ = a₁ + (n − 1)d', `a_${n} = ${formatNumber(first)} + (${n} − 1)(${formatNumber(difference)})`, `a_${n} = ${formatNumber(value)}`] }], answer: formatNumber(value), check: `Starting at ${formatNumber(first)}, add ${formatNumber(difference)} exactly ${n - 1} times.` });
+}
+
+function solveLinearAlgebraQuestion(text) {
+  if (!/\b(determinant|det)\b/.test(text)) return '';
+  const match = text.match(/\[\s*\[?\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\]?\s*,\s*\[?\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\]?\s*\]/);
+  if (!match) return '';
+  const a = Number(match[1]), b = Number(match[2]), c = Number(match[3]), d = Number(match[4]);
+  const value = a * d - b * c;
+  return createMathSolution({ intro: 'Let’s find the determinant of this 2 × 2 matrix.', steps: [{ title: 'Use det(A) = ad − bc', equations: [`det(A) = (${formatNumber(a)})(${formatNumber(d)}) − (${formatNumber(b)})(${formatNumber(c)})`, `det(A) = ${formatNumber(a * d)} − ${formatNumber(b * c)}`, `det(A) = ${formatNumber(value)}`] }], answer: formatNumber(value), check: 'Multiply along each diagonal, then subtract the second product from the first.' });
+}
+
+function parsePolynomial(expression) {
+  const compact = expression.toLowerCase().replace(/\s+/g, '').replace(/−/g, '-');
+  if (!compact || !/^[0-9x+\-.*^]+$/.test(compact)) return null;
+  const normalized = /^[+-]/.test(compact) ? compact : `+${compact}`;
+  const terms = normalized.match(/[+-][^+-]+/g);
+  if (!terms || terms.join('') !== normalized) return null;
+  const polynomial = new Map();
+  for (const term of terms) {
+    const variable = term.match(/^([+-])(?:(\d+(?:\.\d+)?)\*?)?x(?:\^(\d+))?$/);
+    const constant = term.match(/^([+-])(\d+(?:\.\d+)?)$/);
+    if (!variable && !constant) return null;
+    const sign = (variable || constant)[1] === '-' ? -1 : 1;
+    const coefficient = variable ? sign * Number(variable[2] || 1) : sign * Number(constant[2]);
+    const power = variable ? Number(variable[3] || 1) : 0;
+    polynomial.set(power, (polynomial.get(power) || 0) + coefficient);
+  }
+  return polynomial;
+}
+
+function formatPolynomial(polynomial) {
+  const terms = [...polynomial.entries()].filter(([, coefficient]) => !nearlyEqual(coefficient, 0)).sort((a, b) => b[0] - a[0]);
+  if (!terms.length) return '0';
+  return terms.map(([power, coefficient], index) => {
+    const sign = coefficient < 0 ? '−' : index ? '+' : '';
+    const absolute = Math.abs(coefficient);
+    const coefficientText = power > 0 && nearlyEqual(absolute, 1) ? '' : formatNumber(absolute);
+    const variable = power === 0 ? '' : power === 1 ? 'x' : `x^${power}`;
+    return `${sign}${index && coefficient >= 0 ? ' ' : ''}${coefficientText}${variable}`;
+  }).join(' ');
+}
+
+function greatestCommonDivisor(a, b) {
+  a = Math.abs(Math.trunc(a)); b = Math.abs(Math.trunc(b));
+  while (b) [a, b] = [b, a % b];
+  return a || 1;
+}
+
+function factorial(n) {
+  if (!Number.isInteger(n) || n < 0) return NaN;
+  let value = 1;
+  for (let number = 2; number <= n; number++) value *= number;
+  return value;
+}
+
+function formatLargeNumber(value) { return Number.isSafeInteger(value) ? value.toLocaleString('en-US') : value.toExponential(6); }
 
 function solveMathQuestion(message) {
   const pieces = message.match(/[0-9xX+\-*/().=×÷−\s]+/g) || [];
