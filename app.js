@@ -85,7 +85,10 @@ async function sendMessage(text) {
 }
 
 function getBuiltInReply(message, history = []) {
-  const recentUserText = history.filter(item => item.role === 'user').slice(-3).map(item => item.content).join(' ');
+  const recentUserMessages = history.filter(item => item.role === 'user').slice(-3);
+  const recentUserText = recentUserMessages.map(item => item.content).join(' ');
+  const hasPriorUserContext = recentUserMessages.length > 0;
+  const currentText = message.toLowerCase();
   const text = redactPrivateDetails(`${recentUserText} ${message}`).toLowerCase();
   if (/\b(how (?:do|can) i|help me|tell me how to|i (?:want|plan|need) to)\b.{0,50}\b(hurt|kill|attack|bully|harass|poison|threaten)\b/.test(message.toLowerCase())) {
     return 'I can’t help hurt, threaten, or target someone. Step away from the situation and tell a trusted adult what is happening. If there is immediate danger, call emergency services.';
@@ -123,12 +126,20 @@ function getBuiltInReply(message, history = []) {
   const deadline = deadlineMatch ? deadlineMatch[1] : '';
   const isSocial = /\b(friend|classmate|teacher|parent|group partner|conversation|argument|what (?:do|should) i say)\b/.test(text);
   const isGreeting = /^(?:\s*)(?:hello|hi|hey|yo)[!.?\s]*$/i.test(message);
+  const asksForWords = /\b(what (?:do|should|can) i say|help me (?:reply|respond)|how (?:do|should) i (?:talk|respond))\b/.test(currentText);
+  const givesSituationDetails = /\b(because|when|after|during|said|told|ignored|yelled|argued|happened|due)\b/.test(currentText) || message.trim().split(/\s+/).length >= 14;
 
   if (isGreeting) return 'Hi! I’m here with you. Tell me what is happening and what kind of help you want—understanding something, making a plan, calming down, or deciding what to say.';
 
   const reflection = buildReflection({ feeling, subject, task, concept, deadline, isSocial });
+  if (feeling && !subject && !task && !isSocial && !hasPriorUserContext && !givesSituationDetails) {
+    return `${reflection} I don’t want to guess what caused it. What happened, and would you like me to listen, help you calm down, or help you decide what to do next?`;
+  }
+  if (isSocial && !hasPriorUserContext && !givesSituationDetails && !asksForWords) {
+    return `${reflection} Before I suggest anything, what happened between you and the other person, and what would you like to be different?`;
+  }
   if (isSocial) {
-    return `${reflection} Try this three-part message: “I noticed ___.” “I feel ___.” “Could we ___?” Keep it about the situation, not the person. Before sending it, read it once and remove any blame words. What happened, and what outcome would feel fair to you?`;
+    return buildSocialResponse(currentText, reflection);
   }
   if (task || subject) {
     const plan = buildSchoolPlan({ subject, task, concept, deadline, feeling });
@@ -181,6 +192,22 @@ function buildSchoolPlan({ subject, task, concept, deadline, feeling }) {
   const timing = urgent ? 'Since the deadline is close, use one focused 15-minute round, then ask a teacher, classmate, or trusted adult about the biggest blocker.' : 'Try one ten-minute round, pause, and decide the next small step.';
   const energy = feeling === 'tired' ? ' Because your energy is low, aim for a useful draft—not perfect work.' : '';
   return `${action} ${timing}${energy} Which exact part should we break down together?`;
+}
+
+function buildSocialResponse(currentText, reflection) {
+  if (/\bignored|left out|didn['’]?t answer|did not answer\b/.test(currentText)) {
+    return `${reflection} Since you said you felt ignored, try checking what happened without assuming the reason: “I noticed we didn’t talk earlier, and I felt left out. Is everything okay between us?” Choose a calm moment and give them space to explain.`;
+  }
+  if (/\byelled|shouted|raised (?:their|his|her) voice\b/.test(currentText)) {
+    return `${reflection} You could say: “I felt uncomfortable when voices got loud. Can we talk about this more calmly?” If you feel unsafe or this keeps happening, step away and tell a trusted adult.`;
+  }
+  if (/\bargued|argument|fight|fought\b/.test(currentText)) {
+    return `${reflection} Let things cool down first. Then try: “I don’t like how our argument went. I want to understand your side and explain mine without blaming each other. Can we start over?”`;
+  }
+  if (/\bgroup|partner|project\b.*\b(reply|respond|help|work)\b/.test(currentText)) {
+    return `${reflection} Try one clear request: “Could you finish ___ by ___? I can share ___ to help.” A specific task and time are easier to answer than a general reminder.`;
+  }
+  return `${reflection} Try this three-part message: “I noticed ___.” “I feel ___.” “Could we ___?” Keep it about the situation, not the person. What outcome would feel fair to you?`;
 }
 
 function shortQuote(message) {
