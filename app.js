@@ -31,6 +31,7 @@ const $$ = selector => [...document.querySelectorAll(selector)];
 const messages = [];
 let sending = false;
 let fallbackNoticeShown = false;
+const MATH_SOLUTION_PREFIX = '__MATH_SOLUTION__';
 
 function switchView(view) {
   $$('.tab').forEach(tab => { const active = tab.dataset.view === view; tab.classList.toggle('active', active); tab.setAttribute('aria-selected', String(active)); });
@@ -38,9 +39,10 @@ function switchView(view) {
   if (view === 'calm') $('#calmView').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function addMessage(role, text, pending = false) {
+function addMessage(role, text, pending = false, notice = '') {
+  const mathSolution = role === 'assistant' ? readMathSolution(text) : null;
   const article = document.createElement('article');
-  article.className = `message ${role === 'assistant' ? 'coach-message' : 'user-message'}${pending ? ' pending' : ''}`;
+  article.className = `message ${role === 'assistant' ? 'coach-message' : 'user-message'}${pending ? ' pending' : ''}${mathSolution ? ' math-message' : ''}`;
   const avatar = document.createElement('div');
   avatar.className = `mini-avatar ${role === 'user' ? 'user-avatar' : ''}`;
   avatar.setAttribute('aria-hidden', 'true');
@@ -55,7 +57,9 @@ function addMessage(role, text, pending = false) {
   time.textContent = 'Now';
   label.append(name, time);
   content.append(label);
-  const paragraph = document.createElement('p'); paragraph.textContent = text; content.append(paragraph); article.append(content);
+  if (mathSolution) renderMathSolution(content, mathSolution, notice);
+  else { const paragraph = document.createElement('p'); paragraph.textContent = `${notice}${text}`; content.append(paragraph); }
+  article.append(content);
   if (role === 'user') article.append(avatar);
   $('#messages').append(article); $('#messages').scrollTop = $('#messages').scrollHeight;
   return article;
@@ -76,12 +80,47 @@ async function sendMessage(text) {
     const answer = getBuiltInReply(message, messages);
     pending.remove();
     const notice = fallbackNoticeShown ? '' : 'I’m using built-in support mode because the live AI is not connected. ';
-    addMessage('assistant', `${notice}${answer}`);
+    addMessage('assistant', answer, false, notice);
     fallbackNoticeShown = true;
-    messages.push({ role: 'user', content: message }, { role: 'assistant', content: answer });
+    messages.push({ role: 'user', content: message }, { role: 'assistant', content: mathSolutionToText(answer) });
   } finally {
     sending = false; $$('.prompt-chip').forEach(button => button.disabled = false); $('.send-button').disabled = false; $('#coachInput').focus();
   }
+}
+
+function renderMathSolution(content, solution, notice) {
+  const card = document.createElement('section');
+  card.className = 'math-solution';
+  card.setAttribute('aria-label', 'Worked math solution');
+  if (notice) { const mode = document.createElement('p'); mode.className = 'mode-note'; mode.textContent = notice.trim(); card.append(mode); }
+  const intro = document.createElement('p'); intro.className = 'math-intro'; intro.textContent = solution.intro; card.append(intro);
+  const list = document.createElement('ol'); list.className = 'math-steps';
+  solution.steps.forEach(step => {
+    const item = document.createElement('li');
+    const title = document.createElement('strong'); title.textContent = step.title; item.append(title);
+    step.equations.forEach(equation => { const line = document.createElement('div'); line.className = 'equation-line'; line.textContent = equation; item.append(line); });
+    if (step.note) { const note = document.createElement('p'); note.textContent = step.note; item.append(note); }
+    list.append(item);
+  });
+  card.append(list);
+  const answer = document.createElement('div'); answer.className = 'math-answer';
+  const answerLabel = document.createElement('span'); answerLabel.textContent = 'Answer';
+  const answerValue = document.createElement('strong'); answerValue.textContent = solution.answer;
+  answer.append(answerLabel, answerValue); card.append(answer);
+  if (solution.check) { const check = document.createElement('p'); check.className = 'math-check'; check.textContent = solution.check; card.append(check); }
+  content.append(card);
+}
+
+function createMathSolution(solution) { return `${MATH_SOLUTION_PREFIX}${JSON.stringify(solution)}`; }
+function readMathSolution(value) {
+  if (typeof value !== 'string' || !value.startsWith(MATH_SOLUTION_PREFIX)) return null;
+  try { return JSON.parse(value.slice(MATH_SOLUTION_PREFIX.length)); } catch { return null; }
+}
+function mathSolutionToText(value) {
+  const solution = readMathSolution(value);
+  if (!solution) return value;
+  const steps = solution.steps.map((step, index) => `${index + 1}. ${step.title}: ${step.equations.join(' → ')}`).join(' ');
+  return `${solution.intro} ${steps} Answer: ${solution.answer}. ${solution.check || ''}`.trim();
 }
 
 function getBuiltInReply(message, history = []) {
@@ -236,30 +275,130 @@ function solveMathQuestion(message) {
       const rightValue = evaluateArithmetic(sides[1]);
       if (leftValue === null || rightValue === null) return '';
       const trueOrFalse = nearlyEqual(leftValue, rightValue) ? 'true' : 'not true';
-      return `The statement is ${trueOrFalse}. The left side equals ${formatNumber(leftValue)}, and the right side equals ${formatNumber(rightValue)}. Work each side separately using the order of operations, then compare them.`;
+      return createMathSolution({
+        intro: `Let’s check whether ${prettyExpression(sides[0])} = ${prettyExpression(sides[1])}.`,
+        steps: [
+          { title: 'Simplify the left side', equations: [`${prettyExpression(sides[0])} = ${formatNumber(leftValue)}`] },
+          { title: 'Simplify the right side', equations: [`${prettyExpression(sides[1])} = ${formatNumber(rightValue)}`] },
+          { title: 'Compare both values', equations: [`${formatNumber(leftValue)} ${nearlyEqual(leftValue, rightValue) ? '=' : '≠'} ${formatNumber(rightValue)}`] }
+        ],
+        answer: `The statement is ${trueOrFalse}`,
+        check: 'Check each side separately using the order of operations.'
+      });
     }
     const left = parseLinearExpression(sides[0]);
     const right = parseLinearExpression(sides[1]);
     if (!left || !right) return 'I can see this is an equation, but built-in mode only handles basic one-variable linear equations right now. Check the symbols, or connect the live AI for more advanced algebra. I can still help you identify the first step.';
-    const xCoefficient = left.x - right.x;
-    const constant = right.constant - left.constant;
-    if (nearlyEqual(xCoefficient, 0) && nearlyEqual(constant, 0)) {
-      return `Both sides are the same expression. Subtract the entire expression from both sides and you get 0 = 0, which is always true. So this equation has infinitely many solutions—every value of x works. Quick check: try x = 2; both sides have the same value.`;
-    }
-    if (nearlyEqual(xCoefficient, 0)) {
-      return `The x-terms cancel, but the constants leave a false statement. That means the equation has no solution—there is no value of x that can make both sides equal.`;
-    }
-    const solution = constant / xCoefficient;
-    return `The solution is x = ${formatNumber(solution)}. Move the x-terms to one side and the constants to the other: ${formatNumber(xCoefficient)}x = ${formatNumber(constant)}. Then divide both sides by ${formatNumber(xCoefficient)}. Check it by replacing x with ${formatNumber(solution)} in the original equation.`;
+    return buildLinearEquationSolution(left, right);
   }
 
   if (!problem.includes('x') && /[+\-*/]/.test(problem)) {
     const value = evaluateArithmetic(problem);
     if (value === null) return '';
-    return `The answer is ${formatNumber(value)}. Use the order of operations: parentheses first, then multiplication or division, then addition or subtraction. Try working one operation at a time and compare your result with ${formatNumber(value)}.`;
+    return createMathSolution({
+      intro: `Let’s evaluate ${prettyExpression(problem)}.`,
+      steps: [
+        { title: 'Use the order of operations', equations: [`${prettyExpression(problem)} = ${formatNumber(value)}`], note: 'Do parentheses first, then multiplication or division, then addition or subtraction.' }
+      ],
+      answer: formatNumber(value),
+      check: 'Estimate the size of the answer to make sure the result is reasonable.'
+    });
   }
   return '';
 }
+
+function buildLinearEquationSolution(left, right) {
+  const originalLeft = formatLinearExpression(left.x, left.constant);
+  const originalRight = formatLinearExpression(right.x, right.constant);
+  const steps = [];
+  let currentLeft = { ...left };
+  let currentRight = { ...right };
+
+  if (!nearlyEqual(currentLeft.constant, 0)) {
+    const amount = Math.abs(currentLeft.constant);
+    const operation = currentLeft.constant > 0 ? 'Subtract' : 'Add';
+    const symbol = currentLeft.constant > 0 ? '-' : '+';
+    steps.push({
+      title: `${operation} ${formatNumber(amount)} from both sides`,
+      equations: [
+        `${formatLinearExpression(currentLeft.x, currentLeft.constant)} ${symbol} ${formatNumber(amount)} = ${formatLinearExpression(currentRight.x, currentRight.constant)} ${symbol} ${formatNumber(amount)}`,
+        `${formatLinearExpression(currentLeft.x, 0)} = ${formatLinearExpression(currentRight.x, currentRight.constant - currentLeft.constant)}`
+      ]
+    });
+    currentRight.constant -= currentLeft.constant;
+    currentLeft.constant = 0;
+  }
+
+  if (!nearlyEqual(currentRight.x, 0)) {
+    let moveCoefficient = currentRight.x;
+    if (nearlyEqual(currentRight.constant, 0) && currentLeft.x * currentRight.x > 0 && Math.abs(currentLeft.x) < Math.abs(currentRight.x)) moveCoefficient = currentLeft.x;
+    const amount = Math.abs(moveCoefficient);
+    const operation = moveCoefficient > 0 ? 'Subtract' : 'Add';
+    const symbol = moveCoefficient > 0 ? '-' : '+';
+    const term = `${formatCoefficient(amount)}x`;
+    const nextLeft = { x: currentLeft.x - moveCoefficient, constant: currentLeft.constant };
+    const nextRight = { x: currentRight.x - moveCoefficient, constant: currentRight.constant };
+    steps.push({
+      title: `${operation} ${term} from both sides`,
+      equations: [
+        `${formatLinearExpression(currentLeft.x, currentLeft.constant)} ${symbol} ${term} = ${formatLinearExpression(currentRight.x, currentRight.constant)} ${symbol} ${term}`,
+        `${formatLinearExpression(nextLeft.x, nextLeft.constant)} = ${formatLinearExpression(nextRight.x, nextRight.constant)}`
+      ]
+    });
+    currentLeft = nextLeft;
+    currentRight = nextRight;
+  }
+
+  const xCoefficient = left.x - right.x;
+  const constant = right.constant - left.constant;
+  if (nearlyEqual(xCoefficient, 0)) {
+    const infinite = nearlyEqual(constant, 0);
+    if (steps.length === 0) steps.push({ title: 'Subtract the same expression from both sides', equations: [`(${originalLeft}) - (${originalLeft}) = (${originalRight}) - (${originalLeft})`, '0 = 0'] });
+    return createMathSolution({
+      intro: `Let’s solve for x in ${originalLeft} = ${originalRight}.`,
+      steps,
+      answer: infinite ? 'Every value of x is a solution' : 'No solution',
+      check: infinite ? `Try x = 2: both sides equal ${formatNumber(left.x * 2 + left.constant)}.` : 'The variables cancel and leave a false statement, so no value of x can work.'
+    });
+  }
+
+  const solution = constant / xCoefficient;
+  const activeCoefficient = !nearlyEqual(currentLeft.x, 0) ? currentLeft.x : currentRight.x;
+  if (!nearlyEqual(Math.abs(activeCoefficient), 1)) {
+    const activeConstant = !nearlyEqual(currentLeft.x, 0) ? currentRight.constant : currentLeft.constant;
+    steps.push({
+      title: `Divide both sides by ${formatNumber(activeCoefficient)}`,
+      equations: [`${formatNumber(activeCoefficient)}x ÷ ${formatNumber(activeCoefficient)} = ${formatNumber(activeConstant)} ÷ ${formatNumber(activeCoefficient)}`, `x = ${formatNumber(solution)}`]
+    });
+  } else if (!steps.some(step => step.equations.some(equation => equation === `x = ${formatNumber(solution)}` || equation === `${formatNumber(solution)} = x`))) {
+    steps.push({ title: 'Read the isolated variable', equations: [`x = ${formatNumber(solution)}`] });
+  }
+  const leftCheck = left.x * solution + left.constant;
+  const rightCheck = right.x * solution + right.constant;
+  return createMathSolution({
+    intro: `Let’s solve for x in ${originalLeft} = ${originalRight}.`,
+    steps,
+    answer: `x = ${formatNumber(solution)}`,
+    check: `Check: substitute x = ${formatNumber(solution)}. The left side is ${formatNumber(leftCheck)} and the right side is ${formatNumber(rightCheck)}.`
+  });
+}
+
+function formatLinearExpression(xCoefficient, constant) {
+  const parts = [];
+  if (!nearlyEqual(xCoefficient, 0)) {
+    if (nearlyEqual(xCoefficient, 1)) parts.push('x');
+    else if (nearlyEqual(xCoefficient, -1)) parts.push('-x');
+    else parts.push(`${formatNumber(xCoefficient)}x`);
+  }
+  if (!nearlyEqual(constant, 0)) {
+    if (parts.length) parts.push(`${constant > 0 ? '+' : '-'} ${formatNumber(Math.abs(constant))}`);
+    else parts.push(formatNumber(constant));
+  }
+  return parts.join(' ') || '0';
+}
+
+function formatCoefficient(value) { return nearlyEqual(value, 1) ? '' : formatNumber(value); }
+function prettyExpression(expression) { return expression.replace(/\*/g, ' × ').replace(/\//g, ' ÷ ').replace(/\+/g, ' + ').replace(/-/g, ' − ').replace(/\s+/g, ' ').trim(); }
 
 function parseLinearExpression(expression) {
   if (/[()]/.test(expression) || !expression) return null;
