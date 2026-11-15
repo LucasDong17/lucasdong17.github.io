@@ -701,7 +701,11 @@ function solveCalculusQuestion(text) {
   const integralMatch = text.match(/(?:integral|integrate)(?:\s+of)?\s*[:=]?\s*([^?]+)/);
   const match = derivativeMatch || integralMatch;
   if (!match) return '';
-  const expression = match[1].replace(/\s+with respect to x.*/i, '').trim();
+  const expression = match[1]
+    .replace(/\s+with respect to x.*/i, '')
+    .replace(/\s+(?:and\s+)?(?:show|explain|give|walk)\b.*$/i, '')
+    .replace(/[.!]+$/, '')
+    .trim();
   const polynomial = parsePolynomial(expression);
   if (!polynomial) return '';
   const isDerivative = Boolean(derivativeMatch);
