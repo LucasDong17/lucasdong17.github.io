@@ -225,13 +225,22 @@ function loadOcrLibrary() {
 }
 
 function findMathInRecognizedText(text) {
-  const lines = text
+  let normalizedText = text
     .replace(/[−–—]/g, '-')
     .replace(/[×·]/g, '*')
     .replace(/÷/g, '/')
     .replace(/²/g, '^2')
     .replace(/³/g, '^3')
-    .replace(/(\d)\s*[kK]\b/g, '$1x')
+    .replace(/(\d)\s*[kK]\b/g, '$1x');
+  const namedVariable = normalizedText.match(/solve\s+for\s+([a-z])\b/i)?.[1];
+  const repeatedVariable = normalizedText.match(/\d\s*([a-z])\s*[+\-=][^\n=]*=\s*[^\n]*\d\s*\1\b/i)?.[1];
+  const variable = namedVariable || repeatedVariable;
+  if (variable && variable.toLowerCase() !== 'x') {
+    normalizedText = normalizedText
+      .replace(new RegExp(`(\\d)\\s*${variable}\\b`, 'gi'), '$1x')
+      .replace(new RegExp(`\\b${variable}\\b`, 'gi'), 'x');
+  }
+  const lines = normalizedText
     .split(/\r?\n/)
     .map(line => line.trim())
     .filter(Boolean);
