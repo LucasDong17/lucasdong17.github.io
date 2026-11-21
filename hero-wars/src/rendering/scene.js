@@ -1,0 +1,643 @@
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
+import { BALANCE as B, MAPS, biomeDefinition, itemDefinition, petDefinition } from '../data/balance.js';
+import { attackStage } from '../systems/simulation.js';
+
+const material = color => new THREE.MeshStandardMaterial({ color, roughness: 1, flatShading: true });
+
+export class SceneView {
+  constructor(canvas, world) {
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.08;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color('#b9d8ba');
+    this.scene.fog = new THREE.Fog('#b9d8ba', 35, 68);
+    this.camera = new THREE.PerspectiveCamera(43, 1, 0.1, 90);
+    this.focus = new THREE.Vector3(0, 0, 4);
+    this.scene.add(new THREE.HemisphereLight('#fff5d2', '#527f72', 2.5));
+    const sun = new THREE.DirectionalLight('#fff0c7', 3);
+    sun.position.set(-10, 20, 8);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    Object.assign(sun.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, far: 60 });
+    sun.shadow.normalBias = 0.04;
+    this.scene.add(sun);
+    const rim = new THREE.DirectionalLight('#8edcff', 0.85);
+    rim.position.set(13, 9, -16);
+    this.scene.add(rim);
+    this.buildWorld(world);
+    this.player = this.buildPlayer();
+    this.enemyViews = new Map();
+    this.petViews = new Map();
+    this.projectileViews = new Map();
+    this.scene.add(this.player.root);
+    this.dropViews = new Map();
+    const arc = new THREE.RingGeometry(0.8, B.player.range, 28, 1, -B.player.arc / 2, B.player.arc);
+    arc.rotateX(-Math.PI / 2);
+    // Ring's zero angle points along +x; actor facing zero points along +z.
+    arc.rotateY(-Math.PI / 2);
+    this.swing = new THREE.Mesh(arc, new THREE.MeshBasicMaterial({ color: '#fff1b4', transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false }));
+    this.scene.add(this.swing);
+    this.warning = new THREE.Mesh(new THREE.RingGeometry(0.94, 1.15, 32), new THREE.MeshBasicMaterial({ color: '#ff714f', transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
+    this.warning.rotation.x = -Math.PI / 2;
+    this.scene.add(this.warning);
+    this.resize = () => {
+      const width = Math.max(1, this.renderer.domElement.clientWidth || window.innerWidth);
+      const height = Math.max(1, this.renderer.domElement.clientHeight || window.innerHeight);
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      this.renderer.setSize(width, height, false);
+      this.camera.aspect = width / height;
+      this.camera.updateProjectionMatrix();
+    };
+    window.addEventListener('resize', this.resize);
+    window.visualViewport?.addEventListener('resize', this.resize);
+    this.resize();
+  }
+  mesh(parent, geometry, mat, x, y, z) {
+    const mesh = new THREE.Mesh(geometry, mat);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    parent.add(mesh);
+    return mesh;
+  }
+  label(text, color = '#ffffff') {
+    const canvas = document.createElement('canvas'); canvas.width = 384; canvas.height = 96;
+    const context = canvas.getContext('2d'); context.fillStyle = '#102c29dd'; context.roundRect(4, 4, 376, 88, 20); context.fill(); context.strokeStyle = color; context.lineWidth = 5; context.stroke(); context.fillStyle = '#ffffff'; context.font = '900 31px sans-serif'; context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText(text.toUpperCase(), 192, 50);
+    const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: true })); sprite.scale.set(3.2, 0.8, 1); sprite.position.y = 1.25; return sprite;
+  }
+  buildMarketStand(x, z, { awning, accent, label, symbol }) {
+    const stand = new THREE.Group();
+    const wood = material('#59402f');
+    const darkWood = material('#38291f');
+    const canvas = material('#f6e6bd');
+    const awningMaterial = material(awning);
+    const accentMaterial = material(accent);
+
+    // The interaction point stays in the open space before the counter.
+    stand.position.set(x, 0, z - 0.82);
+    this.mesh(stand, new THREE.BoxGeometry(3.35, 0.75, 1.25), wood, 0, 0.4, 0);
+    this.mesh(stand, new THREE.BoxGeometry(3.6, 0.24, 1.5), darkWood, 0, 0.86, 0.08);
+    for (const postX of [-1.48, 1.48]) {
+      this.mesh(stand, new THREE.BoxGeometry(0.18, 2.65, 0.18), darkWood, postX, 2.05, -0.42);
+    }
+    this.mesh(stand, new THREE.BoxGeometry(3.55, 0.16, 1.72), darkWood, 0, 3.22, -0.02);
+    for (let stripe = 0; stripe < 7; stripe++) {
+      const stripeMaterial = stripe % 2 ? canvas : awningMaterial;
+      this.mesh(stand, new THREE.BoxGeometry(0.5, 0.16, 1.6), stripeMaterial, -1.5 + stripe * 0.5, 3.34, -0.02);
+      this.mesh(stand, new THREE.BoxGeometry(0.5, 0.52, 0.12), stripeMaterial, -1.5 + stripe * 0.5, 3.03, 0.77);
+    }
+
+    const plaque = this.mesh(stand, new THREE.BoxGeometry(1.42, 1.25, 0.16), darkWood, 0, 1.88, 0.7);
+    plaque.castShadow = false;
+    const icon = new THREE.Group();
+    icon.position.set(0, 1.88, 0.82);
+    stand.add(icon);
+    if (symbol === 'play') {
+      const blade = this.mesh(icon, new THREE.BoxGeometry(0.18, 0.92, 0.12), accentMaterial, 0, 0.08, 0);
+      blade.rotation.z = -0.62;
+      const hilt = this.mesh(icon, new THREE.BoxGeometry(0.58, 0.13, 0.16), canvas, -0.2, -0.18, 0.02);
+      hilt.rotation.z = -0.62;
+    } else if (symbol === 'upgrade') {
+      this.mesh(icon, new THREE.BoxGeometry(0.86, 0.22, 0.16), accentMaterial, 0, -0.08, 0);
+      this.mesh(icon, new THREE.BoxGeometry(0.48, 0.34, 0.16), accentMaterial, 0, -0.34, 0);
+      const hammer = this.mesh(icon, new THREE.BoxGeometry(0.15, 0.8, 0.12), canvas, 0.2, 0.28, 0.03);
+      hammer.rotation.z = -0.66;
+      const head = this.mesh(icon, new THREE.BoxGeometry(0.56, 0.22, 0.16), canvas, -0.05, 0.55, 0.03);
+      head.rotation.z = -0.66;
+    } else if (symbol === 'egg') {
+      const egg = this.mesh(icon, new THREE.SphereGeometry(0.43, 12, 8), accentMaterial, 0, 0, 0);
+      egg.scale.set(0.78, 1.12, 0.45);
+      for (const [spotX, spotY] of [[-0.15, 0.14], [0.18, -0.12], [0.12, 0.3]]) this.mesh(icon, new THREE.SphereGeometry(0.065, 6, 4), wood, spotX, spotY, 0.22);
+    } else if (symbol === 'pets') {
+      this.mesh(icon, new THREE.SphereGeometry(0.29, 9, 6), accentMaterial, 0, -0.16, 0);
+      for (const [toeX, toeY] of [[-0.34, 0.22], [-0.12, 0.38], [0.14, 0.38], [0.36, 0.2]]) this.mesh(icon, new THREE.SphereGeometry(0.13, 7, 5), accentMaterial, toeX, toeY, 0);
+    } else if (symbol === 'armor') {
+      const shield = this.mesh(icon, new THREE.CylinderGeometry(0.44, 0.34, 0.14, 5), accentMaterial, 0, 0, 0);
+      shield.rotation.x = Math.PI / 2;
+      this.mesh(icon, new THREE.BoxGeometry(0.1, 0.72, 0.14), canvas, 0, 0.03, 0.1);
+    } else {
+      for (const direction of [-1, 1]) {
+        const blade = this.mesh(icon, new THREE.BoxGeometry(0.13, 0.92, 0.12), accentMaterial, direction * 0.16, 0.08, 0);
+        blade.rotation.z = direction * 0.65;
+        const hilt = this.mesh(icon, new THREE.BoxGeometry(0.45, 0.11, 0.15), canvas, direction * 0.35, -0.2, 0.02);
+        hilt.rotation.z = direction * 0.65;
+      }
+    }
+
+    const nameplate = this.label(label, accent);
+    nameplate.position.set(0, 4.05, 0.3);
+    nameplate.scale.set(3.35, 0.84, 1);
+    stand.add(nameplate);
+    stand.userData.marketStand = true;
+    this.portals.add(stand);
+    return stand;
+  }
+  buildWorld(world) {
+    this.groundMaterial = material('#83ad62');
+    this.arenaMaterial = material('#95b968');
+    const ground = this.mesh(this.scene, new THREE.PlaneGeometry(180, 180), this.groundMaterial, 0, -0.07, 0);
+    ground.rotation.x = -Math.PI / 2;
+    const arena = this.mesh(this.scene, new THREE.PlaneGeometry(26, 26), this.arenaMaterial, 0, -0.02, 0);
+    arena.rotation.x = -Math.PI / 2;
+    this.hubDecor = new THREE.Group();
+    this.meadowDecor = new THREE.Group();
+    this.scene.add(this.hubDecor, this.meadowDecor);
+    const pathMat = material('#b6bd7e');
+    for (let i = 0; i < 18; i++) {
+      const patch = this.mesh(this.hubDecor, new THREE.CircleGeometry(1.35 + Math.sin(i) * 0.25, 9), pathMat, Math.sin(i * 0.35) * 0.55, 0.002 + i * 0.0001, 11 - i * 1.3);
+      patch.rotation.x = -Math.PI / 2;
+    }
+    const stone = material('#809084');
+    const darkStone = material('#627c70');
+    const trunk = material('#7d6550');
+    const leaf = [material('#477c55'), material('#609454'), material('#79a75c')];
+    for (const o of MAPS.meadow.obstacles) {
+      const base = this.mesh(this.meadowDecor, new THREE.CylinderGeometry(o.radius, o.radius, 0.15, 10), material('#759352'), o.x, 0.04, o.z);
+      if (o.kind === 'rock') {
+        const rock = this.mesh(this.meadowDecor, new THREE.DodecahedronGeometry(1, 0), stone, o.x, o.radius * 0.55, o.z);
+        rock.scale.set(o.radius * 0.95, o.radius * 0.85, o.radius * 0.95);
+        rock.rotation.set(0.2, o.x, 0.2);
+        this.mesh(this.meadowDecor, new THREE.DodecahedronGeometry(0.35, 0), darkStone, o.x + 0.6, 0.2, o.z + 0.55);
+      } else {
+        this.mesh(this.meadowDecor, new THREE.CylinderGeometry(0.2, 0.37, 2.3, 7), trunk, o.x, 1.15, o.z);
+        for (let j = 0; j < 3; j++) this.mesh(this.meadowDecor, new THREE.ConeGeometry(1.55 - j * 0.3, 1.65, 7), leaf[j], o.x, 2.1 + j * 0.85, o.z);
+      }
+      base.receiveShadow = true;
+    }
+    this.buildHubMap();
+    const boundary = material('#d1d4a1');
+    for (let i = -13; i <= 13; i += 2) {
+      for (const [x, z] of [[i, -13], [i, 13], [-13, i], [13, i]]) this.mesh(this.scene, new THREE.DodecahedronGeometry(0.27), boundary, x, 0.15, z);
+    }
+    const line = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-13, 0.03, -13), new THREE.Vector3(13, 0.03, -13), new THREE.Vector3(13, 0.03, 13), new THREE.Vector3(-13, 0.03, 13),
+    ]), new THREE.LineBasicMaterial({ color: '#e0dcac' }));
+    this.scene.add(line);
+    this.portals = new THREE.Group();
+    const makePortal = (x, z, color, labelColor, label) => {
+      const group = new THREE.Group();
+      // Keep portal tops above the uneven courtyard tiles. The old 0.04 height
+      // overlapped the tile tops and flickered or vanished on some GPUs.
+      const disc = this.mesh(group, new THREE.CylinderGeometry(1.25, 1.4, 0.12, 36), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.42, transparent: true, opacity: 0.92 }), 0, 0.12, 0);
+      disc.castShadow = false;
+      disc.renderOrder = 2;
+      const ring = this.mesh(group, new THREE.TorusGeometry(1.27, 0.13, 8, 36), material(labelColor), 0, 0.2, 0);
+      ring.rotation.x = Math.PI / 2;
+      ring.renderOrder = 3;
+      group.add(this.label(label, labelColor)); group.position.set(x, 0, z); this.portals.add(group); return group;
+    };
+    this.playPortal = this.buildMarketStand(B.portal.playX, B.portal.playZ, { awning: '#26a9c7', accent: '#8df4ff', label: 'Play', symbol: 'play' });
+    this.upgradePortal = this.buildMarketStand(B.portal.upgradeX, B.portal.upgradeZ, { awning: '#9b58c7', accent: '#efabff', label: 'Upgrade', symbol: 'upgrade' });
+    this.petPortal = this.buildMarketStand(B.portal.petsX, B.portal.petsZ, { awning: '#e9a72f', accent: '#ffe28a', label: 'Pet Hatchery', symbol: 'egg' });
+    this.sellPetPortal = this.buildMarketStand(B.portal.sellPetsX, B.portal.sellPetsZ, { awning: '#db8e36', accent: '#ffc96b', label: 'Sell Pets', symbol: 'pets' });
+    this.sellArmorPortal = this.buildMarketStand(B.portal.sellArmorX, B.portal.sellArmorZ, { awning: '#3988c4', accent: '#9ddcff', label: 'Sell Armor', symbol: 'armor' });
+    this.sellWeaponPortal = this.buildMarketStand(B.portal.sellWeaponsX, B.portal.sellWeaponsZ, { awning: '#bd4d4d', accent: '#ff9b83', label: 'Sell Weapons', symbol: 'weapons' });
+    this.towerPortal = makePortal(B.portal.towerX, B.portal.towerZ, '#725ee8', '#91fff0', 'Endless Tower');
+    this.mesh(this.towerPortal, new THREE.OctahedronGeometry(0.38, 0), new THREE.MeshStandardMaterial({ color: '#9bfff0', emissive: '#56d9dc', emissiveIntensity: 1.2 }), 0, 0.7, 0);
+    this.scene.add(this.portals);
+    this.frostDecor = new THREE.Group();
+    const ice = [material('#a9efff'), material('#71bce8'), material('#d9c9ff')];
+    for (const [index, point] of [[-10,-9],[-9,-3],[-10,8],[-5,10],[4,10],[9,7],[10,-6],[5,-10]].entries()) {
+      const [x, z] = point;
+      for (let shard = 0; shard < 3; shard++) {
+        const crystal = this.mesh(this.frostDecor, new THREE.OctahedronGeometry(0.28 + shard * 0.09, 0), ice[(index + shard) % ice.length], x + shard * 0.34, 0.35 + shard * 0.16, z + (shard % 2) * 0.25);
+        crystal.scale.y = 1.8 + shard * 0.35;
+      }
+    }
+    for (const [index, o] of MAPS.frost.obstacles.entries()) {
+      if (o.kind === 'crystal') {
+        for (let shard = 0; shard < 4; shard++) {
+          const crystal = this.mesh(this.frostDecor, new THREE.OctahedronGeometry(0.42 + shard * 0.08, 0), ice[(index + shard) % ice.length], o.x + (shard - 1.5) * 0.28, 0.65 + shard * 0.2, o.z + Math.sin(shard) * 0.35);
+          crystal.scale.set(0.75, 2.2 + shard * 0.35, 0.75);
+          crystal.rotation.z = (shard - 1.5) * 0.12;
+        }
+      } else {
+        const boulder = this.mesh(this.frostDecor, new THREE.DodecahedronGeometry(1, 0), material('#87a7b1'), o.x, o.radius * 0.55, o.z);
+        boulder.scale.set(o.radius, o.radius * 0.75, o.radius);
+        this.mesh(this.frostDecor, new THREE.ConeGeometry(o.radius * 0.85, 0.5, 7), material('#dff4f4'), o.x - 0.1, o.radius + 0.15, o.z);
+      }
+    }
+    const frozenWater = this.mesh(this.frostDecor, new THREE.PlaneGeometry(4.2, 24), new THREE.MeshStandardMaterial({ color: '#7fd4e8', roughness: 0.28, metalness: 0.15, transparent: true, opacity: 0.78 }), 9.8, 0.012, 0);
+    frozenWater.rotation.x = -Math.PI / 2;
+    frozenWater.rotation.z = -0.08;
+    this.frostDecor.visible = false;
+    this.scene.add(this.frostDecor);
+    this.jungleDecor = new THREE.Group();
+    const jungleStone = material('#798565');
+    const jungleDark = material('#4a6646');
+    const jungleLeaf = [material('#2f7a47'), material('#4c9850'), material('#78b957')];
+    for (const [index, o] of MAPS.jungle.obstacles.entries()) {
+      if (o.kind === 'jungle-tree') {
+        this.mesh(this.jungleDecor, new THREE.CylinderGeometry(0.34, 0.52, 3.2, 7), material('#715339'), o.x, 1.55, o.z);
+        for (let layer = 0; layer < 3; layer++) this.mesh(this.jungleDecor, new THREE.IcosahedronGeometry(1.15 - layer * 0.12, 0), jungleLeaf[(index + layer) % jungleLeaf.length], o.x + (layer - 1) * 0.32, 2.7 + layer * 0.35, o.z);
+      } else if (o.kind === 'idol') {
+        this.mesh(this.jungleDecor, new THREE.BoxGeometry(1.25, 1.8, 1), jungleStone, o.x, 0.9, o.z);
+        this.mesh(this.jungleDecor, new THREE.BoxGeometry(0.65, 0.18, 0.12), jungleDark, o.x, 1.12, o.z + 0.52);
+        for (const x of [-0.3, 0.3]) this.mesh(this.jungleDecor, new THREE.OctahedronGeometry(0.12, 0), material('#ffd85e'), o.x + x, 1.48, o.z + 0.56);
+      } else {
+        this.mesh(this.jungleDecor, new THREE.BoxGeometry(o.radius * 1.6, 1.5, o.radius * 1.35), jungleStone, o.x, 0.72, o.z).rotation.y = index * 0.45;
+        const vine = this.mesh(this.jungleDecor, new THREE.TorusGeometry(o.radius * 0.48, 0.08, 5, 12), jungleLeaf[1], o.x, 1.05, o.z + o.radius * 0.7);
+        vine.rotation.x = Math.PI / 2;
+      }
+    }
+    for (const [index, point] of [[-10,-9],[-10,5],[-8,10],[-2,10],[5,10],[10,6],[10,-3],[7,-10]].entries()) {
+      const [x, z] = point;
+      this.mesh(this.jungleDecor, new THREE.CylinderGeometry(0.18, 0.3, 2.1, 6), material('#684d35'), x, 1.02, z);
+      for (let leafIndex = 0; leafIndex < 4; leafIndex++) {
+        const leafMesh = this.mesh(this.jungleDecor, new THREE.ConeGeometry(0.42, 1.7, 5), jungleLeaf[(index + leafIndex) % jungleLeaf.length], x, 2.25, z);
+        leafMesh.rotation.z = leafIndex * Math.PI / 2;
+        leafMesh.rotation.y = leafIndex * Math.PI / 2;
+      }
+    }
+    this.jungleDecor.visible = false;
+    this.scene.add(this.jungleDecor);
+    this.emberDecor = new THREE.Group();
+    const basalt = [material('#302f36'), material('#4c3a3b'), material('#67504a')];
+    const lava = new THREE.MeshStandardMaterial({ color: '#ff6a2e', emissive: '#ff3b16', emissiveIntensity: 1.7, roughness: 0.6 });
+    for (const [index, o] of MAPS.ember.obstacles.entries()) {
+      if (o.kind === 'lava-vent') {
+        const rim = this.mesh(this.emberDecor, new THREE.TorusGeometry(o.radius * 0.68, 0.24, 7, 12), basalt[index % basalt.length], o.x, 0.24, o.z);
+        rim.rotation.x = Math.PI / 2;
+        const pool = this.mesh(this.emberDecor, new THREE.CircleGeometry(o.radius * 0.62, 14), lava, o.x, 0.08, o.z);
+        pool.rotation.x = -Math.PI / 2;
+        for (let puff = 0; puff < 3; puff++) this.mesh(this.emberDecor, new THREE.OctahedronGeometry(0.12 + puff * 0.04, 0), lava, o.x + (puff - 1) * 0.32, 0.42 + puff * 0.23, o.z);
+      } else if (o.kind === 'obsidian-spire') {
+        for (let shard = 0; shard < 4; shard++) {
+          const spire = this.mesh(this.emberDecor, new THREE.ConeGeometry(0.34 + shard * 0.06, 1.8 + shard * 0.35, 5), basalt[0], o.x + (shard - 1.5) * 0.3, 0.9 + shard * 0.18, o.z + Math.sin(shard) * 0.25);
+          spire.rotation.z = (shard - 1.5) * 0.1;
+        }
+      } else {
+        const rock = this.mesh(this.emberDecor, new THREE.DodecahedronGeometry(1, 0), basalt[index % basalt.length], o.x, o.radius * 0.6, o.z);
+        rock.scale.set(o.radius, o.radius * 0.9, o.radius);
+        for (const offset of [-0.35, 0.25]) this.mesh(this.emberDecor, new THREE.BoxGeometry(0.1, 0.08, o.radius * 1.25), lava, o.x + offset, o.radius * 0.72, o.z).rotation.y = offset;
+      }
+    }
+    for (const [index, point] of [[-10,-9],[-10,4],[-8,10],[-2,10],[5,10],[10,6],[10,-3],[7,-10]].entries()) {
+      const [x, z] = point;
+      const spire = this.mesh(this.emberDecor, new THREE.ConeGeometry(0.45 + index % 3 * 0.08, 1.8 + index % 2 * 0.7, 5), basalt[index % basalt.length], x, 0.9, z);
+      spire.rotation.z = (index % 2 ? -1 : 1) * 0.1;
+    }
+    for (const z of [-7.4, 0.2, 7.6]) {
+      const crack = this.mesh(this.emberDecor, new THREE.PlaneGeometry(18, 0.18), lava, 0, 0.012, z);
+      crack.rotation.x = -Math.PI / 2;
+      crack.rotation.z = (z % 2) * 0.04;
+    }
+    this.emberDecor.visible = false;
+    this.scene.add(this.emberDecor);
+    this.towerDecor = new THREE.Group();
+    const towerStone = [material('#303a51'), material('#414b68'), material('#232a40')];
+    const towerGlow = new THREE.MeshStandardMaterial({ color: '#79f5e4', emissive: '#4ddbd4', emissiveIntensity: 1.35, roughness: 0.35 });
+    for (const [index, o] of MAPS.tower.obstacles.entries()) {
+      if (o.kind === 'arcane-core') {
+        const ring = this.mesh(this.towerDecor, new THREE.TorusGeometry(0.78, 0.12, 8, 20), towerGlow, o.x, 0.72, o.z); ring.rotation.x = Math.PI / 2;
+        this.mesh(this.towerDecor, new THREE.OctahedronGeometry(0.5, 1), towerGlow, o.x, 0.72, o.z);
+      } else {
+        this.mesh(this.towerDecor, new THREE.CylinderGeometry(0.7, 0.9, 2.8, 6), towerStone[index % towerStone.length], o.x, 1.4, o.z);
+        this.mesh(this.towerDecor, new THREE.OctahedronGeometry(0.36, 0), towerGlow, o.x, 2.95, o.z);
+        for (const y of [0.55, 1.15, 1.75, 2.35]) this.mesh(this.towerDecor, new THREE.TorusGeometry(0.73, 0.055, 5, 12), towerGlow, o.x, y, o.z).rotation.x = Math.PI / 2;
+      }
+    }
+    for (let i = 0; i < 16; i++) {
+      const angle = i / 16 * Math.PI * 2; const radius = 11.4;
+      const crystal = this.mesh(this.towerDecor, new THREE.OctahedronGeometry(0.25 + i % 3 * 0.06, 0), i % 2 ? towerGlow : towerStone[1], Math.sin(angle) * radius, 0.45 + i % 3 * 0.15, Math.cos(angle) * radius);
+      crystal.scale.y = 2.1;
+    }
+    this.towerDecor.visible = false;
+    this.scene.add(this.towerDecor);
+    // Deterministic scenery uses no gameplay randomness or external textures.
+    let seed = 24;
+    const random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    const grass = material('#709b55');
+    const flowers = [material('#f2dea0'), material('#e5b19b')];
+    for (let i = 0; i < 360; i++) {
+      const x = (random() - 0.5) * 34;
+      const z = (random() - 0.5) * 34;
+      if (Math.abs(x) < 1.8 || !MAPS.meadow.obstacles.every(o => Math.hypot(x - o.x, z - o.z) > o.radius + 0.4)) continue;
+      const tuft = this.mesh(this.meadowDecor, new THREE.ConeGeometry(0.09, 0.25 + random() * 0.2, 3), grass, x, 0.12, z);
+      tuft.castShadow = false;
+      if (i % 6 === 0) this.mesh(this.meadowDecor, new THREE.IcosahedronGeometry(0.09, 0), flowers[i % 2], x, 0.3, z);
+    }
+    for (let i = 0; i < 14; i++) {
+      const a = i / 14 * Math.PI * 2;
+      const hill = this.mesh(this.scene, new THREE.IcosahedronGeometry(4, 0), material(i % 2 ? '#75a278' : '#8db086'), Math.sin(a) * 35, 0, Math.cos(a) * 35);
+      hill.scale.set(1.8, 1, 1.4);
+    }
+  }
+  buildHubMap() {
+    const mortar = material('#59615e');
+    const stone = [material('#8c918b'), material('#777f7a'), material('#a2a39a')];
+    for (let x = -11; x <= 11; x += 2) for (let z = -11; z <= 11; z += 2) {
+      const tile = this.mesh(this.hubDecor, new THREE.BoxGeometry(1.86, 0.12, 1.86), stone[(Math.abs(x * 3 + z)) % stone.length], x + (z % 4 ? 0.18 : -0.12), 0.015, z);
+      tile.rotation.y = ((x + z) % 3) * 0.012;
+      tile.receiveShadow = true;
+    }
+    const wall = (x, z, width, depth) => this.mesh(this.hubDecor, new THREE.BoxGeometry(width, 1.45, depth), mortar, x, 0.7, z);
+    wall(0, -12.35, 25, 0.75); wall(-12.35, 0, 0.75, 25); wall(12.35, 0, 0.75, 25);
+    for (let i = -11; i <= 11; i += 2) {
+      for (const [x, z] of [[i, -12.35], [-12.35, i], [12.35, i]]) this.mesh(this.hubDecor, new THREE.BoxGeometry(0.95, 0.7, 0.95), stone[Math.abs(i) % 3], x, 1.72, z);
+    }
+    for (const o of MAPS.hub.obstacles.filter(entry => entry.kind === 'tower')) {
+      this.mesh(this.hubDecor, new THREE.CylinderGeometry(1.35, 1.55, 3.2, 10), mortar, o.x, 1.55, o.z);
+      this.mesh(this.hubDecor, new THREE.ConeGeometry(1.65, 1.5, 10), material('#70443b'), o.x, 3.9, o.z);
+    }
+    const well = MAPS.hub.obstacles.find(entry => entry.kind === 'well');
+    this.mesh(this.hubDecor, new THREE.CylinderGeometry(1, 1.15, 0.85, 12, 1, true), mortar, well.x, 0.43, well.z);
+    const water = this.mesh(this.hubDecor, new THREE.CircleGeometry(0.88, 16), new THREE.MeshStandardMaterial({ color: '#62b9c7', emissive: '#256573', emissiveIntensity: 0.18 }), well.x, 0.47, well.z);
+    water.rotation.x = -Math.PI / 2;
+    for (const x of [-0.62, 0.62]) this.mesh(this.hubDecor, new THREE.CylinderGeometry(0.08, 0.1, 1.8, 7), material('#5b4231'), well.x + x, 1.35, well.z);
+    this.mesh(this.hubDecor, new THREE.BoxGeometry(1.55, 0.12, 0.16), material('#5b4231'), well.x, 2.18, well.z);
+    const bannerMat = new THREE.MeshStandardMaterial({ color: '#7f3150', roughness: 0.85, side: THREE.DoubleSide });
+    for (const x of [-7.5, 7.5]) {
+      this.mesh(this.hubDecor, new THREE.CylinderGeometry(0.07, 0.07, 3.4, 6), material('#4b392e'), x, 1.7, -10.9);
+      const banner = this.mesh(this.hubDecor, new THREE.PlaneGeometry(1.3, 1.8), bannerMat, x, 2.25, -10.82);
+      banner.rotation.y = Math.PI;
+    }
+    const towerBase = material('#31394d'); const towerTrim = material('#695a91'); const towerLight = new THREE.MeshStandardMaterial({ color: '#8fffee', emissive: '#45cfd2', emissiveIntensity: 1.4 });
+    for (const side of [-1, 1]) for (let floor = 0; floor < 6; floor++) {
+      const y = 1.5 + floor * 2.15; const width = 2.7 - floor * 0.12; const x = side * 5.25;
+      this.mesh(this.hubDecor, new THREE.CylinderGeometry(width * 0.46, width * 0.52, 2.05, 8), floor % 2 ? towerTrim : towerBase, x, y, 14.4);
+      this.mesh(this.hubDecor, new THREE.BoxGeometry(0.22, 0.68, 0.12), towerLight, x - side * width * 0.12, y, 12.82 + floor * 0.08);
+    }
+    for (const side of [-1, 1]) this.mesh(this.hubDecor, new THREE.ConeGeometry(1.05, 3.2, 8), towerTrim, side * 5.25, 14.3, 14.4);
+    this.mesh(this.hubDecor, new THREE.BoxGeometry(9, 1.1, 0.65), towerTrim, 0, 12.15, 14.25);
+    this.mesh(this.hubDecor, new THREE.BoxGeometry(2.4, 3.2, 0.65), towerBase, 0, 1.6, 11.95);
+    this.mesh(this.hubDecor, new THREE.BoxGeometry(1.25, 2.25, 0.7), material('#15192a'), 0, 1.12, 11.58);
+  }
+  buildPlayer() {
+    const root = new THREE.Group();
+    const body = new THREE.Group();
+    root.add(body);
+    const coat = material('#32677a');
+    const skin = material('#f0cb97');
+    const boots = material('#334c49');
+    this.mesh(body, new THREE.CylinderGeometry(0.3, 0.42, 0.75, 6), coat, 0, 0.86, 0);
+    this.mesh(body, new THREE.BoxGeometry(0.2, 0.4, 0.24), boots, -0.18, 0.25, 0);
+    this.mesh(body, new THREE.BoxGeometry(0.2, 0.4, 0.24), boots, 0.18, 0.25, 0);
+    this.mesh(body, new THREE.IcosahedronGeometry(0.29, 1), skin, 0, 1.45, 0);
+    this.mesh(body, new THREE.ConeGeometry(0.38, 0.34, 6), coat, 0, 1.73, -0.02);
+    this.mesh(body, new THREE.BoxGeometry(0.22, 0.1, 0.08), boots, 0, 1.45, 0.26);
+    this.mesh(body, new THREE.BoxGeometry(0.65, 0.12, 0.44), material('#c4aa6f'), 0, 0.6, 0);
+    const cape = this.mesh(body, new THREE.PlaneGeometry(0.62, 0.92), material('#7f3150'), 0, 0.94, -0.31);
+    cape.rotation.x = -0.08;
+    const sword = new THREE.Group();
+    sword.position.set(-0.46, 0.88, 0.12);
+    const swordBlade = material('#e7f0db');
+    this.mesh(sword, new THREE.BoxGeometry(0.12, 0.08, 1.05), swordBlade, 0, 0, 0.48);
+    this.mesh(sword, new THREE.BoxGeometry(0.42, 0.12, 0.1), material('#dec587'), 0, 0, 0.06);
+    body.add(sword);
+    this.mesh(body, new THREE.CylinderGeometry(0.26, 0.26, 0.12, 8), coat, 0.45, 0.85, 0.1).rotation.x = Math.PI / 2;
+    const shield = this.mesh(body, new THREE.CylinderGeometry(0.3, 0.3, 0.09, 8), material('#b7904d'), 0.46, 0.87, 0.15);
+    shield.rotation.z = Math.PI / 2;
+    return { root, body, sword, swordBlade, flashMaterials: [coat, skin] };
+  }
+  buildEnemy(enemy) {
+    const root = new THREE.Group(); const body = new THREE.Group(); root.add(body);
+    const primary = material(enemy.color); const accent = material(enemy.accent); const dark = material('#263635'); const flashMaterials = [primary, accent]; const type = enemy.model || enemy.type;
+    const eye = x => this.mesh(body, new THREE.SphereGeometry(0.065, 6, 4), dark, x, 0.91, 0.61);
+    const legs = (wide = 0.3, long = 0.34) => { for (const x of [-wide, wide]) for (const z of [-0.34, 0.34]) this.mesh(body, new THREE.BoxGeometry(0.17, long, 0.18), accent, x, long / 2, z); };
+    const horn = (x, y, z, flip = 1) => { const part = this.mesh(body, new THREE.ConeGeometry(0.1, 0.48, 5), accent, x, y, z); part.rotation.z = flip * 0.75; return part; };
+    if (type === 'clockwork-scarab' || type === 'brass-warden') {
+      const boss = type === 'brass-warden';
+      this.mesh(body, new THREE.BoxGeometry(boss ? 1.05 : 0.78, boss ? 1.05 : 0.55, boss ? 0.72 : 0.96), primary, 0, boss ? 0.82 : 0.55, 0);
+      const core = this.mesh(body, new THREE.OctahedronGeometry(boss ? 0.26 : 0.18, 0), accent, 0, boss ? 0.92 : 0.65, 0.39); flashMaterials.push(core.material);
+      for (const side of [-1, 1]) for (const z of [-0.42, 0, 0.42]) { const limb = this.mesh(body, new THREE.CylinderGeometry(0.07, 0.1, boss ? 0.9 : 0.62, 6), accent, side * (boss ? 0.68 : 0.5), 0.38, z); limb.rotation.z = side * 0.9; }
+      for (const z of [-0.34, 0.34]) { const gear = this.mesh(body, new THREE.TorusGeometry(boss ? 0.31 : 0.23, 0.09, 5, 10), accent, 0, boss ? 1.25 : 0.82, z); gear.rotation.x = Math.PI / 2; }
+      if (boss) for (const x of [-0.76, 0.76]) this.mesh(body, new THREE.BoxGeometry(0.42, 0.7, 0.5), primary, x, 0.75, 0);
+    } else if (type === 'rune-gargoyle' || type === 'astral-sphinx' || type === 'celestial-behemoth') {
+      const titan = type === 'celestial-behemoth';
+      this.mesh(body, new THREE.DodecahedronGeometry(titan ? 0.78 : 0.6), primary, 0, titan ? 0.95 : 0.8, 0).scale.set(1, 1.1, 1.25);
+      this.mesh(body, new THREE.DodecahedronGeometry(titan ? 0.48 : 0.36), primary, 0, titan ? 1.62 : 1.34, 0.42); eye(-0.14); eye(0.14); legs(titan ? 0.4 : 0.3, titan ? 0.55 : 0.35);
+      for (const x of [-0.68, 0.68]) { const wing = this.mesh(body, new THREE.ConeGeometry(titan ? 0.45 : 0.34, titan ? 1.55 : 1.15, 4), accent, x, titan ? 1.15 : 0.95, -0.18); wing.rotation.z = x > 0 ? -1.05 : 1.05; }
+      for (const x of [-0.22, 0.22]) horn(x, titan ? 2.05 : 1.72, 0.34, x > 0 ? 1 : -1);
+    } else if (type === 'chest-mimic') {
+      const lower = this.mesh(body, new THREE.BoxGeometry(1.05, 0.48, 0.78), primary, 0, 0.52, 0); lower.rotation.x = 0.04;
+      const lid = this.mesh(body, new THREE.BoxGeometry(1.08, 0.32, 0.8), primary, 0, 1.02, -0.1); lid.rotation.x = -0.28;
+      for (const x of [-0.38, -0.12, 0.12, 0.38]) this.mesh(body, new THREE.ConeGeometry(0.07, 0.28, 4), accent, x, 0.82, 0.43).rotation.x = Math.PI;
+      for (const x of [-0.38, 0.38]) this.mesh(body, new THREE.SphereGeometry(0.09, 6, 4), accent, x, 1.14, 0.36);
+      legs(0.32, 0.48);
+    } else if (type === 'void-hound') {
+      const torso = this.mesh(body, new THREE.IcosahedronGeometry(0.64, 0), primary, 0, 0.68, 0); torso.scale.set(1, 0.68, 1.5);
+      this.mesh(body, new THREE.DodecahedronGeometry(0.38), primary, 0, 0.86, 0.72); legs(0.31, 0.42); eye(-0.14); eye(0.14);
+      for (const x of [-0.24, 0.24]) this.mesh(body, new THREE.ConeGeometry(0.14, 0.55, 4), accent, x, 1.34, 0.52);
+      for (const z of [-0.62, -0.2, 0.22]) this.mesh(body, new THREE.ConeGeometry(0.1, 0.38, 4), accent, 0, 1.18, z);
+    } else if (type === 'tower-eye' || type === 'mirror-sorcerer') {
+      const mage = type === 'mirror-sorcerer';
+      const orb = this.mesh(body, new THREE.SphereGeometry(mage ? 0.68 : 0.58, 10, 7), primary, 0, mage ? 1.15 : 1.05, 0);
+      this.mesh(body, new THREE.SphereGeometry(mage ? 0.28 : 0.23, 8, 6), accent, 0, mage ? 1.16 : 1.06, 0.51);
+      this.mesh(body, new THREE.SphereGeometry(mage ? 0.12 : 0.1, 7, 5), dark, 0, mage ? 1.16 : 1.06, 0.72);
+      for (let i = 0; i < (mage ? 8 : 6); i++) { const a = i / (mage ? 8 : 6) * Math.PI * 2; const shard = this.mesh(body, new THREE.OctahedronGeometry(0.13, 0), accent, Math.sin(a) * 0.9, 1.05 + Math.cos(a) * 0.9, 0); shard.rotation.z = a; }
+      const tail = this.mesh(body, new THREE.ConeGeometry(0.42, 1.15, 7), primary, 0, 0.36, 0); tail.rotation.x = Math.PI;
+    } else if (type === 'rune-knight') {
+      this.mesh(body, new THREE.BoxGeometry(0.78, 0.9, 0.48), primary, 0, 0.82, 0); this.mesh(body, new THREE.BoxGeometry(0.48, 0.48, 0.45), primary, 0, 1.5, 0); legs(0.25, 0.48);
+      this.mesh(body, new THREE.BoxGeometry(0.12, 1.55, 0.16), accent, -0.62, 1.03, 0.22).rotation.z = -0.25;
+      this.mesh(body, new THREE.ConeGeometry(0.32, 0.62, 5), accent, 0, 2.02, 0);
+      for (const x of [-0.24, 0.24]) this.mesh(body, new THREE.BoxGeometry(0.34, 0.25, 0.5), accent, x, 1.1, 0);
+    } else if (type === 'chrono-drake' || type === 'eternity-dragon') {
+      const eternal = type === 'eternity-dragon';
+      const torso = this.mesh(body, new THREE.IcosahedronGeometry(eternal ? 0.86 : 0.68, 1), primary, 0, 0.82, 0); torso.scale.set(1, 0.74, 1.45);
+      this.mesh(body, new THREE.DodecahedronGeometry(eternal ? 0.52 : 0.4), primary, 0, 1, 0.83); legs(eternal ? 0.42 : 0.33, eternal ? 0.46 : 0.34); eye(-0.15); eye(0.15);
+      for (const x of [-0.75, 0.75]) { const wing = this.mesh(body, new THREE.ConeGeometry(eternal ? 0.52 : 0.4, eternal ? 1.8 : 1.35, 4), accent, x, 1.15, -0.1); wing.rotation.z = x > 0 ? -1.08 : 1.08; }
+      for (let i = 0; i < 5; i++) this.mesh(body, new THREE.OctahedronGeometry(0.13 + i * 0.015, 0), accent, 0, 1.35, 0.45 - i * 0.38);
+      const tail = this.mesh(body, new THREE.ConeGeometry(0.2, eternal ? 1.9 : 1.45, 6), primary, 0, 0.72, -1.25); tail.rotation.x = Math.PI / 2;
+    } else if (type === 'beetle' || type === 'scarab') {
+      const shell = this.mesh(body, new THREE.SphereGeometry(type === 'scarab' ? 0.72 : 0.62, 7, 5), primary, 0, 0.58, 0); shell.scale.set(1, 0.58, 1.28);
+      this.mesh(body, new THREE.SphereGeometry(0.34, 7, 5), accent, 0, 0.5, 0.66); eye(-0.13); eye(0.13);
+      for (const side of [-1, 1]) for (let leg = -1; leg <= 1; leg++) { const limb = this.mesh(body, new THREE.BoxGeometry(0.48, 0.1, 0.12), accent, side * 0.55, 0.33, leg * 0.34); limb.rotation.y = side * (0.25 + leg * 0.12); }
+      if (type === 'scarab') this.mesh(body, new THREE.BoxGeometry(0.08, 0.5, 1.35), accent, 0, 0.82, -0.03).rotation.x = Math.PI / 2;
+    } else if (type === 'serpent' || type === 'cobra' || type === 'hydra') {
+      const heads = type === 'hydra' ? [-0.46, 0, 0.46] : [0];
+      for (const [index, x] of heads.entries()) {
+        const neck = this.mesh(body, new THREE.CylinderGeometry(0.14, 0.23, type === 'hydra' ? 1.15 : 0.95, 7), primary, x, 0.95, index === 1 ? 0.18 : 0); neck.rotation.z = x * -0.35;
+        this.mesh(body, new THREE.DodecahedronGeometry(type === 'hydra' ? 0.3 : 0.36), primary, x * 1.15, type === 'hydra' ? 1.62 : 1.45, 0.25);
+      }
+      const coil = this.mesh(body, new THREE.TorusGeometry(type === 'hydra' ? 0.72 : 0.58, 0.2, 6, 12), primary, 0, 0.3, 0); coil.rotation.x = Math.PI / 2;
+      if (type === 'cobra' || type === 'hydra') for (const x of [-0.38, 0.38]) this.mesh(body, new THREE.ConeGeometry(0.32, 0.75, 5), accent, x, 1.25, -0.05).rotation.z = x > 0 ? -0.65 : 0.65;
+    } else if (type === 'monkey') {
+      this.mesh(body, new THREE.SphereGeometry(0.55, 7, 5), primary, 0, 0.73, 0); this.mesh(body, new THREE.SphereGeometry(0.38, 7, 5), primary, 0, 1.28, 0.18); eye(-0.14); eye(0.14);
+      for (const x of [-0.58, 0.58]) this.mesh(body, new THREE.CylinderGeometry(0.1, 0.13, 0.82, 6), accent, x, 0.62, 0).rotation.z = x > 0 ? -0.42 : 0.42;
+      const tail = this.mesh(body, new THREE.TorusGeometry(0.52, 0.09, 6, 14, Math.PI * 1.55), primary, 0, 0.75, -0.52); tail.rotation.y = Math.PI / 2;
+    } else if (type === 'shaman') {
+      const robe = this.mesh(body, new THREE.ConeGeometry(0.58, 1.15, 7), primary, 0, 0.58, 0); robe.rotation.x = Math.PI; this.mesh(body, new THREE.DodecahedronGeometry(0.34), accent, 0, 1.35, 0); eye(-0.13); eye(0.13);
+      const staff = this.mesh(body, new THREE.CylinderGeometry(0.045, 0.06, 1.75, 6), dark, 0.62, 0.85, 0); staff.rotation.z = -0.08; this.mesh(body, new THREE.OctahedronGeometry(0.2, 0), accent, 0.7, 1.7, 0);
+    } else if (type === 'treant') {
+      this.mesh(body, new THREE.CylinderGeometry(0.42, 0.62, 1.55, 7), primary, 0, 0.85, 0); this.mesh(body, new THREE.DodecahedronGeometry(0.48), primary, 0, 1.62, 0.06); eye(-0.16); eye(0.16);
+      for (const x of [-0.65, 0.65]) { const branch = this.mesh(body, new THREE.CylinderGeometry(0.1, 0.18, 1.25, 6), primary, x, 1.05, 0); branch.rotation.z = x > 0 ? -0.62 : 0.62; this.mesh(body, new THREE.IcosahedronGeometry(0.36, 0), accent, x * 1.35, 1.48, 0); }
+    } else if (type === 'golem') {
+      this.mesh(body, new THREE.BoxGeometry(0.9, 0.82, 0.58), primary, 0, 0.82, 0); this.mesh(body, new THREE.DodecahedronGeometry(0.35), accent, 0, 1.47, 0.05);
+      for (const x of [-0.62, 0.62]) this.mesh(body, new THREE.DodecahedronGeometry(0.34), primary, x, 0.78, 0); for (const x of [-0.27, 0.27]) this.mesh(body, new THREE.BoxGeometry(0.26, 0.5, 0.3), accent, x, 0.25, 0); eye(-0.12); eye(0.12);
+    } else if (type === 'guardian' || type === 'drake' || type === 'wyrm') {
+      this.mesh(body, new THREE.IcosahedronGeometry(type === 'wyrm' ? 0.78 : 0.62, 1), primary, 0, 0.72, 0).scale.set(1, 0.72, 1.35); this.mesh(body, new THREE.DodecahedronGeometry(0.4), primary, 0, 0.82, 0.72); legs(0.32, 0.3); eye(-0.15); eye(0.15);
+      for (const x of [-0.58, 0.58]) { const wing = this.mesh(body, new THREE.ConeGeometry(type === 'guardian' ? 0.22 : 0.38, type === 'wyrm' ? 1.35 : type === 'guardian' ? 0.72 : 1, type === 'guardian' ? 6 : 4), accent, x, 0.95, -0.05); wing.rotation.z = x > 0 ? -1.08 : 1.08; }
+      for (const z of [-0.48, -0.05, 0.36]) this.mesh(body, new THREE.ConeGeometry(0.13, 0.42, 5), accent, 0, 1.28, z);
+      const tail = this.mesh(body, new THREE.ConeGeometry(0.19, type === 'wyrm' ? 1.5 : 1.05, 6), primary, 0, 0.68, -1); tail.rotation.x = Math.PI / 2;
+      if (type === 'guardian') this.mesh(body, new THREE.OctahedronGeometry(0.26, 0), accent, 0, 1.52, 0.12);
+      if (type === 'drake') for (const x of [-0.22, 0.22]) horn(x, 1.35, 0.58, x > 0 ? 1 : -1);
+      if (type === 'wyrm') for (const x of [-0.25, 0.25]) { const crownHorn = this.mesh(body, new THREE.ConeGeometry(0.14, 0.72, 5), accent, x, 1.48, 0.35); crownHorn.rotation.z = x * 0.8; }
+    } else if (type === 'owl') {
+      this.mesh(body, new THREE.SphereGeometry(0.62, 8, 6), primary, 0, 0.78, 0); this.mesh(body, new THREE.SphereGeometry(0.43, 8, 6), accent, 0, 1.25, 0.15); eye(-0.16); eye(0.16);
+      for (const x of [-0.62, 0.62]) { const wing = this.mesh(body, new THREE.ConeGeometry(0.34, 1, 4), primary, x, 0.78, 0); wing.rotation.z = x > 0 ? -0.42 : 0.42; } this.mesh(body, new THREE.ConeGeometry(0.1, 0.28, 4), dark, 0, 1.12, 0.55).rotation.x = Math.PI / 2;
+    } else if (type === 'wraith') {
+      this.mesh(body, new THREE.SphereGeometry(0.48, 8, 6), primary, 0, 1.14, 0); const robe = this.mesh(body, new THREE.ConeGeometry(0.62, 1.25, 7), primary, 0, 0.55, 0); robe.rotation.x = Math.PI; eye(-0.15); eye(0.15);
+      for (const x of [-0.55, 0.55]) { const arm = this.mesh(body, new THREE.ConeGeometry(0.12, 0.7, 5), accent, x, 0.8, 0); arm.rotation.z = x > 0 ? -0.8 : 0.8; }
+    } else if (type === 'king') {
+      this.mesh(body, new THREE.CylinderGeometry(0.5, 0.72, 1.05, 7), primary, 0, 0.78, 0); this.mesh(body, new THREE.DodecahedronGeometry(0.42), primary, 0, 1.5, 0.08); eye(-0.15); eye(0.15); legs(0.28, 0.42);
+      for (let i = 0; i < 5; i++) this.mesh(body, new THREE.ConeGeometry(0.12, 0.42, 4), accent, (i - 2) * 0.18, 2.03 - Math.abs(i - 2) * 0.05, 0); this.mesh(body, new THREE.TorusGeometry(0.42, 0.1, 6, 12), accent, 0, 1.78, 0).rotation.x = Math.PI / 2;
+    } else {
+      const low = ['boar', 'hare', 'walrus', 'panther'].includes(type); const large = ['yak', 'mammoth'].includes(type); const bodyMesh = this.mesh(body, new THREE.IcosahedronGeometry(large ? 0.78 : 0.64, 1), primary, 0, low ? 0.55 : 0.68, 0); bodyMesh.scale.set(large ? 1.2 : type === 'panther' ? 1.15 : 1, low ? 0.62 : 0.78, type === 'walrus' ? 1.4 : type === 'panther' ? 1.55 : 1.2);
+      this.mesh(body, new THREE.DodecahedronGeometry(type === 'mammoth' ? 0.48 : 0.36), primary, 0, low ? 0.63 : 0.82, 0.62); legs(large ? 0.38 : 0.29, large ? 0.42 : 0.32); eye(-0.14); eye(0.14);
+      if (type === 'cow' || type === 'yak') { horn(-0.32, 1.2, 0.55, -1); horn(0.32, 1.2, 0.55, 1); }
+      if (type === 'yak') for (const x of [-0.48, 0, 0.48]) this.mesh(body, new THREE.ConeGeometry(0.2, 0.48, 5), accent, x, 0.72, -0.18);
+      if (type === 'boar' || type === 'walrus' || type === 'mammoth') for (const x of [-0.22, 0.22]) { const tusk = this.mesh(body, new THREE.ConeGeometry(0.075, type === 'walrus' ? 0.58 : 0.42, 5), accent, x, 0.48, 0.92); tusk.rotation.x = Math.PI; }
+      if (type === 'mammoth') { const trunk = this.mesh(body, new THREE.CylinderGeometry(0.1, 0.16, 0.75, 7), primary, 0, 0.45, 0.9); trunk.rotation.x = -0.18; }
+      if (type === 'hare') for (const x of [-0.2, 0.2]) this.mesh(body, new THREE.ConeGeometry(0.13, 0.75, 5), accent, x, 1.38, 0.48);
+      if (type === 'wolf' || type === 'lynx' || type === 'panther') { for (const x of [-0.22, 0.22]) { this.mesh(body, new THREE.ConeGeometry(type === 'lynx' ? 0.12 : 0.17, type === 'lynx' ? 0.52 : 0.4, 4), accent, x, 1.25, 0.48); if (type === 'lynx') this.mesh(body, new THREE.SphereGeometry(0.075, 5, 4), dark, x, 1.52, 0.48); } const tail = this.mesh(body, new THREE.ConeGeometry(0.14, type === 'lynx' ? 0.4 : type === 'panther' ? 1.05 : 0.78, 5), accent, 0, 0.78, type === 'lynx' ? -0.67 : -0.78); tail.rotation.x = -1.05; }
+      if (type === 'cow') this.mesh(body, new THREE.BoxGeometry(0.36, 0.18, 0.3), accent, 0, 0.36, 0.15);
+    }
+    const scale = enemy.boss ? 1.5 : ['golem','mammoth','yak','walrus','treant','scarab'].includes(type) ? 1.15 : ['hare','wolf','lynx','panther'].includes(type) ? 0.86 : 1; root.scale.setScalar(scale);
+    return { root, body, type, flashMaterials };
+  }
+
+  syncProjectiles(run) {
+    const active = new Set(run.projectiles.map(projectile => projectile.id));
+    for (const [id, view] of this.projectileViews) { if (active.has(id)) continue; this.scene.remove(view); view.geometry.dispose(); view.material.dispose(); this.projectileViews.delete(id); }
+    for (const projectile of run.projectiles) { let view = this.projectileViews.get(projectile.id); if (!view) { view = new THREE.Mesh(new THREE.OctahedronGeometry(projectile.radius, 0), new THREE.MeshStandardMaterial({ color: projectile.color, emissive: projectile.color, emissiveIntensity: 1.3 })); view.castShadow = true; this.projectileViews.set(projectile.id, view); this.scene.add(view); } view.position.set(projectile.x, 0.65, projectile.z); view.rotation.y = run.time * 8; view.rotation.x = run.time * 5; }
+  }
+  buildPet(definition) {
+    const root = new THREE.Group(); const body = new THREE.Group(); root.add(body);
+    const primary = material(definition.color); const accent = material(definition.accent); const dark = material('#283c3d');
+    if (definition.kind === 'phoenix') {
+      this.mesh(body, new THREE.IcosahedronGeometry(0.42, 0), primary, 0, 0.8, 0);
+      this.mesh(body, new THREE.SphereGeometry(0.28, 7, 5), primary, 0, 1.25, 0.2);
+      for (const x of [-0.6, 0.6]) { const wing = this.mesh(body, new THREE.ConeGeometry(0.34, 1.25, 5), accent, x, 0.88, -0.05); wing.rotation.z = x > 0 ? -1.05 : 1.05; }
+      for (const x of [-0.24, 0, 0.24]) { const plume = this.mesh(body, new THREE.ConeGeometry(0.11, 0.7, 5), accent, x, 0.48, -0.48); plume.rotation.x = -0.75; }
+      this.mesh(body, new THREE.ConeGeometry(0.1, 0.28, 4), accent, 0, 1.18, 0.5).rotation.x = Math.PI / 2;
+    } else if (definition.kind === 'basilisk') {
+      const coil = this.mesh(body, new THREE.TorusGeometry(0.48, 0.16, 6, 12), primary, 0, 0.36, 0); coil.rotation.x = Math.PI / 2;
+      this.mesh(body, new THREE.CylinderGeometry(0.13, 0.2, 0.85, 7), primary, 0, 0.92, 0);
+      this.mesh(body, new THREE.DodecahedronGeometry(0.3), primary, 0, 1.4, 0.2);
+      for (const x of [-0.22, 0, 0.22]) this.mesh(body, new THREE.ConeGeometry(0.09, 0.38, 5), accent, x, 1.78 - Math.abs(x), 0.1);
+      for (const x of [-0.11, 0.11]) this.mesh(body, new THREE.SphereGeometry(0.045, 5, 4), dark, x, 1.46, 0.45);
+    } else if (definition.kind === 'knight') {
+      this.mesh(body, new THREE.BoxGeometry(0.58, 0.72, 0.4), primary, 0, 0.67, 0);
+      this.mesh(body, new THREE.BoxGeometry(0.5, 0.46, 0.46), accent, 0, 1.2, 0.02);
+      this.mesh(body, new THREE.BoxGeometry(0.3, 0.08, 0.12), dark, 0, 1.2, 0.25);
+      for (const x of [-0.18, 0.18]) this.mesh(body, new THREE.BoxGeometry(0.14, 0.38, 0.18), dark, x, 0.2, 0);
+      const blade = this.mesh(body, new THREE.BoxGeometry(0.09, 0.08, 0.72), accent, -0.42, 0.68, 0.24); blade.rotation.x = -0.35;
+    } else {
+      this.mesh(body, new THREE.BoxGeometry(0.72, 0.52, 0.82), primary, 0, 0.55, 0);
+      this.mesh(body, new THREE.BoxGeometry(0.55, 0.5, 0.52), primary, 0, 0.82, 0.55);
+      for (const x of [-0.23, 0.23]) { this.mesh(body, new THREE.BoxGeometry(0.15, 0.36, 0.16), dark, x, 0.2, 0.2); this.mesh(body, new THREE.BoxGeometry(0.15, 0.36, 0.16), dark, x, 0.2, -0.28); }
+      const tallEars = ['hare','owl'].includes(definition.kind);
+      for (const x of [-0.2, 0.2]) { const ear = this.mesh(body, new THREE.ConeGeometry(tallEars ? 0.13 : 0.18, tallEars ? 0.58 : 0.36, 4), accent, x, tallEars ? 1.37 : 1.22, 0.52); ear.rotation.z = x * 0.5; }
+      for (const x of [-0.15, 0.15]) this.mesh(body, new THREE.BoxGeometry(0.07, 0.08, 0.05), dark, x, 0.9, 0.83);
+      if (['owl','griffin','drake'].includes(definition.kind)) for (const x of [-0.48, 0.48]) { const wing = this.mesh(body, new THREE.BoxGeometry(0.35, 0.08, 0.68), accent, x, 0.66, -0.02); wing.rotation.z = x > 0 ? -0.28 : 0.28; }
+      if (definition.kind === 'golem') for (const x of [-0.43, 0.43]) this.mesh(body, new THREE.BoxGeometry(0.28, 0.48, 0.28), accent, x, 0.55, 0);
+      if (definition.kind === 'griffin') this.mesh(body, new THREE.ConeGeometry(0.28, 0.28, 5), accent, 0, 1.25, 0.5);
+      if (definition.kind === 'drake') { const tail = this.mesh(body, new THREE.ConeGeometry(0.16, 0.75, 5), accent, 0, 0.56, -0.72); tail.rotation.x = Math.PI / 2; }
+      if (definition.kind === 'unicorn') { const horn = this.mesh(body, new THREE.ConeGeometry(0.09, 0.6, 6), accent, 0, 1.45, 0.58); horn.rotation.x = Math.PI / 2; const mane = this.mesh(body, new THREE.BoxGeometry(0.16, 0.58, 0.18), accent, 0, 1.13, 0.12); mane.rotation.x = -0.3; }
+    }
+    root.scale.setScalar(0.72);
+    return { root, body, primary, accent, flashMaterials: [primary, accent] };
+  }
+  syncPets(run) {
+    const active = new Set(run.equippedPetIds);
+    for (const [id, view] of this.petViews) { if (active.has(id)) continue; this.scene.remove(view.root); view.root.traverse(node => { node.geometry?.dispose(); node.material?.dispose?.(); }); this.petViews.delete(id); }
+    for (const id of run.equippedPetIds) {
+      const pet = run.pets.find(entry => entry.id === id); const definition = pet && petDefinition(pet.key); if (!pet || !definition) continue;
+      let view = this.petViews.get(id); if (!view) { view = this.buildPet(definition); this.petViews.set(id, view); this.scene.add(view.root); }
+      view.root.position.set(pet.x, pet.attack > 0 ? 0.12 : 0, pet.z); view.root.rotation.y = pet.facing; view.body.position.y = Math.sin(run.time * 11 + id) * 0.035; view.body.rotation.x = pet.attack > 0 ? -0.18 : 0;
+      view.flashMaterials.forEach(mat => { mat.emissive.set(pet.flash > 0 ? '#fff2ba' : '#000000'); mat.emissiveIntensity = pet.flash > 0 ? 0.8 : 0; });
+    }
+  }
+  syncDrops(run) {
+    const active = new Set(run.drops.map(drop => drop.id));
+    for (const [id, view] of this.dropViews) {
+      if (active.has(id)) continue;
+      this.scene.remove(view);
+      view.traverse(node => { node.geometry?.dispose(); node.material?.dispose?.(); });
+      this.dropViews.delete(id);
+    }
+    for (const drop of run.drops) {
+      let view = this.dropViews.get(drop.id);
+      if (!view) {
+        const item = itemDefinition(drop.key);
+        view = new THREE.Group();
+        const aura = this.mesh(view, new THREE.CylinderGeometry(0.5, 0.62, 0.08, 8), new THREE.MeshBasicMaterial({ color: item.color, transparent: true, opacity: 0.5 }), 0, 0.08, 0);
+        aura.castShadow = false;
+        this.mesh(view, new THREE.OctahedronGeometry(0.3, 0), material(item.color), 0, 0.58, 0);
+        const beam = this.mesh(view, new THREE.CylinderGeometry(0.035, 0.12, 1.6, 6), new THREE.MeshBasicMaterial({ color: item.color, transparent: true, opacity: 0.28 }), 0, 0.82, 0);
+        beam.castShadow = false;
+        this.scene.add(view); this.dropViews.set(drop.id, view);
+      }
+      view.position.set(drop.x, 0, drop.z);
+      view.rotation.y = run.time * 1.8 + drop.spin;
+      view.children[1].position.y = 0.58 + Math.sin(run.time * 4 + drop.spin) * 0.1;
+    }
+  }
+  render(run, dt, snap = false) {
+    const p = run.player;
+    const activeIds = new Set(run.enemies.map(enemy => enemy.id));
+    for (const [id, view] of this.enemyViews) {
+      if (activeIds.has(id)) continue;
+      this.scene.remove(view.root); view.root.traverse(node => { node.geometry?.dispose(); node.material?.dispose?.(); }); this.enemyViews.delete(id);
+    }
+    for (const enemy of run.enemies) {
+      let view = this.enemyViews.get(enemy.id);
+      if (!view) { view = this.buildEnemy(enemy); this.enemyViews.set(enemy.id, view); this.scene.add(view.root); }
+    }
+    for (const [actor, view] of [[p, this.player], ...run.enemies.map(enemy => [enemy, this.enemyViews.get(enemy.id)])]) {
+      view.root.position.set(actor.x, 0, actor.z);
+      view.root.rotation.y = actor.facing;
+      view.flashMaterials.forEach(mat => { mat.emissive.set(actor.flash > 0 ? '#ffcfb0' : '#000000'); mat.emissiveIntensity = actor.flash > 0 ? 1 : 0; });
+    }
+    this.player.body.rotation.z = 0;
+    this.player.body.position.y = p.moving ? Math.sin(run.time * 16) * 0.045 : 0;
+    const stage = attackStage(p.attack);
+    this.player.sword.rotation.y = stage === 'windup' ? -1.3 : stage === 'active' ? -1.3 + ((p.attack.elapsed - B.player.windup) / B.player.active) * 2.6 : 0;
+    this.swing.visible = stage === 'active';
+    this.swing.position.set(p.x, 0.07, p.z);
+    this.swing.rotation.y = p.attack?.facing ?? p.facing;
+    for (const enemy of run.enemies) { const view = this.enemyViews.get(enemy.id); view.root.visible = enemy.mode !== 'defeated'; view.body.rotation.z = enemy.mode === 'defeated' ? Math.PI / 2 : 0; view.body.scale.setScalar(enemy.mode === 'windup' ? 1 + Math.sin(run.time * 25) * 0.07 : 1); }
+    const warningEnemy = run.enemies.find(enemy => enemy.mode === 'windup');
+    this.warning.visible = Boolean(warningEnemy);
+    if (warningEnemy) this.warning.position.set(warningEnemy.x, 0.06, warningEnemy.z);
+    this.syncDrops(run);
+    this.syncPets(run);
+    this.syncProjectiles(run);
+    const weaponId = run.equipped.weapon;
+    const weapon = weaponId && run.inventory.find(item => item.id === weaponId);
+    this.player.swordBlade.color.set(weapon ? itemDefinition(weapon.key, weapon.level).color : '#e7f0db');
+    const biome = biomeDefinition(run.biome);
+    this.scene.background.set(run.status === 'hub' ? '#91a6a0' : biome.fog); this.scene.fog.color.copy(this.scene.background);
+    this.groundMaterial.color.set(run.status === 'hub' ? '#526b61' : biome.world); this.arenaMaterial.color.set(run.status === 'hub' ? '#747b76' : biome.ground);
+    this.hubDecor.visible = run.status === 'hub';
+    this.meadowDecor.visible = run.status === 'playing' && run.biome === 'meadow';
+    this.portals.visible = run.status === 'hub';
+    this.frostDecor.visible = run.status === 'playing' && run.biome === 'frost';
+    this.jungleDecor.visible = run.status === 'playing' && run.biome === 'jungle';
+    this.emberDecor.visible = run.status === 'playing' && run.biome === 'ember';
+    this.towerDecor.visible = run.status === 'playing' && run.biome === 'tower';
+    this.towerPortal.children.slice(0, 2).forEach((child, index) => { child.rotation.y += dt * (index ? -0.35 : 0.35); });
+    const target = new THREE.Vector3(p.x, 0, p.z - 0.8);
+    if (snap) this.focus.copy(target);
+    else this.focus.lerp(target, 1 - Math.exp(-6 * dt));
+    this.camera.position.copy(this.focus).add(new THREE.Vector3(0, 16, 16));
+    this.camera.lookAt(this.focus);
+    this.renderer.render(this.scene, this.camera);
+  }
+  destroy() {
+    window.removeEventListener('resize', this.resize);
+    window.visualViewport?.removeEventListener('resize', this.resize);
+    this.scene.traverse(node => {
+      node.geometry?.dispose();
+      if (node.material) (Array.isArray(node.material) ? node.material : [node.material]).forEach(mat => mat.dispose());
+    });
+    this.renderer.dispose();
+  }
+}

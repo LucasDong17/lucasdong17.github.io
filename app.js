@@ -1486,3 +1486,4 @@ $('#resetGame').addEventListener('click', resetActiveGame);
 $('#closeSafety').addEventListener('click', () => $('#safetyDialog').close());
 switchBot('stress', true);
 showGameHub();
+if (location.hash === '#games' || new URLSearchParams(location.search).get('from') === 'hero-wars') switchView('calm');
