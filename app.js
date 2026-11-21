@@ -86,7 +86,7 @@ const MATH_SOLUTION_PREFIX = '__MATH_SOLUTION__';
 function switchView(view) {
   $$('.tab').forEach(tab => { const active = tab.dataset.view === view; tab.classList.toggle('active', active); tab.setAttribute('aria-selected', String(active)); });
   $$('[data-view-panel]').forEach(panel => { const active = panel.dataset.viewPanel === view; panel.classList.toggle('active', active); panel.hidden = !active; });
-  if (view === 'calm') $('#calmView').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (view === 'calm') { showGameHub(); $('#calmView').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 }
 
 function switchBot(bot, initial = false) {
@@ -1293,6 +1293,37 @@ function answerKnownConcept(message) {
 function resizeInput() { const input = $('#coachInput'); input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 120)}px`; }
 function newChat() { messages.length = 0; fallbackNoticeShown[activeBot] = false; clearAttachment(); renderConversation(); toast(`Started a new ${BOT_CONFIG[activeBot].name} chat.`); }
 
+const GAME_DETAILS = {
+  memory: { title: 'Soft Matches', instructions: 'Turn over two cards and find the calming pairs.' },
+  water: { title: 'Water Sort', instructions: 'Choose a tube, then choose another tube to pour matching colors together.' },
+  slider: { title: 'Cozy Slider', instructions: 'Move a tile beside the empty space until the numbers are in order.' }
+};
+let activeGame = '';
+
+function showGameHub() {
+  activeGame = '';
+  $('#puzzleHub').hidden = false;
+  $('#gameStage').hidden = true;
+}
+
+function openPuzzle(game) {
+  if (!GAME_DETAILS[game]) return;
+  activeGame = game;
+  $('#puzzleHub').hidden = true;
+  $('#gameStage').hidden = false;
+  $('#activeGameTitle').textContent = GAME_DETAILS[game].title;
+  $('#activeGameInstructions').textContent = GAME_DETAILS[game].instructions;
+  $$('[data-game-panel]').forEach(panel => { panel.hidden = panel.dataset.gamePanel !== game; });
+  resetActiveGame();
+  $('#gameStage').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function resetActiveGame() {
+  if (activeGame === 'memory') startCalmGame();
+  else if (activeGame === 'water') startWaterGame();
+  else if (activeGame === 'slider') startSliderGame();
+}
+
 const symbols = ['leaf', 'moon', 'wave', 'sun', 'cloud', 'star'];
 const symbolArt = { leaf: '❧', moon: '☾', wave: '≈', sun: '☼', cloud: '☁', star: '✦' };
 let firstCard = null; let lockBoard = false; let matches = 0;
@@ -1317,6 +1348,124 @@ function flipCard(card) {
   setTimeout(() => { previous.classList.remove('flipped'); card.classList.remove('flipped'); previous.setAttribute('aria-label', 'Hidden card'); card.setAttribute('aria-label', 'Hidden card'); lockBoard = false; }, 750);
 }
 
+const WATER_START = [
+  ['a', 'b', 'c', 'd'], ['b', 'c', 'd', 'a'], ['c', 'd', 'a', 'b'], ['d', 'a', 'b', 'c'], [], []
+];
+const WATER_NAMES = { a: 'coral stripes', b: 'blue dots', c: 'green diamonds', d: 'gold lines' };
+const WATER_SYMBOLS = { a: '╱', b: '•', c: '◇', d: '—' };
+let waterTubes = [];
+let selectedTube = null;
+
+function startWaterGame() {
+  waterTubes = WATER_START.map(tube => [...tube]);
+  selectedTube = null;
+  $('#waterFinish').hidden = true;
+  $('#waterStatus').textContent = 'Choose a tube, then choose where to pour.';
+  renderWaterGame();
+}
+
+function renderWaterGame() {
+  const board = $('#waterBoard');
+  board.innerHTML = '';
+  waterTubes.forEach((tube, index) => {
+    const button = document.createElement('button');
+    button.className = `water-tube${selectedTube === index ? ' selected' : ''}`;
+    button.type = 'button';
+    const contents = tube.length ? tube.map(color => WATER_NAMES[color]).join(', ') : 'empty';
+    button.setAttribute('aria-label', `Tube ${index + 1}: ${contents}${selectedTube === index ? ', selected' : ''}`);
+    const rim = document.createElement('span'); rim.className = 'tube-rim'; rim.setAttribute('aria-hidden', 'true');
+    const glass = document.createElement('span'); glass.className = 'tube-glass'; glass.setAttribute('aria-hidden', 'true');
+    tube.forEach(color => { const layer = document.createElement('span'); layer.className = `water-layer water-${color}`; layer.textContent = WATER_SYMBOLS[color]; glass.append(layer); });
+    button.append(rim, glass);
+    button.addEventListener('click', () => chooseWaterTube(index));
+    board.append(button);
+  });
+}
+
+function chooseWaterTube(index) {
+  if ($('#waterFinish').hidden === false) return;
+  if (selectedTube === null) {
+    if (!waterTubes[index].length) { $('#waterStatus').textContent = 'That tube is empty. Choose one with color in it.'; return; }
+    selectedTube = index;
+    $('#waterStatus').textContent = `Tube ${index + 1} selected. Choose where to pour.`;
+    renderWaterGame();
+    return;
+  }
+  if (selectedTube === index) {
+    selectedTube = null; $('#waterStatus').textContent = 'Selection cleared. Choose any tube.'; renderWaterGame(); return;
+  }
+  const moved = pourWater(selectedTube, index);
+  selectedTube = null;
+  $('#waterStatus').textContent = moved ? 'Nice. Choose another tube when you are ready.' : 'Those colors do not fit yet. Try a different tube.';
+  renderWaterGame();
+  if (waterTubes.every(tube => tube.length === 0 || (tube.length === 4 && tube.every(color => color === tube[0])))) {
+    $('#waterFinish').hidden = false;
+    $('#waterStatus').textContent = 'Every color is sorted.';
+  }
+}
+
+function pourWater(fromIndex, toIndex) {
+  const from = waterTubes[fromIndex], to = waterTubes[toIndex];
+  if (!from.length || to.length >= 4) return false;
+  const color = from.at(-1);
+  if (to.length && to.at(-1) !== color) return false;
+  let groupSize = 1;
+  while (groupSize < from.length && from[from.length - 1 - groupSize] === color) groupSize += 1;
+  const amount = Math.min(groupSize, 4 - to.length);
+  for (let count = 0; count < amount; count++) to.push(from.pop());
+  return amount > 0;
+}
+
+let sliderTiles = [];
+
+function startSliderGame() {
+  sliderTiles = [1, 2, 3, 4, 5, 6, 7, 8, 0];
+  let previousBlank = -1;
+  for (let move = 0; move < 120; move++) {
+    const blank = sliderTiles.indexOf(0);
+    let choices = sliderNeighbors(blank).filter(index => index !== previousBlank);
+    if (!choices.length) choices = sliderNeighbors(blank);
+    const chosen = choices[Math.floor(Math.random() * choices.length)];
+    previousBlank = blank;
+    [sliderTiles[blank], sliderTiles[chosen]] = [sliderTiles[chosen], sliderTiles[blank]];
+  }
+  if (sliderSolved()) [sliderTiles[7], sliderTiles[8]] = [sliderTiles[8], sliderTiles[7]];
+  $('#sliderFinish').hidden = true;
+  $('#sliderStatus').textContent = 'Move a tile beside the empty space.';
+  renderSliderGame();
+}
+
+function sliderNeighbors(index) {
+  const row = Math.floor(index / 3), column = index % 3;
+  return [index - 3, index + 3, index - 1, index + 1].filter(candidate => candidate >= 0 && candidate < 9 && Math.abs(Math.floor(candidate / 3) - row) + Math.abs(candidate % 3 - column) === 1);
+}
+
+function renderSliderGame() {
+  const board = $('#sliderBoard');
+  board.innerHTML = '';
+  sliderTiles.forEach((value, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `slider-tile${value === 0 ? ' slider-empty' : ''}`;
+    button.textContent = value || '';
+    button.disabled = value === 0;
+    button.setAttribute('aria-label', value === 0 ? 'Empty space' : `Tile ${value}`);
+    if (value) button.addEventListener('click', () => moveSliderTile(index));
+    board.append(button);
+  });
+}
+
+function moveSliderTile(index) {
+  const blank = sliderTiles.indexOf(0);
+  if (!sliderNeighbors(blank).includes(index) || $('#sliderFinish').hidden === false) return;
+  [sliderTiles[blank], sliderTiles[index]] = [sliderTiles[index], sliderTiles[blank]];
+  renderSliderGame();
+  if (sliderSolved()) { $('#sliderFinish').hidden = false; $('#sliderStatus').textContent = 'The tiles are in order.'; }
+  else $('#sliderStatus').textContent = 'Good move. Keep going at your own pace.';
+}
+
+function sliderSolved() { return sliderTiles.every((value, index) => value === (index + 1) % 9); }
+
 function toast(message) { $('#toast').textContent = message; $('#toast').classList.add('show'); setTimeout(() => $('#toast').classList.remove('show'), 1800); }
 
 $$('.tab').forEach(tab => tab.addEventListener('click', () => switchView(tab.dataset.view)));
@@ -1331,7 +1480,9 @@ $('#imageInput').addEventListener('change', event => selectAttachment(event.curr
 $('#removeAttachment').addEventListener('click', clearAttachment);
 $('#newChatButton').addEventListener('click', newChat);
 $('#calmShortcut').addEventListener('click', () => switchView('calm'));
-$('#resetGame').addEventListener('click', startCalmGame);
+$$('.game-card').forEach(button => button.addEventListener('click', () => openPuzzle(button.dataset.game)));
+$('#allGamesButton').addEventListener('click', showGameHub);
+$('#resetGame').addEventListener('click', resetActiveGame);
 $('#closeSafety').addEventListener('click', () => $('#safetyDialog').close());
 switchBot('stress', true);
-startCalmGame();
+showGameHub();

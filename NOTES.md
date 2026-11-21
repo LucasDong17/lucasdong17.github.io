@@ -14,7 +14,7 @@ The AI model is `gpt-5-mini` by default. You can change it with `OPENAI_MODEL` i
 - Visual, step-by-step math help across arithmetic, fractions, percentages, linear and quadratic algebra, function graphs, plane and solid geometry, trigonometry, polynomial calculus, descriptive statistics, probability, discrete math, sequences, and introductory linear algebra.
 - Optional screenshot and photo attachments with an in-chat preview, image-size protection, privacy guidance, multimodal help when the private AI server is connected, and on-device OCR for clear typed equations when it is offline.
 - Warm suggested prompts, clear privacy reminders, and a breathing guide.
-- Optional six-pair calm matching game with no timer, score, or failure state.
+- Optional relaxing game hub with Soft Matches, Water Sort, and Cozy Slider; each is untimed and has no score, lives, or failure state.
 - Keyboard, mouse, and touch controls.
 - Real OpenAI Responses API calls through a local Node server; the API key never enters browser code.
 - The full AI instructions in `BRIEF.md` are sent as system instructions on every request.

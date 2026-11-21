@@ -20,7 +20,7 @@ The project should help students reduce stress, get academic support, organize w
 
 ## My solution
 
-School's Helper gives students four easy-to-reach, specialized assistants: Math Helper, Stress Helper, Study Planner, and Friendly Chat. They share one safety system but keep separate conversations and respond differently based on their jobs. The experience also includes breathing guidance and a calm matching game. Unlike a single-purpose planner or tutor, it treats academic confusion, overwhelm, organization, and everyday conversation as connected parts of school life without mixing every need into one confusing chat.
+School's Helper gives students four easy-to-reach, specialized assistants: Math Helper, Stress Helper, Study Planner, and Friendly Chat. They share one safety system but keep separate conversations and respond differently based on their jobs. The experience also includes breathing guidance and a relaxing game area. Unlike a single-purpose planner or tutor, it treats academic confusion, overwhelm, organization, and everyday conversation as connected parts of school life without mixing every need into one confusing chat.
 
 ## Safety plan
 
@@ -75,10 +75,10 @@ Talk to middle- and high-school students. Be empathetic, non-judgmental, clear, 
 - For a possible crisis, stop tutoring and give the safety response described above.
 - Never be mean or encourage anything harmful.
 
-## The calming game
+## The relaxing games
 
-The optional calm break is a simple six-pair memory-matching activity. It has no timer, score, lives, or failure state. Its purpose is to give the student a gentle reset before returning to the coach.
+The optional calm break opens a simple game chooser with Soft Matches, Water Sort, and Cozy Slider. Each game has its own large icon and opens in a focused play area with an easy way back to all games. There are no timers, scores, lives, or failure states. Their purpose is to give the student a gentle reset before returning to the coach.
 
 ## Current scope
 
-The main experience contains four comfortable, multi-turn assistants with separate chat histories, tailored greetings, suggested prompts, conversation reset, keyboard and touch controls, optional photo and screenshot attachments, shared safety handling, privacy reminders, breathing guidance, broad step-by-step math support, visual worked solutions for graphing and geometry questions, and an optional no-pressure matching game. Built-in math includes arithmetic, fractions, percentages, algebra, quadratics, geometry, trigonometry, polynomial calculus, descriptive statistics, probability, combinations, permutations, number theory, sequences, and introductory linear algebra. The connected AI receives the selected assistant mode so it can produce the best response for that purpose while following the same global safety rules. It uses original shapes and symbols and no copyrighted characters.
+The main experience contains four comfortable, multi-turn assistants with separate chat histories, tailored greetings, suggested prompts, conversation reset, keyboard and touch controls, optional photo and screenshot attachments, shared safety handling, privacy reminders, breathing guidance, broad step-by-step math support, visual worked solutions for graphing and geometry questions, and an optional no-pressure game hub containing Soft Matches, Water Sort, and Cozy Slider. Built-in math includes arithmetic, fractions, percentages, algebra, quadratics, geometry, trigonometry, polynomial calculus, descriptive statistics, probability, combinations, permutations, number theory, sequences, and introductory linear algebra. The connected AI receives the selected assistant mode so it can produce the best response for that purpose while following the same global safety rules. It uses original shapes and symbols and no copyrighted characters.

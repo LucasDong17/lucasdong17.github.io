@@ -9,14 +9,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=19">
+  <link rel="stylesheet" href="styles.css?v=21">
 </head>
 <body>
   <div class="soft-shape shape-one" aria-hidden="true"></div>
   <div class="soft-shape shape-two" aria-hidden="true"></div>
   <header class="topbar">
     <a class="brand" href="#coach" aria-label="School's Helper home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>School's <strong>Helper</strong></span></a>
-    <button class="game-launch" type="button" data-open-game>🧩 Relaxing puzzle</button>
+    <button class="game-launch" type="button" data-open-game>🎮 Relaxing games</button>
   </header>
   <main class="app-shell">
     <section class="welcome" aria-labelledby="welcome-title">
@@ -25,7 +25,7 @@
     </section>
     <nav class="view-tabs" aria-label="Choose an activity">
       <button class="tab active" type="button" data-view="coach" aria-selected="true">💬 Talk to my coach</button>
-      <button class="tab" type="button" data-view="calm" aria-selected="false">🧩 Relaxing puzzle</button>
+      <button class="tab" type="button" data-view="calm" aria-selected="false">🎮 Relaxing games</button>
     </nav>
     <section class="view active" id="coachView" data-view-panel="coach">
       <div class="chat-card" id="coach">
@@ -42,12 +42,35 @@
         <form class="chat-form" id="coachForm"><button class="attach-button" id="attachButton" type="button" title="Attach a photo or screenshot" aria-label="Attach a photo or screenshot">＋</button><input class="sr-only" id="imageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif"><label class="sr-only" for="coachInput">Message your coach</label><textarea id="coachInput" maxlength="500" rows="1" placeholder="Ask a question or attach a math screenshot…" autocomplete="off"></textarea><button class="send-button" type="button" aria-label="Send message"><span>Send</span><b aria-hidden="true">↑</b></button></form>
         <p class="privacy-note">Photos should show only the problem—no faces, names, school names, addresses, or other private details. AI can make mistakes, so check important facts.</p>
       </div>
-      <aside class="support-card"><span class="support-icon" aria-hidden="true">🧩</span><h2>Need a brain break?</h2><p>Play an easy matching puzzle with no timer, no score, and no way to lose. Come back to the chat whenever you feel ready.</p><button type="button" id="calmShortcut">Play relaxing puzzle</button></aside>
+      <aside class="support-card"><span class="support-icon" aria-hidden="true">🎮</span><h2>Need a brain break?</h2><p>Choose a gentle puzzle with no timer, lives, or pressure. Come back to the chat whenever you feel ready.</p><button type="button" id="calmShortcut">Choose a relaxing game</button></aside>
     </section>
     <section class="view" id="calmView" data-view-panel="calm" hidden>
-      <div class="calm-intro"><span class="eyebrow">A QUIET RESET</span><h2>Match the soft shapes.</h2><p>There is no timer and no penalty. Turn over two cards at a time and find all six pairs. Take as long as you like.</p><div class="game-status"><span id="matchCount">0 of 6 pairs</span><button id="resetGame" type="button">Mix again</button></div></div>
-      <div class="memory-grid" id="memoryGrid" aria-label="Calm matching game"></div>
-      <div class="calm-finish" id="calmFinish" role="status" hidden><span>✓</span><div><strong>Lovely. You found them all.</strong><p>Notice how you feel now. You can play again or go back to your coach.</p></div></div>
+      <div class="puzzle-hub" id="puzzleHub">
+        <div class="game-hub-heading"><span class="eyebrow">A QUIET RESET</span><h2>Choose what feels good.</h2><p>Every game is untimed, gentle, and impossible to lose. You can stop whenever your mind feels a little clearer.</p></div>
+        <div class="game-menu" aria-label="Relaxing games">
+          <button class="game-card" type="button" data-game="memory"><span class="game-icon memory-icon" aria-hidden="true">✦</span><strong>Soft Matches</strong><small>Find matching calming symbols</small></button>
+          <button class="game-card" type="button" data-game="water"><span class="game-icon water-icon" aria-hidden="true">💧</span><strong>Water Sort</strong><small>Group each color into one tube</small></button>
+          <button class="game-card" type="button" data-game="slider"><span class="game-icon slider-icon" aria-hidden="true">▦</span><strong>Cozy Slider</strong><small>Slide the tiles into order</small></button>
+        </div>
+      </div>
+      <div class="game-stage" id="gameStage" hidden>
+        <header class="game-stage-heading"><button class="all-games-button" id="allGamesButton" type="button">All games</button><div><span class="eyebrow">NO RUSH</span><h2 id="activeGameTitle">Soft Matches</h2><p id="activeGameInstructions">Turn over two cards and find the pairs.</p></div><button class="game-reset-button" id="resetGame" type="button">Start fresh</button></header>
+        <section class="game-panel" id="memoryPanel" data-game-panel="memory" aria-label="Soft Matches game">
+          <div class="game-status"><span id="matchCount">0 of 6 pairs</span><span>Take as long as you like.</span></div>
+          <div class="memory-grid" id="memoryGrid" aria-label="Calm matching game"></div>
+          <div class="calm-finish" id="calmFinish" role="status" hidden><span>✓</span><div><strong>Lovely. You found them all.</strong><p>Notice how you feel now. You can play again or choose another game.</p></div></div>
+        </section>
+        <section class="game-panel" id="waterPanel" data-game-panel="water" aria-label="Water Sort game" hidden>
+          <div class="game-status"><span id="waterStatus">Choose a tube, then choose where to pour.</span><span>No wrong turns—you can restart anytime.</span></div>
+          <div class="water-board" id="waterBoard" aria-label="Water Sort tubes"></div>
+          <div class="calm-finish" id="waterFinish" role="status" hidden><span>✓</span><div><strong>Every color has a home.</strong><p>Take a slow breath and enjoy the tidy colors.</p></div></div>
+        </section>
+        <section class="game-panel" id="sliderPanel" data-game-panel="slider" aria-label="Cozy Slider game" hidden>
+          <div class="game-status"><span id="sliderStatus">Move a tile beside the empty space.</span><span>There is no move limit.</span></div>
+          <div class="slider-board" id="sliderBoard" aria-label="Sliding tile puzzle"></div>
+          <div class="calm-finish" id="sliderFinish" role="status" hidden><span>✓</span><div><strong>Everything is in place.</strong><p>Nice work. Stay here, try again, or choose another game.</p></div></div>
+        </section>
+      </div>
     </section>
   </main>
   <dialog id="safetyDialog" class="safety-dialog">
@@ -55,6 +78,6 @@
     <div class="safety-actions"><a class="primary-button" href="tel:988">Call 988</a><button id="closeSafety" type="button">Close</button></div><small>School's Helper is not an emergency service or a replacement for a counselor.</small>
   </dialog>
   <div class="toast" id="toast" role="status"></div>
-  <script defer src="app.js?v=19"></script>
+  <script defer src="app.js?v=21"></script>
 </body>
 </html>
