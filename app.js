@@ -171,7 +171,12 @@ async function readMathFromImage(image, onProgress = () => {}) {
     });
     const preparedImage = await prepareImageForOcr(image);
     const result = await worker.recognize(preparedImage);
-    return findMathInRecognizedText(result?.data?.text || '');
+    const recognizedText = result?.data?.text || '';
+    if (new URLSearchParams(window.location.search).has('debug-ocr')) {
+      document.documentElement.setAttribute('data-ocr-text', recognizedText.slice(0, 2000));
+      document.documentElement.setAttribute('data-ocr-confidence', String(result?.data?.confidence ?? ''));
+    }
+    return findMathInRecognizedText(recognizedText);
   } catch (error) {
     console.warn('On-device math reading was unavailable:', error?.message || 'unknown OCR error');
     return '';
