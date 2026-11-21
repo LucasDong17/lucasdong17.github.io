@@ -1466,6 +1466,44 @@ function moveSliderTile(index) {
 
 function sliderSolved() { return sliderTiles.every((value, index) => value === (index + 1) % 9); }
 
+const TUTOR_QUESTS = [
+  { subject: 'MATH QUEST', name: 'Fraction Forest', prompt: 'A trail is 3/4 mile long. You walk 1/2 mile. How many miles are left? Give your answer as a fraction.', answer: '1/4', hint: 'Put both fractions over the same denominator: 1/2 is the same as 2/4, then subtract.' },
+  { subject: 'ALGEBRA QUEST', name: 'Equation Bridge', prompt: 'The bridge opens when you solve 3x + 4 = 19. What is x?', answer: '5', hint: 'Undo the +4 first by subtracting 4 from both sides. Then undo the multiplication by 3.' },
+  { subject: 'DATA QUEST', name: 'Data Detective', prompt: 'A set of scores is 4, 6, 6, 8, and 11. What is the mean (average)?', answer: '7', hint: 'Add all five scores, then divide the total by the number of scores.' }
+];
+let activeQuest = null;
+
+function renderQuestList() {
+  $('#questList').innerHTML = TUTOR_QUESTS.map((quest, index) => `<button class="quest-card" type="button" data-quest="${index}"><span class="quest-number">${index + 1}</span><span><strong>${quest.name}</strong><small>${quest.prompt}</small></span><b>Play →</b></button>`).join('');
+  $$('.quest-card').forEach(button => button.addEventListener('click', () => openQuest(Number(button.dataset.quest))));
+}
+
+function openQuest(index) {
+  activeQuest = index;
+  const quest = TUTOR_QUESTS[index];
+  $('#puzzleHub').hidden = true; $('#questStage').hidden = false;
+  $('#questSubject').textContent = quest.subject; $('#questName').textContent = quest.name; $('#questProgress').textContent = `Quest ${index + 1} of ${TUTOR_QUESTS.length}`;
+  $('#questPrompt').textContent = quest.prompt; $('#questAnswer').value = ''; $('#questFeedback').textContent = ''; $('#questTutorAnswer').hidden = true;
+  $('#questAnswer').focus(); $('#questStage').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeQuest() { activeQuest = null; $('#questStage').hidden = true; $('#puzzleHub').hidden = false; $('#puzzleHub').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+function normalizeQuestAnswer(value) { return value.trim().toLowerCase().replace(/[\s]/g, '').replace(/\.0+$/, ''); }
+function checkQuestAnswer(event) {
+  event.preventDefault(); if (activeQuest === null) return;
+  const quest = TUTOR_QUESTS[activeQuest]; const correct = normalizeQuestAnswer($('#questAnswer').value) === normalizeQuestAnswer(quest.answer);
+  $('#questFeedback').className = `quest-feedback ${correct ? 'correct' : 'try-again'}`;
+  $('#questFeedback').textContent = correct ? '✓ Nice work! You solved it. Choose another quest or try this one again.' : 'Not quite yet. Try a different step, or ask the AI tutor for a hint.';
+}
+async function askQuestTutor() {
+  if (activeQuest === null) return;
+  const quest = TUTOR_QUESTS[activeQuest]; const box = $('#questTutorAnswer'); const text = box.querySelector('p');
+  box.hidden = false; text.textContent = 'Thinking through the first step…'; $('#questTutor').disabled = true;
+  try { text.textContent = await askCoach(`I am playing the ${quest.name} quest. Give me a short hint for this problem without giving the final answer: ${quest.prompt}`, [], '', 'math'); }
+  catch { text.textContent = `Hint: ${quest.hint}`; }
+  finally { $('#questTutor').disabled = false; }
+}
+
 function toast(message) { $('#toast').textContent = message; $('#toast').classList.add('show'); setTimeout(() => $('#toast').classList.remove('show'), 1800); }
 
 $$('.tab').forEach(tab => tab.addEventListener('click', () => switchView(tab.dataset.view)));
@@ -1480,10 +1518,15 @@ $('#imageInput').addEventListener('change', event => selectAttachment(event.curr
 $('#removeAttachment').addEventListener('click', clearAttachment);
 $('#newChatButton').addEventListener('click', newChat);
 $('#calmShortcut').addEventListener('click', () => switchView('calm'));
+$('#questBack').addEventListener('click', closeQuest);
+$('#questAnswerForm').addEventListener('submit', checkQuestAnswer);
+$('#questReset').addEventListener('click', () => openQuest(activeQuest));
+$('#questTutor').addEventListener('click', askQuestTutor);
 $$('.game-card').forEach(button => button.addEventListener('click', () => openPuzzle(button.dataset.game)));
 $('#allGamesButton').addEventListener('click', showGameHub);
 $('#resetGame').addEventListener('click', resetActiveGame);
 $('#closeSafety').addEventListener('click', () => $('#safetyDialog').close());
 switchBot('stress', true);
 showGameHub();
+renderQuestList();
 if (location.hash === '#games' || new URLSearchParams(location.search).get('from') === 'hero-wars') switchView('calm');
