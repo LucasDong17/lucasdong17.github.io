@@ -162,16 +162,47 @@ async function readMathFromImage(image, onProgress = () => {}) {
   let worker;
   try {
     await loadOcrLibrary();
-    worker = await window.Tesseract.createWorker('eng', 1, {
+    worker = await window.Tesseract.createWorker('eng', undefined, {
       logger: status => { if (status.status === 'recognizing text' && Number.isFinite(status.progress)) onProgress(status.progress); }
     });
-    const result = await worker.recognize(image);
+    await worker.setParameters({
+      tessedit_pageseg_mode: '11',
+      tessedit_char_whitelist: '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+-=*/().^√π% '
+    });
+    const preparedImage = await prepareImageForOcr(image);
+    const result = await worker.recognize(preparedImage);
     return findMathInRecognizedText(result?.data?.text || '');
-  } catch {
+  } catch (error) {
+    console.warn('On-device math reading was unavailable:', error?.message || 'unknown OCR error');
     return '';
   } finally {
     if (worker) await worker.terminate().catch(() => {});
   }
+}
+
+function prepareImageForOcr(source) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onerror = reject;
+    image.onload = () => {
+      const scale = Math.min(2, 2400 / image.width, 1600 / image.height);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context) { reject(new Error('Image processing is unavailable')); return; }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+      for (let index = 0; index < pixels.data.length; index += 4) {
+        const gray = pixels.data[index] * 0.299 + pixels.data[index + 1] * 0.587 + pixels.data[index + 2] * 0.114;
+        const value = gray < 205 ? 0 : 255;
+        pixels.data[index] = value; pixels.data[index + 1] = value; pixels.data[index + 2] = value; pixels.data[index + 3] = 255;
+      }
+      context.putImageData(pixels, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    image.src = source;
+  });
 }
 
 function loadOcrLibrary() {
@@ -179,7 +210,7 @@ function loadOcrLibrary() {
   if (ocrLoaderPromise) return ocrLoaderPromise;
   ocrLoaderPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js';
     script.crossOrigin = 'anonymous';
     script.onload = () => window.Tesseract ? resolve() : reject(new Error('OCR did not load'));
     script.onerror = reject;
@@ -195,6 +226,7 @@ function findMathInRecognizedText(text) {
     .replace(/÷/g, '/')
     .replace(/²/g, '^2')
     .replace(/³/g, '^3')
+    .replace(/(\d)\s*[kK]\b/g, '$1x')
     .split(/\r?\n/)
     .map(line => line.trim())
     .filter(Boolean);
