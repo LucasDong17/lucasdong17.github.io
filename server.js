@@ -76,7 +76,7 @@ function json(response, status, value) {
   response.end(JSON.stringify(value));
 }
 
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '::', () => {
   console.log(`School's Helper is running at http://localhost:${PORT}`);
   if (!env.OPENAI_API_KEY) console.log('AI is in setup mode: add OPENAI_API_KEY to .env and restart.');
 });
