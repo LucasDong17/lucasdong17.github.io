@@ -20,7 +20,7 @@ The project should help students reduce stress, get academic support, organize w
 
 ## My solution
 
-School's Helper combines an open-ended supportive AI coach with academic tutoring, task organization, social-skills practice, breathing guidance, and a calm matching game. Unlike a single-purpose planner or tutor, it treats academic confusion, overwhelm, and social stress as connected parts of the same school experience. Students can talk naturally with the coach for as long as they need; they are not forced through a timed game.
+School's Helper gives students four easy-to-reach, specialized assistants: Math Helper, Stress Helper, Study Planner, and Friendly Chat. They share one safety system but keep separate conversations and respond differently based on their jobs. The experience also includes breathing guidance and a calm matching game. Unlike a single-purpose planner or tutor, it treats academic confusion, overwhelm, organization, and everyday conversation as connected parts of school life without mixing every need into one confusing chat.
 
 ## Safety plan
 
@@ -40,6 +40,7 @@ Only answer after the student types and submits a message or chooses a prompt ch
 
 ### Its job
 
+- Specialized assistants: Math Helper teaches problems step by step; Stress Helper listens and lowers pressure; Study Planner creates realistic plans with breaks; Friendly Chat offers safe, age-appropriate conversation. Each keeps separate recent context.
 - Academic tutoring: explain confusing topics step by step across arithmetic, algebra, geometry, trigonometry, calculus, statistics, probability, discrete mathematics, linear algebra, and other school mathematics. Notice likely foundation gaps, use a graph or labeled diagram when it makes the idea clearer, and create a short active-recall check without simply doing graded work.
 - Image help: let students attach a photo or screenshot of a school problem when typing it would add stress. Read only the visible problem, ignore unrelated image details, and calmly ask for a clearer image when necessary instead of guessing. When the live AI is unavailable, try on-device text recognition for a clear typed equation and ask the student to verify the recognized equation before solving it.
 - Task organization: turn a large assignment into small, concrete, non-overwhelming actions.
@@ -80,4 +81,4 @@ The optional calm break is a simple six-pair memory-matching activity. It has no
 
 ## Current scope
 
-The main experience is a comfortable, multi-turn AI coach chat with suggested prompts, conversation reset, keyboard and touch controls, optional photo and screenshot attachments, safety handling, privacy reminders, breathing guidance, broad step-by-step math support, visual worked solutions for graphing and geometry questions, and an optional no-pressure matching game. Built-in math includes arithmetic, fractions, percentages, algebra, quadratics, geometry, trigonometry, polynomial calculus, descriptive statistics, probability, combinations, permutations, number theory, sequences, and introductory linear algebra. The connected AI can examine an attached problem image and discuss other mathematics; it should be honest when a specialized calculator, clearer image, diagram, or teacher check is needed. It uses original shapes and symbols and no copyrighted characters.
+The main experience contains four comfortable, multi-turn assistants with separate chat histories, tailored greetings, suggested prompts, conversation reset, keyboard and touch controls, optional photo and screenshot attachments, shared safety handling, privacy reminders, breathing guidance, broad step-by-step math support, visual worked solutions for graphing and geometry questions, and an optional no-pressure matching game. Built-in math includes arithmetic, fractions, percentages, algebra, quadratics, geometry, trigonometry, polynomial calculus, descriptive statistics, probability, combinations, permutations, number theory, sequences, and introductory linear algebra. The connected AI receives the selected assistant mode so it can produce the best response for that purpose while following the same global safety rules. It uses original shapes and symbols and no copyrighted characters.

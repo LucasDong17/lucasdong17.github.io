@@ -2,7 +2,7 @@ const CRISIS_PATTERN = /\b(kill myself|suicide|suicidal|hurt myself|self[- ]?har
 
 function isCrisisMessage(message) { return CRISIS_PATTERN.test(message); }
 
-async function askCoach(message, history = [], image = '') {
+async function askCoach(message, history = [], image = '', bot = 'stress') {
   const controller = typeof AbortController === 'undefined' ? null : new AbortController();
   const timeout = controller ? setTimeout(() => controller.abort(), 12000) : null;
   let response;
@@ -10,7 +10,7 @@ async function askCoach(message, history = [], image = '') {
     const options = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, history: history.slice(-8), image })
+      body: JSON.stringify({ message, history: history.slice(-8), image, bot })
     };
     if (controller) options.signal = controller.signal;
     response = await fetch(new URL('api/coach', document.baseURI), options);
@@ -28,9 +28,57 @@ async function askCoach(message, history = [], image = '') {
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
-const messages = [];
+const BOT_CONFIG = {
+  math: {
+    name: 'Math Helper', avatar: '∑', status: 'Explains the why, one step at a time',
+    greeting: 'Bring me a math problem, graph, or screenshot. There is no timer—we can slow down and work through one step at a time.',
+    placeholder: 'Ask math or attach a problem screenshot…',
+    prompts: [
+      ['Solve for x', 'Solve 7x + 10 = 8x + 10 and show every step.'],
+      ['Graph an equation', 'Graph y = 2x + 1 and explain the points.'],
+      ['Try geometry', 'Find the hypotenuse of a right triangle with legs 3 and 4.'],
+      ['Try advanced math', 'Differentiate 3x^2 + 2x - 5 and show every step.']
+    ]
+  },
+  stress: {
+    name: 'Stress Helper', avatar: '☁', status: 'Helps lower the pressure',
+    greeting: 'You do not have to solve everything at once. Tell me what feels heavy, and we’ll find one calm, doable next step together.',
+    placeholder: 'What feels stressful right now?',
+    prompts: [
+      ['I feel overwhelmed', 'I feel overwhelmed by my schoolwork. Can you help me choose one small first step?'],
+      ['Help me calm down', 'I feel tense right now. Guide me through a short calming exercise.'],
+      ['A tough school moment', 'Something stressful happened at school. Can I talk it through?'],
+      ['I need a break', 'Help me decide whether to take a short break and how to restart afterward.']
+    ]
+  },
+  planner: {
+    name: 'Study Planner', avatar: '✓', status: 'Turns schoolwork into doable pieces',
+    greeting: 'Tell me what you need to finish and when it is due. I’ll help you make a realistic plan with breaks and free time included.',
+    placeholder: 'What do you need to plan?',
+    prompts: [
+      ['Plan an assignment', 'Help me break a big assignment into small steps.'],
+      ['Study for a test', 'Help me make a low-stress study plan for a test.'],
+      ['Choose what comes first', 'I have several tasks. Help me decide what to do first.'],
+      ['Make a short routine', 'Help me make a simple after-school routine with time to rest.']
+    ]
+  },
+  chat: {
+    name: 'Friendly Chat', avatar: '✦', status: 'Safe, kind everyday conversation',
+    greeting: 'Hi! We can chat about your day, interests, ideas, or whatever is on your mind. I’ll be kind, honest, and safe.',
+    placeholder: 'Say hello or tell me what’s on your mind…',
+    prompts: [
+      ['How was my day?', 'Can I tell you about my day?'],
+      ['Give me a fun question', 'Ask me a fun, safe question to get a conversation started.'],
+      ['Talk about interests', 'I want to talk about something I enjoy.'],
+      ['Help me find words', 'Help me put what I am thinking into words.']
+    ]
+  }
+};
+const conversations = Object.fromEntries(Object.keys(BOT_CONFIG).map(bot => [bot, []]));
+const fallbackNoticeShown = Object.fromEntries(Object.keys(BOT_CONFIG).map(bot => [bot, false]));
+let activeBot = 'stress';
+let messages = conversations[activeBot];
 let sending = false;
-let fallbackNoticeShown = false;
 let activeAttachment = null;
 let ocrLoaderPromise = null;
 const MATH_SOLUTION_PREFIX = '__MATH_SOLUTION__';
@@ -41,6 +89,47 @@ function switchView(view) {
   if (view === 'calm') $('#calmView').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+function switchBot(bot, initial = false) {
+  if (!BOT_CONFIG[bot] || (sending && bot !== activeBot)) return;
+  activeBot = bot;
+  messages = conversations[bot];
+  const config = BOT_CONFIG[bot];
+  $$('.bot-choice').forEach(button => {
+    const active = button.dataset.bot === bot;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+  $('#coach').dataset.bot = bot;
+  $('#coachName').textContent = config.name;
+  $('#coachStatus').textContent = config.status;
+  $('#coachAvatarText').textContent = config.avatar;
+  $('#messages').setAttribute('aria-label', `Conversation with ${config.name}`);
+  $('#coachInput').placeholder = config.placeholder;
+  clearAttachment();
+  renderPromptChips();
+  renderConversation();
+  if (!initial) toast(`Switched to ${config.name}.`);
+}
+
+function renderPromptChips() {
+  const row = $('#promptRow');
+  row.innerHTML = '';
+  BOT_CONFIG[activeBot].prompts.forEach(([label, prompt]) => {
+    const button = document.createElement('button');
+    button.className = 'prompt-chip'; button.type = 'button'; button.textContent = label; button.dataset.prompt = prompt;
+    button.addEventListener('click', () => sendMessage(prompt));
+    row.append(button);
+  });
+}
+
+function renderConversation() {
+  const host = $('#messages');
+  host.innerHTML = '';
+  addMessage('assistant', BOT_CONFIG[activeBot].greeting);
+  messages.forEach(item => addMessage(item.role, item.display || item.content, false, '', item.image || ''));
+  host.scrollTop = host.scrollHeight;
+}
+
 function addMessage(role, text, pending = false, notice = '', image = '') {
   const mathSolution = role === 'assistant' ? readMathSolution(text) : null;
   const article = document.createElement('article');
@@ -48,13 +137,13 @@ function addMessage(role, text, pending = false, notice = '', image = '') {
   const avatar = document.createElement('div');
   avatar.className = `mini-avatar ${role === 'user' ? 'user-avatar' : ''}`;
   avatar.setAttribute('aria-hidden', 'true');
-  avatar.textContent = role === 'assistant' ? 'AI' : 'You';
+  avatar.textContent = role === 'assistant' ? BOT_CONFIG[activeBot].avatar : 'You';
   if (role === 'assistant') article.append(avatar);
   const content = document.createElement('div');
   const label = document.createElement('div');
   label.className = 'message-label';
   const name = document.createElement('strong');
-  name.textContent = role === 'assistant' ? 'Helper Coach' : 'You';
+  name.textContent = role === 'assistant' ? BOT_CONFIG[activeBot].name : 'You';
   const time = document.createElement('time');
   time.textContent = 'Now';
   label.append(name, time);
@@ -81,14 +170,15 @@ async function sendMessage(text) {
   const image = activeAttachment?.dataUrl || '';
   const message = text.trim() || (image ? 'Please help me understand this math problem step by step.' : '');
   if (!message || sending) return;
+  const botAtSend = activeBot;
   if (isCrisisMessage(message)) { addMessage('user', message, false, '', image); clearAttachment(); $('#safetyDialog').showModal(); return; }
   sending = true; $('#coachInput').value = ''; resizeInput(); addMessage('user', message, false, '', image); clearAttachment();
   const pending = addMessage('assistant', 'Thinking with you…', true);
-  $$('.prompt-chip').forEach(button => button.disabled = true); $('.send-button').disabled = true; $('#attachButton').disabled = true; $('#imageInput').disabled = true;
+  $$('.prompt-chip, .bot-choice').forEach(button => button.disabled = true); $('.send-button').disabled = true; $('#attachButton').disabled = true; $('#imageInput').disabled = true;
   try {
-    const answer = await askCoach(message, messages, image);
+    const answer = await askCoach(message, messages, image, botAtSend);
     pending.remove(); addMessage('assistant', answer);
-    messages.push({ role: 'user', content: message }, { role: 'assistant', content: answer });
+    messages.push({ role: 'user', content: message, image }, { role: 'assistant', content: mathSolutionToText(answer), display: answer });
   } catch (error) {
     let answer;
     let imageNotice = '';
@@ -98,17 +188,17 @@ async function sendMessage(text) {
       const extracted = await readMathFromImage(image, progress => {
         if (pendingText && progress > 0.08) pendingText.textContent = `Reading the problem… ${Math.round(progress * 100)}%`;
       });
-      answer = extracted ? getBuiltInReply(extracted, messages) : '';
+      answer = extracted ? getBuiltInReply(extracted, messages, 'math') : '';
       if (answer && (readMathSolution(answer) || answerKnownConcept(extracted))) imageNotice = `I read the problem as “${extracted}.” Please check that I copied it correctly. `;
       else answer = 'I could not read the math clearly enough to solve it without guessing. You did nothing wrong—screenshots can be tricky. Try cropping closer to the problem, use brighter lighting, or type the equation you can see. We’ll take it one step at a time.';
-    } else answer = getBuiltInReply(message, messages);
+    } else answer = getBuiltInReply(message, messages, botAtSend);
     pending.remove();
-    const notice = `${fallbackNoticeShown ? '' : 'I’m using built-in support mode because the live AI is not connected. '}${imageNotice}`;
+    const notice = `${fallbackNoticeShown[botAtSend] ? '' : 'I’m using built-in support mode because the live AI is not connected. '}${imageNotice}`;
     addMessage('assistant', answer, false, notice);
-    fallbackNoticeShown = true;
-    messages.push({ role: 'user', content: message }, { role: 'assistant', content: mathSolutionToText(answer) });
+    fallbackNoticeShown[botAtSend] = true;
+    messages.push({ role: 'user', content: message, image }, { role: 'assistant', content: mathSolutionToText(answer), display: answer });
   } finally {
-    sending = false; $$('.prompt-chip').forEach(button => button.disabled = false); $('.send-button').disabled = false; $('#attachButton').disabled = false; $('#imageInput').disabled = false; $('#coachInput').focus();
+    sending = false; $$('.prompt-chip, .bot-choice').forEach(button => button.disabled = false); $('.send-button').disabled = false; $('#attachButton').disabled = false; $('#imageInput').disabled = false; $('#coachInput').focus();
   }
 }
 
@@ -378,7 +468,7 @@ function mathSolutionToText(value) {
   return `${solution.intro} ${steps} Answer: ${solution.answer}. ${solution.check || ''}`.trim();
 }
 
-function getBuiltInReply(message, history = []) {
+function getBuiltInReply(message, history = [], bot = 'stress') {
   const recentUserMessages = history.filter(item => item.role === 'user').slice(-3);
   const recentUserText = recentUserMessages.map(item => item.content).join(' ');
   const hasPriorUserContext = recentUserMessages.length > 0;
@@ -427,9 +517,19 @@ function getBuiltInReply(message, history = []) {
   const asksForWords = /\b(what (?:do|should|can) i say|help me (?:reply|respond)|how (?:do|should) i (?:talk|respond))\b/.test(currentText);
   const givesSituationDetails = /\b(because|when|after|during|said|told|ignored|yelled|argued|happened|due)\b/.test(currentText) || message.trim().split(/\s+/).length >= 14;
 
-  if (isGreeting) return 'Hi! I’m here with you. Tell me what is happening and what kind of help you want—understanding something, making a plan, calming down, or deciding what to say.';
+  if (isGreeting) {
+    if (bot === 'math') return 'Hi! Send me a math problem or attach a clear screenshot. I’ll explain each step and why it works—no rush.';
+    if (bot === 'planner') return 'Hi! Tell me what you need to finish, when it is due, and roughly how much time you have. We’ll make a realistic plan with breaks.';
+    if (bot === 'chat') return 'Hi! I’m glad you stopped by. What would you enjoy talking about today?';
+    return 'Hi! I’m here with you. Tell me what is happening and whether you want me to listen, help you calm down, or find one next step.';
+  }
 
   const reflection = buildReflection({ feeling, subject, task, concept, deadline, isSocial });
+  if (bot === 'math') {
+    return 'I’m ready to work through the math with you. Please type the full equation or question, include the given measurements, or attach a clear screenshot. If there is a diagram, tell me which values and angles are labeled.';
+  }
+  if (bot === 'planner') return buildPlannerBotResponse({ message, subject, task, deadline, feeling });
+  if (bot === 'chat') return buildFriendlyChatResponse(message, feeling, hasPriorUserContext);
   if (feeling && !subject && !task && !isSocial && !hasPriorUserContext && !givesSituationDetails) {
     return `${reflection} I don’t want to guess what caused it. What happened, and would you like me to listen, help you calm down, or help you decide what to do next?`;
   }
@@ -447,6 +547,26 @@ function getBuiltInReply(message, history = []) {
     return `${reflection} First, lower the pressure for sixty seconds: unclench your hands, breathe out slowly, and get a sip of water. Then write one sentence naming the problem and circle the part you can influence today. What would make the next ten minutes feel even 10% easier?`;
   }
   return `I want to help with what you actually mean. I heard: “${shortQuote(message)}.” Tell me which kind of help would be most useful right now: a simple explanation, a step-by-step plan, ideas for what to say, or a quick way to calm down?`;
+}
+
+function buildPlannerBotResponse({ message, subject, task, deadline, feeling }) {
+  const text = message.toLowerCase();
+  if (!task && !subject && !deadline && !/\b(plan|study|finish|due|schedule|routine|first)\b/.test(text)) {
+    return 'Let’s make this manageable. What do you need to finish, when is it due, and about how much time do you have today?';
+  }
+  const topic = [subject, task].filter(Boolean).join(' ') || 'schoolwork';
+  const timing = deadline ? ` due ${deadline}` : '';
+  const opening = feeling ? `Since you’re feeling ${feeling}, we’ll keep the plan light.` : 'Let’s make a plan that leaves room to breathe.';
+  return `${opening}\n\n1. Write the exact finish line for your ${topic}${timing}.\n2. Work for 15 minutes on the smallest visible piece.\n3. Take a 5-minute water or stretch break.\n4. Decide whether to do one more 15-minute round.\n\nWhat is the very first piece you can finish in one short round?`;
+}
+
+function buildFriendlyChatResponse(message, feeling, hasPriorContext) {
+  const text = message.toLowerCase();
+  if (/\b(fun|question|conversation starter)\b/.test(text)) return 'Here’s a fun one: if you could instantly become great at one safe skill—drawing, cooking, a sport, music, coding, or something else—which would you choose, and why?';
+  if (/\b(day|today)\b/.test(text)) return 'Of course—you can tell me about your day. What moment stands out most: something good, something difficult, or something surprising?';
+  if (/\b(enjoy|interest|hobby|favorite|like)\b/.test(text)) return 'I’d like to hear about it. What do you enjoy, and what makes it interesting to you?';
+  if (feeling && !hasPriorContext) return `I hear that you’re feeling ${feeling}. I won’t assume why. Do you want to tell me what happened, or would you rather talk about something lighter for a little while?`;
+  return `I’m listening. You said, “${shortQuote(message)}.” What part of that would you like to talk about more?`;
 }
 
 function findFirst(text, choices) {
@@ -1171,7 +1291,7 @@ function answerKnownConcept(message) {
 }
 
 function resizeInput() { const input = $('#coachInput'); input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 120)}px`; }
-function newChat() { messages.length = 0; fallbackNoticeShown = false; clearAttachment(); $('#messages').innerHTML = ''; addMessage('assistant', 'Fresh start. What would feel helpful to talk through?'); toast('Started a new private chat.'); }
+function newChat() { messages.length = 0; fallbackNoticeShown[activeBot] = false; clearAttachment(); renderConversation(); toast(`Started a new ${BOT_CONFIG[activeBot].name} chat.`); }
 
 const symbols = ['leaf', 'moon', 'wave', 'sun', 'cloud', 'star'];
 const symbolArt = { leaf: '❧', moon: '☾', wave: '≈', sun: '☼', cloud: '☁', star: '✦' };
@@ -1201,7 +1321,7 @@ function toast(message) { $('#toast').textContent = message; $('#toast').classLi
 
 $$('.tab').forEach(tab => tab.addEventListener('click', () => switchView(tab.dataset.view)));
 $$('[data-open-game]').forEach(button => button.addEventListener('click', () => switchView('calm')));
-$$('.prompt-chip').forEach(chip => chip.addEventListener('click', () => sendMessage(chip.dataset.prompt)));
+$$('.bot-choice').forEach(button => button.addEventListener('click', () => switchBot(button.dataset.bot)));
 $('#coachForm').addEventListener('submit', event => { event.preventDefault(); sendMessage($('#coachInput').value); });
 $('.send-button').addEventListener('click', () => sendMessage($('#coachInput').value));
 $('#coachInput').addEventListener('input', resizeInput);
@@ -1213,4 +1333,5 @@ $('#newChatButton').addEventListener('click', newChat);
 $('#calmShortcut').addEventListener('click', () => switchView('calm'));
 $('#resetGame').addEventListener('click', startCalmGame);
 $('#closeSafety').addEventListener('click', () => $('#safetyDialog').close());
+switchBot('stress', true);
 startCalmGame();

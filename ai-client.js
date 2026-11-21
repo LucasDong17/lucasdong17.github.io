@@ -2,14 +2,14 @@ const CRISIS_PATTERN = /\b(kill myself|suicide|suicidal|hurt myself|self[- ]?har
 
 export function isCrisisMessage(message) { return CRISIS_PATTERN.test(message); }
 
-export async function askCoach(message, history = []) {
+export async function askCoach(message, history = [], image = '', bot = 'stress') {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
   let response;
   try {
     response = await fetch(new URL('api/coach', document.baseURI), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, history: history.slice(-8) }),
+      body: JSON.stringify({ message, history: history.slice(-8), image, bot }),
       signal: controller.signal
     });
   } catch (error) {

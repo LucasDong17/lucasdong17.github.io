@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=14">
+  <link rel="stylesheet" href="styles.css?v=19">
 </head>
 <body>
   <div class="soft-shape shape-one" aria-hidden="true"></div>
@@ -29,21 +29,20 @@
     </nav>
     <section class="view active" id="coachView" data-view-panel="coach">
       <div class="chat-card" id="coach">
-        <div class="chat-heading"><div class="coach-avatar" aria-hidden="true"><span>AI</span></div><div><h2>Helper Coach</h2><p><span class="online-dot"></span> Listens first and asks before assuming</p></div><button class="quiet-button" id="newChatButton" type="button">New chat</button></div>
-        <div class="messages" id="messages" role="log" aria-live="polite" aria-label="Conversation with Helper Coach">
-          <article class="message coach-message"><div class="mini-avatar" aria-hidden="true">AI</div><div><div class="message-label"><strong>Helper Coach</strong><time>Now</time></div><p>Hi! I’m glad you’re here. You can ask me a question, tell me what feels stressful, or just say what you need help starting. We can take it one small step at a time.</p></div></article>
+        <div class="bot-picker" role="group" aria-label="Choose a helper">
+          <button class="bot-choice" type="button" data-bot="math" aria-pressed="false"><span aria-hidden="true">∑</span><strong>Math Helper</strong><small>Problems &amp; graphs</small></button>
+          <button class="bot-choice active" type="button" data-bot="stress" aria-pressed="true"><span aria-hidden="true">☁</span><strong>Stress Helper</strong><small>Calm &amp; next steps</small></button>
+          <button class="bot-choice" type="button" data-bot="planner" aria-pressed="false"><span aria-hidden="true">✓</span><strong>Study Planner</strong><small>Tasks &amp; routines</small></button>
+          <button class="bot-choice" type="button" data-bot="chat" aria-pressed="false"><span aria-hidden="true">✦</span><strong>Friendly Chat</strong><small>Safe conversation</small></button>
         </div>
-        <div class="prompt-row" aria-label="Question ideas">
-          <button class="prompt-chip" type="button" data-prompt="I feel overwhelmed by my schoolwork. Can you help me choose one small first step?">I feel overwhelmed</button>
-          <button class="prompt-chip" type="button" data-prompt="Graph y = 2x + 1 and show me how.">Graph an equation</button>
-          <button class="prompt-chip" type="button" data-prompt="Differentiate 3x^2 + 2x - 5 and show every step.">Try advanced math</button>
-          <button class="prompt-chip" type="button" data-prompt="Help me plan what to say in a difficult conversation at school.">Practice what to say</button>
-        </div>
+        <div class="chat-heading"><div class="coach-avatar" aria-hidden="true"><span id="coachAvatarText">☁</span></div><div><h2 id="coachName">Stress Helper</h2><p><span class="online-dot"></span> <span id="coachStatus">Helps lower the pressure</span></p></div><button class="quiet-button" id="newChatButton" type="button">New chat</button></div>
+        <div class="messages" id="messages" role="log" aria-live="polite" aria-label="Conversation with Stress Helper"></div>
+        <div class="prompt-row" id="promptRow" aria-label="Question ideas"></div>
         <div class="attachment-preview" id="attachmentPreview" hidden><img id="attachmentImage" alt="Selected math problem"><div><strong id="attachmentName">Screenshot ready</strong><span>Clear, closely cropped problems work best. Add a question or press Send.</span></div><button id="removeAttachment" type="button" aria-label="Remove attached image">×</button></div>
         <form class="chat-form" id="coachForm"><button class="attach-button" id="attachButton" type="button" title="Attach a photo or screenshot" aria-label="Attach a photo or screenshot">＋</button><input class="sr-only" id="imageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif"><label class="sr-only" for="coachInput">Message your coach</label><textarea id="coachInput" maxlength="500" rows="1" placeholder="Ask a question or attach a math screenshot…" autocomplete="off"></textarea><button class="send-button" type="button" aria-label="Send message"><span>Send</span><b aria-hidden="true">↑</b></button></form>
         <p class="privacy-note">Photos should show only the problem—no faces, names, school names, addresses, or other private details. AI can make mistakes, so check important facts.</p>
       </div>
-      <aside class="support-card"><span class="support-icon" aria-hidden="true">🧩</span><h2>Need a brain break?</h2><p>Play an easy matching puzzle with no timer, no score, and no way to lose. Come back to the chat whenever you feel ready.</p><button type="button" id="calmShortcut">Play relaxing puzzle <span>→</span></button></aside>
+      <aside class="support-card"><span class="support-icon" aria-hidden="true">🧩</span><h2>Need a brain break?</h2><p>Play an easy matching puzzle with no timer, no score, and no way to lose. Come back to the chat whenever you feel ready.</p><button type="button" id="calmShortcut">Play relaxing puzzle</button></aside>
     </section>
     <section class="view" id="calmView" data-view-panel="calm" hidden>
       <div class="calm-intro"><span class="eyebrow">A QUIET RESET</span><h2>Match the soft shapes.</h2><p>There is no timer and no penalty. Turn over two cards at a time and find all six pairs. Take as long as you like.</p><div class="game-status"><span id="matchCount">0 of 6 pairs</span><button id="resetGame" type="button">Mix again</button></div></div>
@@ -56,6 +55,6 @@
     <div class="safety-actions"><a class="primary-button" href="tel:988">Call 988</a><button id="closeSafety" type="button">Close</button></div><small>School's Helper is not an emergency service or a replacement for a counselor.</small>
   </dialog>
   <div class="toast" id="toast" role="status"></div>
-  <script defer src="app.js?v=18"></script>
+  <script defer src="app.js?v=19"></script>
 </body>
 </html>
