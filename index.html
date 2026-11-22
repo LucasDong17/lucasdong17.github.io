@@ -61,6 +61,11 @@
           </form>
           <p class="privacy-note">Keep names, school details, and private information out of the project title. This quest stays in this browser tab.</p>
         </section>
+        <section class="project-hub" aria-labelledby="roleplayTitle">
+          <span class="eyebrow">PRACTICE WITHOUT PRESSURE</span><h2 id="roleplayTitle">Group chat role-play</h2>
+          <p>A group member has not finished their part of a school project. Practice asking for a plan in a safe, three-turn scene. There are no scores or wrong turns.</p>
+          <button class="primary-button" id="roleplayStart" type="button">Start practice level →</button>
+        </section>
         <a class="featured-game-card" href="hero-wars/" aria-label="Play Hero Wars: Mossvale Wildfront">
           <span class="featured-game-art" aria-hidden="true"><i class="hero-sun"></i><i class="hero-hill hill-one"></i><i class="hero-hill hill-two"></i><b>⚔</b></span>
           <span class="featured-game-copy"><small>BIG ADVENTURE GAME</small><strong>Hero Wars</strong><em>Mossvale — Wildfront</em><span>Explore colorful worlds, battle waves, collect gear, and grow stronger. Keyboard and touch controls included.</span><b>Play full-screen</b></span>
@@ -88,6 +93,16 @@
         <p class="project-reassurance">No rush. Pick one station, take a breath, and come back whenever you’re ready.</p>
         <div id="projectSteps" class="project-steps"></div>
         <p id="projectFinish" class="project-finish" hidden>🌟 Quest complete! You took a big project one small step at a time. Enjoy a break, then check your class instructions before turning it in.</p>
+      </section>
+      <section class="project-stage" id="roleplayStage" hidden aria-labelledby="roleplayStageTitle">
+        <button class="quest-back" id="roleplayBack" type="button">← All games and quests</button>
+        <span class="eyebrow">GROUP CHAT PRACTICE</span><h2 id="roleplayStageTitle">Ask for a plan together</h2>
+        <p id="roleplayProgress" role="status">Turn 1 of 3 · No pressure—try saying what you need kindly.</p>
+        <div id="roleplayMessages" class="roleplay-messages" role="log" aria-live="polite"></div>
+        <form id="roleplayForm" class="roleplay-form"><label for="roleplayInput">What would you say?</label><textarea id="roleplayInput" maxlength="500" required rows="3" placeholder="Could we decide who will do each part?"></textarea><button class="primary-button" id="roleplaySend" type="submit">Say it</button></form>
+        <p id="roleplayFinish" class="project-finish" hidden>🌟 Practice complete. You made room for a respectful conversation. You can try again or talk to a trusted adult or teacher if your group needs help.</p>
+        <button class="secondary-button" id="roleplayReset" type="button">Try the scene again</button>
+        <p class="privacy-note">Use made-up names only. Live AI responses need an API key; scripted practice works offline.</p>
       </section>
       <div class="game-stage" id="gameStage" hidden>
         <header class="game-stage-heading"><button class="all-games-button" id="allGamesButton" type="button">All games</button><div><span class="eyebrow">NO RUSH</span><h2 id="activeGameTitle">Soft Matches</h2><p id="activeGameInstructions">Turn over two cards and find the pairs.</p></div><button class="game-reset-button" id="resetGame" type="button">Start fresh</button></header>

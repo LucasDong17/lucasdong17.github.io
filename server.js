@@ -32,7 +32,7 @@ const server = http.createServer(async (request, response) => {
 async function handleCoach(request, response) {
   const body = await readJson(request);
   const message = typeof body.message === 'string' ? body.message.trim().slice(0, 500) : '';
-  const bot = ['math', 'stress', 'planner', 'chat'].includes(body.bot) ? body.bot : 'stress';
+  const bot = ['math', 'stress', 'planner', 'chat', 'roleplay'].includes(body.bot) ? body.bot : 'stress';
   const image = typeof body.image === 'string' && /^data:image\/(?:png|jpeg|webp|gif);base64,[a-z0-9+/=]+$/i.test(body.image) && body.image.length <= 6_000_000 ? body.image : '';
   const history = Array.isArray(body.history) ? body.history.slice(-8).flatMap(item => {
     const role = item?.role === 'assistant' ? 'assistant' : item?.role === 'user' ? 'user' : null;

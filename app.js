@@ -1303,9 +1303,11 @@ let activeGame = '';
 function showGameHub() {
   activeGame = '';
   activeQuest = null;
+  roleplayRequest += 1;
   $('#puzzleHub').hidden = false;
   $('#questStage').hidden = true;
   $('#projectStage').hidden = true;
+  $('#roleplayStage').hidden = true;
   $('#gameStage').hidden = true;
 }
 
@@ -1477,6 +1479,57 @@ const TUTOR_QUESTS = [
 let activeQuest = null;
 let questRequest = 0;
 let projectQuest = null;
+let roleplayTurns = 0;
+let roleplayHistory = [];
+let roleplayRequest = 0;
+
+function addRoleplayMessage(speaker, message) {
+  const item = document.createElement('div'); item.className = `roleplay-message ${speaker === 'You' ? 'student' : 'classmate'}`;
+  const label = document.createElement('strong'); label.textContent = speaker;
+  const body = document.createElement('p'); body.textContent = message;
+  item.append(label, body); $('#roleplayMessages').append(item);
+}
+
+function startRoleplay() {
+  roleplayRequest += 1; roleplayTurns = 0; roleplayHistory = [];
+  $('#puzzleHub').hidden = true; $('#roleplayStage').hidden = false;
+  $('#roleplayMessages').replaceChildren();
+  addRoleplayMessage('Group member', 'Hey, I know my part of the project is late. I’ve been stuck and I’m not sure how to catch up.');
+  $('#roleplayProgress').textContent = 'Turn 1 of 3 · No pressure—try saying what you need kindly.';
+  $('#roleplayFinish').hidden = true; $('#roleplayForm').hidden = false;
+  $('#roleplaySend').disabled = false; $('#roleplayInput').value = ''; $('#roleplayInput').focus();
+  $('#roleplayStage').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function sendRoleplay(event) {
+  event.preventDefault();
+  if (roleplayTurns >= 3 || $('#roleplaySend').disabled) return;
+  const message = $('#roleplayInput').value.trim(); if (!message) return;
+  if (isCrisisMessage(message)) { $('#safetyDialog').showModal(); return; }
+  const request = ++roleplayRequest;
+  addRoleplayMessage('You', message); $('#roleplayInput').value = ''; $('#roleplaySend').disabled = true;
+  const previous = roleplayHistory.slice(-6);
+  roleplayHistory.push({ role: 'user', content: message });
+  let answer; let speaker = 'Group member · AI role-play';
+  try {
+    answer = await askCoach(`In our fictional group-project role-play, respond as the classmate to this message: ${message}`, previous, '', 'roleplay');
+  } catch {
+    speaker = 'Group member · scripted practice';
+    answer = [
+      'Thanks for telling me. Could we choose one small part for me to finish first?',
+      'That sounds fair. I can work on my part today. What should we check together afterward?',
+      'Okay, let’s write down the plan and ask our teacher for help if we get stuck.'
+    ][roleplayTurns];
+  }
+  if (request !== roleplayRequest || $('#roleplayStage').hidden) return;
+  addRoleplayMessage(speaker, answer);
+  roleplayHistory.push({ role: 'assistant', content: answer });
+  roleplayTurns += 1; $('#roleplaySend').disabled = false;
+  if (roleplayTurns === 3) {
+    $('#roleplayProgress').textContent = '3 of 3 turns complete · Nice practice.';
+    $('#roleplayForm').hidden = true; $('#roleplayFinish').hidden = false;
+  } else $('#roleplayProgress').textContent = `Turn ${roleplayTurns + 1} of 3 · You can ask for a clear next step.`;
+}
 
 const PROJECT_STATIONS = {
   research: ['Read the directions and write down what the report must include.', 'Choose one question to answer and find two useful sources.', 'Write three main points in your own words.', 'Draft one short section at a time, with a break between sections.', 'Check your facts, sources, spelling, and class instructions.'],
@@ -1582,6 +1635,10 @@ $('#questReset').addEventListener('click', () => openQuest(activeQuest));
 $('#questTutor').addEventListener('click', askQuestTutor);
 $('#projectQuestForm').addEventListener('submit', startProjectQuest);
 $('#projectBack').addEventListener('click', showGameHub);
+$('#roleplayStart').addEventListener('click', startRoleplay);
+$('#roleplayBack').addEventListener('click', showGameHub);
+$('#roleplayReset').addEventListener('click', startRoleplay);
+$('#roleplayForm').addEventListener('submit', sendRoleplay);
 $$('.game-card').forEach(button => button.addEventListener('click', () => openPuzzle(button.dataset.game)));
 $('#allGamesButton').addEventListener('click', showGameHub);
 $('#resetGame').addEventListener('click', resetActiveGame);
