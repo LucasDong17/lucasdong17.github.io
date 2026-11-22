@@ -1500,7 +1500,15 @@ function renderProjectQuest() {
   if (!projectQuest) return;
   $('#projectStageTitle').textContent = projectQuest.name;
   const completed = projectQuest.steps.filter(step => step.done).length;
-  $('#projectProgress').textContent = `${completed} of ${projectQuest.steps.length} stations complete. ${completed === projectQuest.steps.length ? 'You did it!' : 'Choose one small station to try next.'}`;
+  const encouragement = ['Starting is a win. Choose any one small step.', 'Nice start. One step is enough for now.', 'You’re making room for this project, piece by piece.', 'Look how far you’ve come. A short break is okay.', 'Almost there. Finish when you feel ready.', 'You did it! Take a moment to notice your progress.'];
+  $('#projectProgress').textContent = `${completed} of ${projectQuest.steps.length} stations complete. ${encouragement[completed]}`;
+  const trail = $('#projectTrail'); trail.replaceChildren();
+  projectQuest.steps.forEach((step, index) => {
+    const dot = document.createElement('span');
+    dot.className = `project-trail-dot${step.done ? ' done' : ''}`;
+    dot.textContent = step.done ? '✓' : String(index + 1);
+    trail.append(dot);
+  });
   $('#projectFinish').hidden = completed !== projectQuest.steps.length;
   const host = $('#projectSteps');
   host.replaceChildren();

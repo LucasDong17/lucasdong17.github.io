@@ -53,11 +53,11 @@
         </section>
         <section class="project-hub" aria-labelledby="projectQuestTitle">
           <span class="eyebrow">MAKE A BIG TASK SMALLER</span><h2 id="projectQuestTitle">My project quest</h2>
-          <p>Tell us the assignment in a few words. Your quest turns it into small stations you can finish one at a time.</p>
+          <p>Big project? You only need one tiny first move. Turn it into a gentle quest with no timer or score.</p>
           <form id="projectQuestForm" class="project-form">
             <label for="projectName">What is your project?</label><input id="projectName" required maxlength="100" placeholder="Example: science fair poster" autocomplete="off">
             <label for="projectKind">What will you make?</label><select id="projectKind"><option value="research">Report or research</option><option value="presentation">Presentation or poster</option><option value="creative">Creative project</option></select>
-            <button class="primary-button" type="submit">Start my quest</button>
+            <button class="primary-button" type="submit">Let's make it manageable →</button>
           </form>
           <p class="privacy-note">Keep names, school details, and private information out of the project title. This quest stays in this browser tab.</p>
         </section>
@@ -84,8 +84,10 @@
         <button class="quest-back" id="projectBack" type="button">← All games and quests</button>
         <span class="eyebrow">YOUR PROJECT QUEST</span><h2 id="projectStageTitle"></h2>
         <p id="projectProgress" role="status"></p>
+        <div class="project-trail" id="projectTrail" aria-hidden="true"></div>
+        <p class="project-reassurance">No rush. Pick one station, take a breath, and come back whenever you’re ready.</p>
         <div id="projectSteps" class="project-steps"></div>
-        <p id="projectFinish" class="project-finish" hidden>Quest complete! Take a break, then check your class instructions before turning it in.</p>
+        <p id="projectFinish" class="project-finish" hidden>🌟 Quest complete! You took a big project one small step at a time. Enjoy a break, then check your class instructions before turning it in.</p>
       </section>
       <div class="game-stage" id="gameStage" hidden>
         <header class="game-stage-heading"><button class="all-games-button" id="allGamesButton" type="button">All games</button><div><span class="eyebrow">NO RUSH</span><h2 id="activeGameTitle">Soft Matches</h2><p id="activeGameInstructions">Turn over two cards and find the pairs.</p></div><button class="game-reset-button" id="resetGame" type="button">Start fresh</button></header>
