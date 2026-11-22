@@ -1305,6 +1305,7 @@ function showGameHub() {
   activeQuest = null;
   $('#puzzleHub').hidden = false;
   $('#questStage').hidden = true;
+  $('#projectStage').hidden = true;
   $('#gameStage').hidden = true;
 }
 
@@ -1475,6 +1476,45 @@ const TUTOR_QUESTS = [
 ];
 let activeQuest = null;
 let questRequest = 0;
+let projectQuest = null;
+
+const PROJECT_STATIONS = {
+  research: ['Read the directions and write down what the report must include.', 'Choose one question to answer and find two useful sources.', 'Write three main points in your own words.', 'Draft one short section at a time, with a break between sections.', 'Check your facts, sources, spelling, and class instructions.'],
+  presentation: ['Read the directions and list what the poster or slides need.', 'Pick three key ideas and find facts or examples for each.', 'Sketch a simple layout with a title and three sections.', 'Make one section at a time, then take a short break.', 'Practice explaining it aloud and check it against the directions.'],
+  creative: ['Read the directions and choose one idea to make.', 'Sketch a small plan and gather what you need.', 'Make a rough first version; it does not need to be perfect.', 'Improve one part at a time, with a short break.', 'Review your work against the directions and add finishing touches.']
+};
+
+function startProjectQuest(event) {
+  event.preventDefault();
+  const name = $('#projectName').value.trim();
+  if (!name) return;
+  const kind = $('#projectKind').value;
+  projectQuest = { name, steps: PROJECT_STATIONS[kind].map(text => ({ text, done: false })) };
+  $('#puzzleHub').hidden = true;
+  $('#projectStage').hidden = false;
+  renderProjectQuest();
+  $('#projectStage').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderProjectQuest() {
+  if (!projectQuest) return;
+  $('#projectStageTitle').textContent = projectQuest.name;
+  const completed = projectQuest.steps.filter(step => step.done).length;
+  $('#projectProgress').textContent = `${completed} of ${projectQuest.steps.length} stations complete. ${completed === projectQuest.steps.length ? 'You did it!' : 'Choose one small station to try next.'}`;
+  $('#projectFinish').hidden = completed !== projectQuest.steps.length;
+  const host = $('#projectSteps');
+  host.replaceChildren();
+  projectQuest.steps.forEach((step, index) => {
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = `project-step${step.done ? ' done' : ''}`;
+    button.setAttribute('aria-pressed', String(step.done));
+    const badge = document.createElement('span'); badge.textContent = step.done ? '✓' : String(index + 1);
+    const copy = document.createElement('span'); copy.textContent = step.text;
+    button.append(badge, copy);
+    button.addEventListener('click', () => { step.done = !step.done; renderProjectQuest(); });
+    host.append(button);
+  });
+}
 
 function renderQuestList() {
   $('#questList').innerHTML = TUTOR_QUESTS.map((quest, index) => `<button class="quest-card" type="button" data-quest="${index}"><span class="quest-number">${index + 1}</span><span><strong>${quest.name}</strong><small>${quest.prompt}</small></span><b>Play →</b></button>`).join('');
@@ -1532,6 +1572,8 @@ $('#questBack').addEventListener('click', closeQuest);
 $('#questAnswerForm').addEventListener('submit', checkQuestAnswer);
 $('#questReset').addEventListener('click', () => openQuest(activeQuest));
 $('#questTutor').addEventListener('click', askQuestTutor);
+$('#projectQuestForm').addEventListener('submit', startProjectQuest);
+$('#projectBack').addEventListener('click', showGameHub);
 $$('.game-card').forEach(button => button.addEventListener('click', () => openPuzzle(button.dataset.game)));
 $('#allGamesButton').addEventListener('click', showGameHub);
 $('#resetGame').addEventListener('click', resetActiveGame);
