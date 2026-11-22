@@ -1483,6 +1483,13 @@ let projectQuest = null;
 let roleplayTurns = 0;
 let roleplayHistory = [];
 let roleplayRequest = 0;
+let roleplayScenario = -1;
+const ROLEPLAY_SCENARIOS = [
+  { title: 'Ask for a plan together', opening: 'Hey, I know my part of the project is late. I’ve been stuck and I’m not sure how to catch up.', goal: 'agree on one small task and a check-in time', fallback: 'I know I’m behind. Could we pick one part for me to finish first?' },
+  { title: 'Make space for an idea', opening: 'I keep talking over you in our group meetings. Sorry—I get excited about my idea for the poster.', goal: 'share speaking time and hear each other’s ideas', fallback: 'You’re right—I’ve been talking a lot. Tell me your idea, and I’ll listen before we decide.' },
+  { title: 'Share the work fairly', opening: 'I think you should make all the slides because you’re really good at it. I can just present.', goal: 'divide the work fairly and offer a manageable part', fallback: 'That’s fair. I can make a few slides too. Which part would be most helpful?' },
+  { title: 'Find a time to meet', opening: 'I can’t meet after school this week, but we still need to put our parts together.', goal: 'find another way to coordinate without pressure', fallback: 'Could we share our parts during class or leave notes for each other instead?' }
+];
 
 function addRoleplayMessage(speaker, message) {
   const item = document.createElement('div'); item.className = `roleplay-message ${speaker === 'You' ? 'student' : 'classmate'}`;
@@ -1493,9 +1500,14 @@ function addRoleplayMessage(speaker, message) {
 
 function startRoleplay() {
   roleplayRequest += 1; roleplayTurns = 0; roleplayHistory = [];
+  const choices = ROLEPLAY_SCENARIOS.map((_, index) => index).filter(index => index !== roleplayScenario);
+  roleplayScenario = choices[Math.floor(Math.random() * choices.length)];
+  const scene = ROLEPLAY_SCENARIOS[roleplayScenario];
   $('#puzzleHub').hidden = true; $('#roleplayStage').hidden = false;
   $('#roleplayMessages').replaceChildren();
-  addRoleplayMessage('Group member', 'Hey, I know my part of the project is late. I’ve been stuck and I’m not sure how to catch up.');
+  $('#roleplayStageTitle').textContent = scene.title;
+  addRoleplayMessage('Group member', scene.opening);
+  roleplayHistory.push({ role: 'assistant', content: scene.opening });
   $('#roleplayProgress').textContent = 'Turn 1 of 3 · No pressure—try saying what you need kindly.';
   $('#roleplayFinish').hidden = true; $('#roleplayForm').hidden = false;
   $('#roleplaySend').disabled = false; $('#roleplayInput').value = ''; $('#roleplayInput').focus();
@@ -1538,10 +1550,12 @@ async function sendRoleplay(event) {
   roleplayHistory.push({ role: 'user', content: message });
   let answer; let speaker = 'Group member · AI role-play';
   try {
-    answer = await askCoach(message, previous, '', 'roleplay');
+    const scene = ROLEPLAY_SCENARIOS[roleplayScenario];
+    answer = await askCoach(`Scene: ${scene.title}. The classmate's situation is: ${scene.opening} The practice goal is to ${scene.goal}. Student says: ${message}`, previous, '', 'roleplay');
   } catch {
     speaker = 'Group member · adaptive offline practice';
     answer = offlineRoleplayReply(message, roleplayTurns);
+    if (roleplayTurns === 0 && /^Thanks for telling me\./.test(answer)) answer = ROLEPLAY_SCENARIOS[roleplayScenario].fallback;
   }
   if (request !== roleplayRequest || $('#roleplayStage').hidden) return;
   addRoleplayMessage(speaker, answer);
