@@ -1,4 +1,5 @@
 const CRISIS_PATTERN = /\b(kill myself|suicide|suicidal|hurt myself|self[- ]?harm|don['’]?t want to live|do not want to live|end my life)\b/i;
+const ROLEPLAY_UNSAFE_PATTERN = /\b(hurt|kill|attack|bully|harass|threaten|poison)\b/i;
 
 function isCrisisMessage(message) { return CRISIS_PATTERN.test(message); }
 
@@ -1501,25 +1502,46 @@ function startRoleplay() {
   $('#roleplayStage').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+function offlineRoleplayReply(message, turn) {
+  const words = message.toLowerCase();
+  if (ROLEPLAY_UNSAFE_PATTERN.test(words)) return 'I want us both to feel safe. Let’s pause and ask a teacher or trusted adult to help us talk this through.';
+  if (/\b(sorry|apologiz|my fault)\b/.test(words)) return 'Thanks for saying that. We can start fresh and decide on one small piece each.';
+  if (/\b(frustrat|upset|angry|stressed|worried|anxious)\b/.test(words)) return 'I hear that this has been stressful. I’m sorry my part is late. Could we agree on one clear next step?';
+  const task = words.match(/\b(pictures?|captions?|slides?|research|sources?|writing|draft|poster|intro|conclusion|design|outline)\b/)?.[0];
+  const timing = words.match(/\b(today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|weekend)\b/)?.[0];
+  if (task && timing) return `Yes, I can focus on the ${task} ${timing}. Could we check in afterward to make sure it fits the project?`;
+  if (task) return `I can take the ${task}. When would you like me to show you a first version?`;
+  if (timing) return `A check-in ${timing} works for me. What should I finish before then?`;
+  if (/\b(help|together|team|share|split|divide)\b/.test(words)) return 'Thanks for offering to work together. Let’s each choose one small part and check in after that.';
+  if (/\b(teacher|adult)\b/.test(words)) return 'That sounds okay. We can ask the teacher for help making a fair plan.';
+  return [
+    'Thanks for telling me. What is one small part you would like me to do first?',
+    'I want to make this fair. Could we agree on a specific task and check-in time?',
+    'I’m glad we talked. Let’s write down the next step so we both know the plan.'
+  ][turn];
+}
+
 async function sendRoleplay(event) {
   event.preventDefault();
   if (roleplayTurns >= 3 || $('#roleplaySend').disabled) return;
   const message = $('#roleplayInput').value.trim(); if (!message) return;
   if (isCrisisMessage(message)) { $('#safetyDialog').showModal(); return; }
+  if (ROLEPLAY_UNSAFE_PATTERN.test(message)) {
+    addRoleplayMessage('You', message);
+    addRoleplayMessage('Safety note', 'Let’s pause the practice. If this is about a real conflict, talk to a trusted adult or teacher. We can practice a safe request instead.');
+    $('#roleplayInput').value = '';
+    return;
+  }
   const request = ++roleplayRequest;
   addRoleplayMessage('You', message); $('#roleplayInput').value = ''; $('#roleplaySend').disabled = true;
   const previous = roleplayHistory.slice(-6);
   roleplayHistory.push({ role: 'user', content: message });
   let answer; let speaker = 'Group member · AI role-play';
   try {
-    answer = await askCoach(`In our fictional group-project role-play, respond as the classmate to this message: ${message}`, previous, '', 'roleplay');
+    answer = await askCoach(message, previous, '', 'roleplay');
   } catch {
-    speaker = 'Group member · scripted practice';
-    answer = [
-      'Thanks for telling me. Could we choose one small part for me to finish first?',
-      'That sounds fair. I can work on my part today. What should we check together afterward?',
-      'Okay, let’s write down the plan and ask our teacher for help if we get stuck.'
-    ][roleplayTurns];
+    speaker = 'Group member · adaptive offline practice';
+    answer = offlineRoleplayReply(message, roleplayTurns);
   }
   if (request !== roleplayRequest || $('#roleplayStage').hidden) return;
   addRoleplayMessage(speaker, answer);

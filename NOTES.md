@@ -10,7 +10,7 @@ The AI model is `gpt-5-mini` by default. You can change it with `OPENAI_MODEL` i
 
 ## Current version
 
-- A three-turn group-member role-play level lets students practice asking a classmate for a project plan. It uses a dedicated AI role-play mode when connected and clearly labeled scripted replies when offline; there are no scores or penalties.
+- A three-turn group-member role-play level lets students practice asking a classmate for a project plan. It uses a dedicated AI role-play mode when connected and clearly labeled, message-aware offline replies otherwise; there are no scores or penalties.
 - A gentle project quest builder turns a student's own report, presentation, poster, or creative assignment into five small, checkable stations with an encouraging progress trail and no timer or score. It works without an API key and keeps the project only in the current tab.
 - Three short tutor quests in the game hub. Students can check answers, retry, and request a live Math Helper hint. When the API is unavailable, a clearly labeled built-in hint appears instead.
 - Four one-tap assistants—Math Helper, Stress Helper, Study Planner, and Friendly Chat—with separate conversation histories, prompts, personalities, and shared safety rules.
