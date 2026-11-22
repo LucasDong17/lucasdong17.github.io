@@ -46,19 +46,10 @@
     </section>
     <section class="view" id="calmView" data-view-panel="calm" hidden>
       <div class="puzzle-hub" id="puzzleHub">
-        <div class="game-hub-heading"><span class="eyebrow">A QUIET RESET</span><h2>Choose what feels good.</h2><p>Every game is untimed, gentle, and impossible to lose. You can stop whenever your mind feels a little clearer.</p></div>
+        <div class="game-hub-heading"><span class="eyebrow">LEARN OR TAKE A BREAK</span><h2>Choose what feels good.</h2><p>Try a school quest with tutor hints, explore Hero Wars, or take a gentle, untimed puzzle break.</p></div>
         <section class="quest-hub" aria-labelledby="questTitle">
-          <div class="quest-heading"><span class="eyebrow">LEARN AS YOU PLAY</span><h2 id="questTitle">Tutor quests</h2><p>Pick a short school challenge. You can try an answer, ask the AI tutor for a hint, and keep going at your own pace.</p></div>
+          <div class="quest-heading"><span class="eyebrow">LEARN AS YOU PLAY</span><h2 id="questTitle">Tutor quests</h2><p>Pick a short school challenge, try an answer, and ask for a hint. Live AI hints need an API key; built-in hints work offline.</p></div>
           <div class="quest-list" id="questList"></div>
-        </section>
-        <section class="quest-stage" id="questStage" hidden aria-live="polite">
-          <button class="quest-back" id="questBack" type="button">← All quests</button>
-          <div class="quest-stage-top"><div><span class="eyebrow" id="questSubject">MATH QUEST</span><h2 id="questName">Fraction Forest</h2></div><span class="quest-progress" id="questProgress">Quest 1 of 3</span></div>
-          <p class="quest-prompt" id="questPrompt"></p>
-          <form class="quest-answer-form" id="questAnswerForm"><label for="questAnswer">Your answer</label><div><input id="questAnswer" autocomplete="off" inputmode="decimal" placeholder="Type your answer"><button class="primary-button" type="submit">Check answer</button></div></form>
-          <div class="quest-actions"><button class="secondary-button" id="questTutor" type="button">Ask AI tutor for a hint</button><button class="secondary-button" id="questReset" type="button">Try again</button></div>
-          <p class="quest-feedback" id="questFeedback" role="status"></p>
-          <div class="quest-tutor" id="questTutorAnswer" hidden><strong>AI tutor</strong><p></p></div>
         </section>
         <a class="featured-game-card" href="hero-wars/" aria-label="Play Hero Wars: Mossvale Wildfront">
           <span class="featured-game-art" aria-hidden="true"><i class="hero-sun"></i><i class="hero-hill hill-one"></i><i class="hero-hill hill-two"></i><b>⚔</b></span>
@@ -70,6 +61,15 @@
           <button class="game-card" type="button" data-game="slider"><span class="game-icon slider-icon" aria-hidden="true">▦</span><strong>Cozy Slider</strong><small>Slide the tiles into order</small></button>
         </div>
       </div>
+      <section class="quest-stage" id="questStage" hidden aria-live="polite">
+        <button class="quest-back" id="questBack" type="button">← All quests</button>
+        <div class="quest-stage-top"><div><span class="eyebrow" id="questSubject">MATH QUEST</span><h2 id="questName">Fraction Forest</h2></div><span class="quest-progress" id="questProgress">Quest 1 of 3</span></div>
+        <p class="quest-prompt" id="questPrompt"></p>
+        <form class="quest-answer-form" id="questAnswerForm"><label for="questAnswer">Your answer</label><div><input id="questAnswer" autocomplete="off" inputmode="decimal" placeholder="Type your answer"><button class="primary-button" type="submit">Check answer</button></div></form>
+        <div class="quest-actions"><button class="secondary-button" id="questTutor" type="button">Ask AI tutor for a hint</button><button class="secondary-button" id="questReset" type="button">Try again</button></div>
+        <p class="quest-feedback" id="questFeedback" role="status"></p>
+        <div class="quest-tutor" id="questTutorAnswer" hidden><strong id="questTutorSource">AI tutor</strong><p></p></div>
+      </section>
       <div class="game-stage" id="gameStage" hidden>
         <header class="game-stage-heading"><button class="all-games-button" id="allGamesButton" type="button">All games</button><div><span class="eyebrow">NO RUSH</span><h2 id="activeGameTitle">Soft Matches</h2><p id="activeGameInstructions">Turn over two cards and find the pairs.</p></div><button class="game-reset-button" id="resetGame" type="button">Start fresh</button></header>
         <section class="game-panel" id="memoryPanel" data-game-panel="memory" aria-label="Soft Matches game">

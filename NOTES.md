@@ -10,6 +10,7 @@ The AI model is `gpt-5-mini` by default. You can change it with `OPENAI_MODEL` i
 
 ## Current version
 
+- Three short tutor quests in the game hub. Students can check answers, retry, and request a live Math Helper hint. When the API is unavailable, a clearly labeled built-in hint appears instead.
 - Four one-tap assistants—Math Helper, Stress Helper, Study Planner, and Friendly Chat—with separate conversation histories, prompts, personalities, and shared safety rules.
 - Visual, step-by-step math help across arithmetic, fractions, percentages, linear and quadratic algebra, function graphs, plane and solid geometry, trigonometry, polynomial calculus, descriptive statistics, probability, discrete math, sequences, and introductory linear algebra.
 - Optional screenshot and photo attachments with an in-chat preview, image-size protection, privacy guidance, multimodal help when the private AI server is connected, and on-device OCR for clear typed equations when it is offline.
