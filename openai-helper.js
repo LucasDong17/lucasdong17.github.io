@@ -1,13 +1,13 @@
 const ENDPOINT = 'https://api.openai.com/v1/responses';
 const CRISIS_PATTERN = /\b(kill myself|suicide|suicidal|hurt myself|self[- ]?harm|don['’]?t want to live|do not want to live|end my life)\b/i;
-const UNSAFE_PATTERN = /\b(how (?:do|can) i|help me|tell me how to|i (?:want|plan|need) to)\b.{0,45}\b(hurt|kill|attack|bully|harass|poison|threaten)\b/i;
+const UNSAFE_PATTERN = /\b(?:help me|write|make|draft|send|say|tell me how to)\b.{0,90}\b(?:cruel|mean|embarrass|humiliat\w*|bully|harass|hurt|kill|attack|poison|threaten)\b|\b(?:how (?:do|can) i|i (?:want|plan|need) to)\b.{0,45}\b(?:hurt|kill|attack|bully|harass|poison|threaten)\b/i;
 
 export async function getCoachAnswer({ apiKey, model, brief, message, history = [], image = '', bot = 'stress' }) {
   if (CRISIS_PATTERN.test(message)) {
     return 'Your safety comes first. Tell a trusted adult who can stay with you. In the U.S., call or text 988 now; if anyone is in immediate danger, call 911.';
   }
   if (UNSAFE_PATTERN.test(message)) {
-    return 'I can’t help hurt or target someone. Step away, tell a trusted adult, and choose a safe way to handle the conflict.';
+    return 'I can’t help embarrass, bully, threaten, or hurt someone. If there is a conflict, name the specific problem and make a respectful request instead.';
   }
 
   const modeInstructions = {

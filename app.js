@@ -471,13 +471,15 @@ function mathSolutionToText(value) {
 
 function getBuiltInReply(message, history = [], bot = 'stress') {
   const recentUserMessages = history.filter(item => item.role === 'user').slice(-3);
-  const recentUserText = recentUserMessages.map(item => item.content).join(' ');
   const hasPriorUserContext = recentUserMessages.length > 0;
   const currentText = message.toLowerCase();
-  const text = redactPrivateDetails(`${recentUserText} ${message}`).toLowerCase();
-  if (/\b(how (?:do|can) i|help me|tell me how to|i (?:want|plan|need) to)\b.{0,50}\b(hurt|kill|attack|bully|harass|poison|threaten)\b/.test(message.toLowerCase())) {
-    return 'I can’t help hurt, threaten, or target someone. Step away from the situation and tell a trusted adult what is happening. If there is immediate danger, call emergency services.';
+  const followUp = /^(?:\s*)(?:and|also|what about|how about|can you explain (?:that|it)|why is that|it|that|those)\b/i.test(message) && message.trim().split(/\s+/).length < 12;
+  const context = followUp ? `${recentUserMessages.at(-1)?.content || ''} ` : '';
+  const text = redactPrivateDetails(`${context}${message}`).toLowerCase();
+  if (/\b(?:help me|write|make|draft|send|say|tell me how to)\b.{0,90}\b(?:cruel|mean|embarrass|humiliat\w*|bully|threaten|harass|hurt|kill|attack|poison)\b|\b(?:embarrass|humiliat\w*|bully|threaten|harass|hurt|kill|attack|poison)\b.{0,90}\b(?:classmate|someone|person|group chat)\b/i.test(message)) {
+    return 'I can’t help embarrass, bully, or hurt someone. If you’re upset with a classmate, try a respectful message about the specific problem and what you need instead.';
   }
+  if (/\b(?:pet dragon|dragon name|name (?:for|my) (?:a |the )?dragon)\b/i.test(message)) return 'Fun idea! How about Ember, Moss, Comet, or Pebble? Pick the one that fits your dragon’s personality best—or tell me its color and I’ll suggest more.';
   const visualMathAnswer = solveGraphQuestion(message) || solveGeometryQuestion(message);
   if (visualMathAnswer) return visualMathAnswer;
   const extendedMathAnswer = solveExtendedMathQuestion(message);
@@ -513,7 +515,7 @@ function getBuiltInReply(message, history = [], bot = 'stress') {
   ]);
   const deadlineMatch = text.match(/\b(today|tonight|tomorrow|this (?:monday|tuesday|wednesday|thursday|friday|weekend|week)|next week|in \d+ days?)\b/);
   const deadline = deadlineMatch ? deadlineMatch[1] : '';
-  const isSocial = /\b(friend|classmate|teacher|parent|group partner|conversation|argument|what (?:do|should) i say)\b/.test(text);
+  const isSocial = /\b(friend|classmate|teacher|parent|partner|group|conversation|argument|what (?:do|should|could) i say)\b/.test(currentText);
   const isGreeting = /^(?:\s*)(?:hello|hi|hey|yo)[!.?\s]*$/i.test(message);
   const asksForWords = /\b(what (?:do|should|can) i say|help me (?:reply|respond)|how (?:do|should) i (?:talk|respond))\b/.test(currentText);
   const givesSituationDetails = /\b(because|when|after|during|said|told|ignored|yelled|argued|happened|due)\b/.test(currentText) || message.trim().split(/\s+/).length >= 14;
@@ -523,6 +525,10 @@ function getBuiltInReply(message, history = [], bot = 'stress') {
     if (bot === 'planner') return 'Hi! Tell me what you need to finish, when it is due, and roughly how much time you have. We’ll make a realistic plan with breaks.';
     if (bot === 'chat') return 'Hi! I’m glad you stopped by. What would you enjoy talking about today?';
     return 'Hi! I’m here with you. Tell me what is happening and whether you want me to listen, help you calm down, or find one next step.';
+  }
+
+  if (/\bproject\b/.test(currentText) && /\b(?:due tomorrow|due tonight|due today)\b/.test(currentText) && /\b(?:sleep|haven['’]?t started|have not started)\b/.test(currentText)) {
+    return 'Your project is due soon, and sleep matters. Open the directions and choose the smallest version that meets the requirements. Spend 15 minutes on an outline or first section, take a short break, then decide what is realistic to finish before bedtime. If you need help or an extension, tell your teacher what you have started. What is the required final product?';
   }
 
   const reflection = buildReflection({ feeling, subject, task, concept, deadline, isSocial });
@@ -614,6 +620,9 @@ function buildSchoolPlan({ subject, task, concept, deadline, feeling }) {
 }
 
 function buildSocialResponse(currentText, reflection) {
+  if (/\b(?:partner|group member|classmate)\b/.test(currentText) && /\b(?:miss\w*|late|check-in|check in|didn['’]?t finish)\b/.test(currentText)) {
+    return 'It’s frustrating when a group member misses check-ins. You could say: “I’m worried about our slides because we missed our check-in. Can you tell me which part you can finish and when? I can help with one piece.” If the plan keeps slipping, ask your teacher to help the group reset it.';
+  }
   if (/\bignored|left out|didn['’]?t answer|did not answer\b/.test(currentText)) {
     return `${reflection} Since you said you felt ignored, try checking what happened without assuming the reason: “I noticed we didn’t talk earlier, and I felt left out. Is everything okay between us?” Choose a calm moment and give them space to explain.`;
   }
